@@ -1,0 +1,35 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false}'>
+<title>{{with .Title}}{{.}} - {{end}}ASI</title>
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/htmx.min.js" defer></script>
+</head>
+<body{{if not .User}} class="bare"{{end}}{{with .CSRFToken}} hx-headers='{"X-CSRF-Token": "{{.}}"}'{{end}}>
+{{if .User}}
+<div class="shell">
+<aside class="rail">
+<a class="brand" href="/">ASI<small>Attack Surface Intelligence</small></a>
+<nav aria-label="Main">{{range .Nav}}<a href="{{.Path}}">{{.Label}}</a>{{end}}</nav>
+<div class="account">
+<span class="who">{{.User.Username}}</span>
+<span class="role">{{.User.Role}}</span>
+<form method="post" action="/logout">{{.CSRFField}}<button class="btn small" type="submit">Sign out</button></form>
+</div>
+</aside>
+<main>
+{{template "content" .}}
+</main>
+</div>
+{{else}}
+<main>
+{{template "content" .}}
+</main>
+{{end}}
+</body>
+</html>
+{{end}}
+{{define "run-status"}}{{if eq .Status "running"}}<span class="status active">Running</span>{{else if eq .Status "paused"}}<span class="status unstable">{{if .Held}}Paused by a user{{else}}Paused{{end}}</span>{{else if eq .Status "failed"}}<span class="change missing">Failed</span>{{else}}<span class="status inactive">Completed</span>{{end}}{{end}}

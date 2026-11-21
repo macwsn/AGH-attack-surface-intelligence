@@ -1,0 +1,30 @@
+{{define "content"}}
+<div class="page-head">
+<div>
+<h1>Scans</h1>
+<p class="lede">Scan definitions: {{len .Data.Scans}}. The scheduler starts each enabled scan in its windows.</p>
+</div>
+{{if .Data.CanConfigure}}<div class="actions"><a class="btn primary" href="/scans/new">New scan</a></div>{{end}}
+</div>
+{{if .Data.Scans}}
+<div class="table-wrap">
+<table class="data">
+<thead><tr><th>Name</th><th>State</th><th>Windows</th><th>Frequency</th><th>Last run</th><th>Run status</th></tr></thead>
+<tbody>
+{{range .Data.Scans}}
+<tr{{if not .Definition.Enabled}} class="is-off"{{end}}>
+<td><a href="/scans/{{.Definition.ID}}">{{.Definition.Name}}</a></td>
+<td>{{if .Definition.Enabled}}<span class="status active">Enabled</span>{{else}}<span class="status inactive">Disabled</span>{{end}}</td>
+<td class="addr">{{.Windows}}</td>
+<td>{{.Frequency}}</td>
+<td>{{with .LastRun}}<a class="addr" href="/runs/{{.ID}}">{{.Name}}</a>{{else}}<span class="muted">Never</span>{{end}}</td>
+<td>{{with .LastRun}}{{template "run-status" .}}{{end}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{else}}
+<div class="empty"><p>No scans yet.</p>{{if .Data.CanConfigure}}<p><a class="btn primary" href="/scans/new">Create a scan</a></p>{{end}}</div>
+{{end}}
+{{end}}

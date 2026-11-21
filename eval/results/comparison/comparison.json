@@ -1,0 +1,752 @@
+{
+ "generated": "2026-11-21",
+ "lab": {
+  "compose_project": "asi-complab",
+  "subnet": "172.31.0.0/24",
+  "ports": [
+   22,
+   80,
+   443,
+   6379,
+   8000,
+   8080,
+   8081
+  ],
+  "excluded": [
+   "172.31.0.1",
+   "172.31.0.2 (scanner container)",
+   "172.31.0.3"
+  ],
+  "ground_truth": "eval/complab/expected-reference.json",
+  "expected": {
+   "stage1": {
+    "hosts": 11,
+    "services": 12
+   },
+   "stage2": {
+    "hosts": 10,
+    "services": 12
+   },
+   "stage3": {
+    "hosts": 11,
+    "services": 13
+   }
+  }
+ },
+ "legend": {
+  "true": "reported by the tool as a structured field or named finding",
+  "raw": "value is present in raw output (e.g. a header dump) but not recognised or labelled",
+  "partial": "see note",
+  "false": "not reported",
+  "null": "not applicable"
+ },
+ "tools": {
+  "nmap_ndiff": {
+   "run": true,
+   "versions": {
+    "nmap": "7.93 (Debian 12)",
+    "ndiff": "7.93; 7.95 and 7.99 tried for script diffs"
+   },
+   "stage1_wall_clock_seconds": {
+    "sv_scan": 15,
+    "script_scan": 15
+   },
+   "stage1_command": "nmap -sT -sV --max-rate 300 -p 22,80,443,6379,8000,8080,8081 --exclude 172.31.0.1,172.31.0.2,172.31.0.3 -oX /out/sv.xml -oN /out/sv.nmap 172.31.0.0/24 (second pass adds --script http-title,http-headers,ssl-cert)",
+   "timings_seconds": {
+    "stage1": {
+     "nmap-scripts": 15,
+     "nmap-sv": 15
+    },
+    "stage2": {
+     "nmap-sv": 15,
+     "nmap-scripts": 15
+    },
+    "stage3": {
+     "nmap-sv": 15,
+     "nmap-scripts": 14
+    }
+   },
+   "stages": {
+    "stage1": {
+     "hosts_expected": 11,
+     "hosts_tp": 11,
+     "hosts_fp": [],
+     "hosts_missed": [],
+     "services_expected": 12,
+     "services_tp": 12,
+     "services_fp": [],
+     "services_missed": [],
+     "service_names_right": 12,
+     "service_names_wrong": 0,
+     "service_names_wrong_list": []
+    },
+    "stage2": {
+     "hosts_expected": 10,
+     "hosts_tp": 10,
+     "hosts_fp": [],
+     "hosts_missed": [],
+     "services_expected": 12,
+     "services_tp": 12,
+     "services_fp": [],
+     "services_missed": [],
+     "service_names_right": 12,
+     "service_names_wrong": 0,
+     "service_names_wrong_list": []
+    },
+    "stage3": {
+     "hosts_expected": 11,
+     "hosts_tp": 11,
+     "hosts_fp": [],
+     "hosts_missed": [],
+     "services_expected": 13,
+     "services_tp": 13,
+     "services_fp": [],
+     "services_missed": [],
+     "service_names_right": 13,
+     "service_names_wrong": 0,
+     "service_names_wrong_list": []
+    }
+   },
+   "reported": {
+    "page_title": true,
+    "status_code": false,
+    "headers": true,
+    "cookie_names": "raw",
+    "tls_subject": true,
+    "tls_sans": true,
+    "tls_self_signed": "partial",
+    "redirect_chain": "partial",
+    "favicon_hash": false,
+    "notes": "self-signed not flagged, issuer equals subject is shown; redirect: only the final URL ('Requested resource was'); http-favicon script not run (it only matches a built-in list); only MD5/SHA-1 certificate fingerprints, no SHA-256"
+   },
+   "technologies": {
+    "wordpress": false,
+    "wordpress_version": false,
+    "drupal": "raw",
+    "php": "raw",
+    "php_version": "raw",
+    "nginx": true,
+    "nginx_version": true,
+    "openssh_version": true,
+    "redis_version": true,
+    "admin_panel": false,
+    "staging_marker": "raw",
+    "ip_camera": false,
+    "debug_token_header": "raw",
+    "phpsessid_cookie": "raw",
+    "notes": "service database is strong for non-HTTP: OpenSSH 8.9p1 Ubuntu 3ubuntu0.6, Redis 7.4.12, nginx 1.27.5 with CPE; web application layer only as raw header/title text"
+   },
+   "changes": {
+    "tool_has_diff": true,
+    "new_host_19": true,
+    "missing_hosts_17_21": true,
+    "returned_host_17": "partial",
+    "new_port_18_8081": true,
+    "changed_title_18_80": "partial",
+    "changed_header_18_80": "partial",
+    "false_changes_on_stable_hosts": {
+     "sv_xml_stage1_vs_stage2": 0,
+     "http_title_only_two_identical_passes": 0,
+     "http_headers_two_identical_passes": "9 of 9 HTTP hosts (Date header)"
+    },
+    "notes": [
+     "returned host is shown as a plain added host; ndiff compares exactly two files and has no memory of earlier scans, so .21 'inactive' vs .17 'returned' cannot be told apart",
+     "ndiff 7.93, 7.95 and 7.99 crash loading XML with more than one script result per port (the requested http-title,http-headers,ssl-cert scan cannot be diffed)",
+     "with one script per port (replay) text output crashes when a script output differs; --xml output works and shows http-title 'Intranet v1' -> 'Intranet v2'",
+     "the X-App-Version change is only visible as a change of the whole http-headers blob, which also changes on every HTTP host because of the Date header",
+     "the MAC address change of .18 (container recreated) is reported; true, but a lab artefact"
+    ]
+   }
+  },
+  "projectdiscovery": {
+   "run": true,
+   "versions": {
+    "naabu": "v2.3.3",
+    "httpx": "v1.6.10",
+    "nuclei": "v3.4.10"
+   },
+   "stage1_wall_clock_seconds": {
+    "naabu": 21,
+    "httpx": 11,
+    "nuclei_tech_panel_rl50": 492
+   },
+   "stage1_command": "naabu -host 172.31.0.0/24 -exclude-hosts 172.31.0.1,172.31.0.2,172.31.0.3 -p 22,80,443,6379,8000,8080,8081 -rate 300 -silent -json -o naabu.jsonl | httpx -l hostports.txt -rl 50 -silent -sc -title -td -server -location -fr -favicon -tls-grab -irh -json -o httpx.jsonl | nuclei -l urls.txt -tags tech,panel -rl 50 -silent -nc -jsonl -o nuclei.jsonl",
+   "timings_seconds": {
+    "stage1": {
+     "naabu": 21,
+     "httpx": 11,
+     "nuclei": 492
+    },
+    "stage2": {
+     "naabu": 21,
+     "httpx": 10,
+     "nuclei": 161
+    },
+    "stage3": {
+     "naabu": 21,
+     "httpx": 11,
+     "nuclei": 177
+    }
+   },
+   "timings_note": "nuclei ran with -rl 50 in stage 1 and -rl 150 in stages 2 and 3",
+   "stages": {
+    "stage1": {
+     "hosts_expected": 11,
+     "hosts_tp": 11,
+     "hosts_fp": [],
+     "hosts_missed": [],
+     "services_expected": 12,
+     "services_tp": 12,
+     "services_fp": [],
+     "services_missed": [],
+     "httpx_http_endpoints": 10,
+     "httpx_schemes": {
+      "172.31.0.20:80": "http",
+      "172.31.0.17:80": "http",
+      "172.31.0.13:8000": "http",
+      "172.31.0.18:80": "http",
+      "172.31.0.21:80": "http",
+      "172.31.0.12:80": "http",
+      "172.31.0.11:8080": "http",
+      "172.31.0.16:80": "http",
+      "172.31.0.12:443": "https",
+      "172.31.0.10:80": "http"
+     },
+     "nuclei_results": 61,
+     "nuclei_template_hits": {
+      "drupal-detect": [
+       "172.31.0.11:8080"
+      ],
+      "drupal-login": [
+       "172.31.0.11:8080"
+      ],
+      "metatag-cms": [
+       "172.31.0.10:80"
+      ],
+      "nginx-eol": [
+       "172.31.0.10:80",
+       "172.31.0.11:8080",
+       "172.31.0.12:443",
+       "172.31.0.12:80",
+       "172.31.0.13:8000",
+       "172.31.0.16:80",
+       "172.31.0.17:80",
+       "172.31.0.18:80",
+       "172.31.0.20:80",
+       "172.31.0.21:80"
+      ],
+      "nginx-version": [
+       "172.31.0.10:80",
+       "172.31.0.11:8080",
+       "172.31.0.13:8000",
+       "172.31.0.16:80",
+       "172.31.0.17:80",
+       "172.31.0.18:80",
+       "172.31.0.21:80"
+      ],
+      "php-detect": [
+       "172.31.0.12:443",
+       "172.31.0.12:80"
+      ],
+      "php-eol": [
+       "172.31.0.12:443",
+       "172.31.0.12:80"
+      ],
+      "tech-detect": [
+       "172.31.0.10:80",
+       "172.31.0.11:8080",
+       "172.31.0.12:443",
+       "172.31.0.12:80",
+       "172.31.0.13:8000",
+       "172.31.0.16:80",
+       "172.31.0.17:80",
+       "172.31.0.18:80",
+       "172.31.0.20:80",
+       "172.31.0.21:80"
+      ],
+      "waf-detect": [
+       "172.31.0.10:80",
+       "172.31.0.11:8080",
+       "172.31.0.12:443",
+       "172.31.0.12:80",
+       "172.31.0.13:8000",
+       "172.31.0.16:80",
+       "172.31.0.17:80",
+       "172.31.0.18:80",
+       "172.31.0.20:80",
+       "172.31.0.21:80"
+      ],
+      "wordpress-eol": [
+       "172.31.0.10:80"
+      ],
+      "wordpress-login": [
+       "172.31.0.10:80"
+      ],
+      "wordpress-passive-detection": [
+       "172.31.0.10:80"
+      ],
+      "wordpress-theme-detect": [
+       "172.31.0.10:80"
+      ]
+     }
+    },
+    "stage2": {
+     "hosts_expected": 10,
+     "hosts_tp": 10,
+     "hosts_fp": [],
+     "hosts_missed": [],
+     "services_expected": 12,
+     "services_tp": 12,
+     "services_fp": [],
+     "services_missed": [],
+     "httpx_http_endpoints": 10,
+     "httpx_schemes": {
+      "172.31.0.19:80": "http",
+      "172.31.0.11:8080": "http",
+      "172.31.0.18:8081": "http",
+      "172.31.0.20:80": "http",
+      "172.31.0.13:8000": "http",
+      "172.31.0.12:80": "http",
+      "172.31.0.18:80": "http",
+      "172.31.0.16:80": "http",
+      "172.31.0.12:443": "https",
+      "172.31.0.10:80": "http"
+     },
+     "nuclei_results": 61,
+     "nuclei_template_hits": {
+      "drupal-detect": [
+       "172.31.0.11:8080"
+      ],
+      "drupal-login": [
+       "172.31.0.11:8080"
+      ],
+      "metatag-cms": [
+       "172.31.0.10:80"
+      ],
+      "nginx-eol": [
+       "172.31.0.10:80",
+       "172.31.0.11:8080",
+       "172.31.0.12:443",
+       "172.31.0.12:80",
+       "172.31.0.13:8000",
+       "172.31.0.16:80",
+       "172.31.0.18:80",
+       "172.31.0.18:8081",
+       "172.31.0.19:80",
+       "172.31.0.20:80"
+      ],
+      "nginx-version": [
+       "172.31.0.10:80",
+       "172.31.0.11:8080",
+       "172.31.0.13:8000",
+       "172.31.0.16:80",
+       "172.31.0.18:80",
+       "172.31.0.18:8081",
+       "172.31.0.19:80"
+      ],
+      "php-detect": [
+       "172.31.0.12:443",
+       "172.31.0.12:80"
+      ],
+      "php-eol": [
+       "172.31.0.12:443",
+       "172.31.0.12:80"
+      ],
+      "tech-detect": [
+       "172.31.0.10:80",
+       "172.31.0.11:8080",
+       "172.31.0.12:443",
+       "172.31.0.12:80",
+       "172.31.0.13:8000",
+       "172.31.0.16:80",
+       "172.31.0.18:80",
+       "172.31.0.18:8081",
+       "172.31.0.19:80",
+       "172.31.0.20:80"
+      ],
+      "waf-detect": [
+       "172.31.0.10:80",
+       "172.31.0.11:8080",
+       "172.31.0.12:443",
+       "172.31.0.12:80",
+       "172.31.0.13:8000",
+       "172.31.0.16:80",
+       "172.31.0.18:80",
+       "172.31.0.18:8081",
+       "172.31.0.19:80",
+       "172.31.0.20:80"
+      ],
+      "wordpress-eol": [
+       "172.31.0.10:80"
+      ],
+      "wordpress-login": [
+       "172.31.0.10:80"
+      ],
+      "wordpress-passive-detection": [
+       "172.31.0.10:80"
+      ],
+      "wordpress-theme-detect": [
+       "172.31.0.10:80"
+      ]
+     }
+    },
+    "stage3": {
+     "hosts_expected": 11,
+     "hosts_tp": 11,
+     "hosts_fp": [],
+     "hosts_missed": [],
+     "services_expected": 13,
+     "services_tp": 13,
+     "services_fp": [],
+     "services_missed": [],
+     "httpx_http_endpoints": 11,
+     "httpx_schemes": {
+      "172.31.0.18:8081": "http",
+      "172.31.0.20:80": "http",
+      "172.31.0.12:80": "http",
+      "172.31.0.17:80": "http",
+      "172.31.0.11:8080": "http",
+      "172.31.0.18:80": "http",
+      "172.31.0.13:8000": "http",
+      "172.31.0.19:80": "http",
+      "172.31.0.16:80": "http",
+      "172.31.0.12:443": "https",
+      "172.31.0.10:80": "http"
+     },
+     "nuclei_results": 65,
+     "nuclei_template_hits": {
+      "drupal-detect": [
+       "172.31.0.11:8080"
+      ],
+      "drupal-login": [
+       "172.31.0.11:8080"
+      ],
+      "metatag-cms": [
+       "172.31.0.10:80"
+      ],
+      "nginx-eol": [
+       "172.31.0.10:80",
+       "172.31.0.11:8080",
+       "172.31.0.12:443",
+       "172.31.0.12:80",
+       "172.31.0.13:8000",
+       "172.31.0.16:80",
+       "172.31.0.17:80",
+       "172.31.0.18:80",
+       "172.31.0.18:8081",
+       "172.31.0.19:80",
+       "172.31.0.20:80"
+      ],
+      "nginx-version": [
+       "172.31.0.10:80",
+       "172.31.0.11:8080",
+       "172.31.0.13:8000",
+       "172.31.0.16:80",
+       "172.31.0.17:80",
+       "172.31.0.18:80",
+       "172.31.0.18:8081",
+       "172.31.0.19:80"
+      ],
+      "php-detect": [
+       "172.31.0.12:443",
+       "172.31.0.12:80"
+      ],
+      "php-eol": [
+       "172.31.0.12:443",
+       "172.31.0.12:80"
+      ],
+      "tech-detect": [
+       "172.31.0.10:80",
+       "172.31.0.11:8080",
+       "172.31.0.12:443",
+       "172.31.0.12:80",
+       "172.31.0.13:8000",
+       "172.31.0.16:80",
+       "172.31.0.17:80",
+       "172.31.0.18:80",
+       "172.31.0.18:8081",
+       "172.31.0.19:80",
+       "172.31.0.20:80"
+      ],
+      "waf-detect": [
+       "172.31.0.10:80",
+       "172.31.0.11:8080",
+       "172.31.0.12:443",
+       "172.31.0.12:80",
+       "172.31.0.13:8000",
+       "172.31.0.16:80",
+       "172.31.0.17:80",
+       "172.31.0.18:80",
+       "172.31.0.18:8081",
+       "172.31.0.19:80",
+       "172.31.0.20:80"
+      ],
+      "wordpress-eol": [
+       "172.31.0.10:80"
+      ],
+      "wordpress-login": [
+       "172.31.0.10:80"
+      ],
+      "wordpress-passive-detection": [
+       "172.31.0.10:80"
+      ],
+      "wordpress-theme-detect": [
+       "172.31.0.10:80"
+      ]
+     }
+    }
+   },
+   "service_names": "naabu reports ports only; httpx identifies HTTP vs HTTPS correctly on all web ports; ssh and redis get no service name",
+   "reported": {
+    "page_title": true,
+    "status_code": true,
+    "headers": true,
+    "cookie_names": "raw",
+    "tls_subject": true,
+    "tls_sans": true,
+    "tls_self_signed": true,
+    "redirect_chain": true,
+    "favicon_hash": false,
+    "notes": "certificate SHA-256 equals the ground truth; -favicon was set but no hash came back for the lab's 26-byte placeholder favicon (httpx normally emits an mmh3 hash)"
+   },
+   "technologies": {
+    "wordpress": true,
+    "wordpress_version": true,
+    "drupal": true,
+    "php": true,
+    "php_version": true,
+    "nginx": true,
+    "nginx_version": true,
+    "openssh_version": false,
+    "redis_version": false,
+    "admin_panel": false,
+    "staging_marker": "raw",
+    "ip_camera": false,
+    "debug_token_header": "raw",
+    "phpsessid_cookie": "raw",
+    "notes": "httpx: WordPress:6.4.2, Drupal:10, PHP:7.4.3, Nginx:1.27.5 (plus implied MySQL/PHP for WordPress and Drupal). nuclei: wordpress-login (/wp-login.php), wordpress-eol 6.4.2, wordpress-theme-detect, drupal-detect, drupal-login, php-detect 7.4.3, php-eol, nginx-version, nginx-eol. The custom admin panel, the staging marker and the NETCAM camera match no stock template.",
+    "false_positives": "nuclei waf-detect:nginxgeneric on every HTTP endpoint (10 in stage 1); there is no WAF"
+   },
+   "changes": {
+    "tool_has_diff": false,
+    "new_host_19": false,
+    "missing_hosts_17_21": false,
+    "returned_host_17": false,
+    "new_port_18_8081": false,
+    "changed_title_18_80": false,
+    "changed_header_18_80": false,
+    "false_changes_on_stable_hosts": null,
+    "note": "no comparison of runs in the tool; a user must diff JSON output with external tools"
+   }
+  },
+  "whatweb": {
+   "run": true,
+   "versions": {
+    "whatweb": "Debian 12 package (0.5.5)"
+   },
+   "stage1_wall_clock_seconds": {
+    "whatweb_a3": 86
+   },
+   "stage1_command": "whatweb -a 3 --max-threads 5 --color=never -i urls.txt --log-json=whatweb.json --log-verbose=whatweb-verbose.txt",
+   "timings_seconds": {
+    "stage1": {
+     "whatweb": 86
+    },
+    "stage2": {
+     "whatweb": 84
+    },
+    "stage3": {
+     "whatweb": 91
+    }
+   },
+   "stages": {
+    "stage1": {
+     "http_services_expected": 10,
+     "http_services_fingerprinted": 10,
+     "missed": [],
+     "extra": [],
+     "note": "input URLs came from httpx; WhatWeb does no host/port discovery here"
+    },
+    "stage2": {
+     "http_services_expected": 10,
+     "http_services_fingerprinted": 10,
+     "missed": [],
+     "extra": [],
+     "note": "input URLs came from httpx; WhatWeb does no host/port discovery here"
+    },
+    "stage3": {
+     "http_services_expected": 11,
+     "http_services_fingerprinted": 11,
+     "missed": [],
+     "extra": [],
+     "note": "input URLs came from httpx; WhatWeb does no host/port discovery here"
+    }
+   },
+   "hosts_and_services": "not measured: WhatWeb was given the HTTP URLs found by httpx; it has no port discovery of its own",
+   "reported": {
+    "page_title": true,
+    "status_code": true,
+    "headers": "partial",
+    "cookie_names": true,
+    "tls_subject": false,
+    "tls_sans": false,
+    "tls_self_signed": false,
+    "redirect_chain": true,
+    "favicon_hash": false,
+    "notes": "headers: names of uncommon headers in the brief/JSON output, full headers only in the verbose log; redirects are followed and each hop is a separate record"
+   },
+   "technologies": {
+    "wordpress": true,
+    "wordpress_version": true,
+    "drupal": false,
+    "php": true,
+    "php_version": true,
+    "nginx": true,
+    "nginx_version": true,
+    "openssh_version": null,
+    "redis_version": null,
+    "admin_panel": "partial",
+    "staging_marker": "partial",
+    "ip_camera": false,
+    "debug_token_header": "partial",
+    "phpsessid_cookie": true,
+    "notes": "Drupal (only an X-Generator header in the lab) was not recognised, the header name is listed under UncommonHeaders; admin panel = generic PasswordField[password]; staging/debug-token = header names listed under UncommonHeaders without meaning; Cookies[PHPSESSID] and HttpOnly[PHPSESSID] are named"
+   },
+   "changes": {
+    "tool_has_diff": false,
+    "new_host_19": false,
+    "missing_hosts_17_21": false,
+    "returned_host_17": false,
+    "new_port_18_8081": false,
+    "changed_title_18_80": false,
+    "changed_header_18_80": false,
+    "false_changes_on_stable_hosts": null,
+    "note": "no comparison of runs in the tool; a user must diff JSON output with external tools"
+   }
+  },
+  "ivre": {
+   "run": "partial",
+   "run_note": "database + CLI only, fed with the nmap XML of the three stages; no web UI, no IVRE-driven scans, no passive sensors; amd64 images under emulation",
+   "versions": {
+    "ivre": "0.9.22.dev215"
+   },
+   "stages": {
+    "stage1": {
+     "host_records": 11
+    },
+    "stage2": {
+     "host_records": 10
+    },
+    "stage3": {
+     "host_records": 11
+    },
+    "merged_view_hosts": 12
+   },
+   "detection": "identical to its input (nmap); adds tags, top-values queries, JSON and CSV export",
+   "changes": {
+    "tool_has_diff": false,
+    "new_host_19": false,
+    "missing_hosts_17_21": false,
+    "returned_host_17": false,
+    "new_port_18_8081": false,
+    "changed_title_18_80": false,
+    "changed_header_18_80": false,
+    "false_changes_on_stable_hosts": null,
+    "note": "keeps every scan as dated records (categories stage1..3 queryable separately) but has no command that reports differences"
+   }
+  },
+  "securecodebox": {
+   "run": false,
+   "why": "needs Kubernetes + Helm (official install guide); no docker compose path",
+   "source": "from documentation / prior knowledge of the docs, not verified in this run"
+  },
+  "rengine": {
+   "run": false,
+   "why": "multi-container stack with its own installer (install.sh, Celery, Postgres, Redis); domain/subdomain-centric, not startable and usable on an IP lab within 10 minutes",
+   "source": "from documentation / prior knowledge of the docs, not verified in this run"
+  }
+ },
+ "features_from_documentation": {
+  "_note": "all cells are from documentation or prior knowledge of the tools unless 'observed' is stated; none of these features was exercised except where stated",
+  "change_tracking": {
+   "nmap_ndiff": "ndiff compares two XML files (observed)",
+   "projectdiscovery": "none in the open-source CLIs (observed); the hosted ProjectDiscovery cloud offers it",
+   "whatweb": "none (observed)",
+   "securecodebox": "no diff of its own; findings go to DefectDojo or Elasticsearch where they are deduplicated and tracked",
+   "rengine": "tracks new/removed subdomains and endpoints between scans, notifications to Slack/Discord/Telegram",
+   "ivre": "history of scans plus merged view; no diff command (observed)"
+  },
+  "unstable_hosts_thresholds": {
+   "nmap_ndiff": "none",
+   "projectdiscovery": "none",
+   "whatweb": "none",
+   "securecodebox": "none",
+   "rengine": "none documented",
+   "ivre": "none; time filters (timeago) on queries only"
+  },
+  "custom_safe_signatures": {
+   "nmap_ndiff": "NSE scripts (Lua) and nmap-service-probes entries",
+   "projectdiscovery": "nuclei YAML templates (matchers/extractors), very large community library; httpx regex match/extract flags",
+   "whatweb": "Ruby plugins, or ad-hoc --grep / --custom-plugin",
+   "securecodebox": "through the wrapped scanners (e.g. nuclei templates) plus cascading rules in YAML",
+   "rengine": "upload of custom nuclei templates and GF patterns, YAML scan engines",
+   "ivre": "through the wrapped tools (NSE, nuclei)"
+  },
+  "scheduling_windows_resume": {
+   "nmap_ndiff": "no scheduler (cron); --resume continues an aborted scan",
+   "projectdiscovery": "no scheduler; -resume in naabu/httpx/nuclei",
+   "whatweb": "none",
+   "securecodebox": "ScheduledScan resource with interval or cron expression; no maintenance windows",
+   "rengine": "clocked (one-off at a time) and periodic scans; no time windows documented",
+   "ivre": "no scheduler (cron); runscans and agents for distributed scans"
+  },
+  "rbac_roles": {
+   "nmap_ndiff": "none",
+   "projectdiscovery": "none in the CLIs",
+   "whatweb": "none",
+   "securecodebox": "Kubernetes RBAC / namespaces",
+   "rengine": "three roles: Sys Admin, Penetration Tester, Auditor",
+   "ivre": "none of its own; web server authentication, optional per-user query filters"
+  },
+  "encryption_at_rest": {
+   "nmap_ndiff": "none (plain files)",
+   "projectdiscovery": "none (plain files)",
+   "whatweb": "none",
+   "securecodebox": "not provided; depends on the S3 bucket / cluster",
+   "rengine": "not documented",
+   "ivre": "not provided; depends on the database"
+  },
+  "analyst_edits_survive_rescans": {
+   "nmap_ndiff": "no",
+   "projectdiscovery": "no",
+   "whatweb": "no",
+   "securecodebox": "not in secureCodeBox; in DefectDojo for findings",
+   "rengine": "recon notes and todos, 'important' marks on subdomains; per-scan results",
+   "ivre": "no notes/tags editing documented"
+  },
+  "csv_json_import_export": {
+   "nmap_ndiff": "out: XML, grepable, text (no CSV/JSON); in: target lists",
+   "projectdiscovery": "out: JSONL and CSV (naabu, httpx), JSONL/SARIF/Markdown (nuclei); in: host/URL lists",
+   "whatweb": "out: JSON, XML, SQL, MongoDB, Elasticsearch (no CSV); in: URL lists, nmap XML",
+   "securecodebox": "findings as JSON in S3; hooks to Elasticsearch, webhooks",
+   "rengine": "PDF reports, import of targets (txt/csv), subdomain/endpoint export",
+   "ivre": "out: JSON and CSV (observed); in: nmap XML, masscan, zgrab2, nuclei, httpx JSON"
+  },
+  "defectdojo": {
+   "nmap_ndiff": "DefectDojo imports nmap XML",
+   "projectdiscovery": "DefectDojo imports nuclei JSON; no importer known for naabu/httpx",
+   "whatweb": "no importer known",
+   "securecodebox": "official DefectDojo persistence hook",
+   "rengine": "not mentioned in its documentation",
+   "ivre": "none"
+  },
+  "setup_effort": {
+   "nmap_ndiff": "observed: 1 Dockerfile + 2 commands, about 2 minutes to first result",
+   "projectdiscovery": "observed: 3 pulls + 3 commands, about 3 minutes to first httpx result; nuclei tech+panel pass 3 to 8 minutes more",
+   "whatweb": "observed: 1 Dockerfile + 2 commands, about 2 minutes",
+   "securecodebox": "Kubernetes cluster + helm install of operator + one chart per scanner; not run",
+   "rengine": "git clone, edit .env, ./install.sh; several images built; not run",
+   "ivre": "observed (DB + CLI only): 2 pulls + 4 commands, about 3 minutes; full stack with web UI is 5 containers"
+  }
+ }
+}

@@ -1,0 +1,45 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="page-head">
+<div>
+<h1>{{$d.Definition.Name}}</h1>
+<p class="lede">{{if $d.Definition.Enabled}}Enabled{{else}}Disabled{{end}}. Runs {{$d.Frequency}} in {{$d.Windows}} ({{$d.Timezone}}).</p>
+</div>
+<div class="actions">
+{{if $d.CanConfigure}}<a class="btn" href="/scans/{{$d.Definition.ID}}/edit">Edit scan</a>
+{{if $d.Definition.Enabled}}<form method="post" action="/scans/{{$d.Definition.ID}}/disable">{{$.CSRFField}}<button type="submit">Disable</button></form>
+{{else}}<form method="post" action="/scans/{{$d.Definition.ID}}/enable">{{$.CSRFField}}<button type="submit">Enable</button></form>{{end}}{{end}}
+{{if not $d.Open}}<form method="post" action="/scans/{{$d.Definition.ID}}/start">{{$.CSRFField}}<button class="primary" type="submit">Start scan now</button></form>{{end}}
+</div>
+</div>
+{{with $d.Message}}<div class="notice ok" role="status">{{.}}</div>{{end}}
+<div class="cols">
+<section class="panel">
+<header><h2>Settings</h2></header>
+<div class="body">
+<dl class="kv">
+<dt>Targets</dt><dd class="addr">{{range $i, $t := $d.Settings.Targets}}{{if $i}}, {{end}}{{$t}}{{end}}</dd>
+<dt>Excludes</dt><dd class="addr">{{range $i, $t := $d.Settings.Excludes}}{{if $i}}, {{end}}{{$t}}{{else}}<span class="muted">None</span>{{end}}</dd>
+<dt>Ports</dt><dd class="addr">{{$d.Ports}}</dd>
+<dt>Max rate</dt><dd class="num">{{$d.Settings.MaxRate}} per second</dd>
+<dt>Workers</dt><dd class="num">{{$d.Settings.Workers}}</dd>
+<dt>Inactive after</dt><dd class="num">{{$d.Definition.InactiveAfter}} missed runs</dd>
+<dt>Signatures</dt><dd class="addr">{{with $d.Settings.SignaturesDir}}{{.}}{{else}}<span class="muted">Built-in only</span>{{end}}</dd>
+</dl>
+</div>
+</section>
+<section class="panel">
+<header><h2>Recent runs</h2></header>
+{{if $d.Runs}}
+<table class="data">
+<thead><tr><th>Run</th><th>Status</th><th>Started</th><th>Finished</th></tr></thead>
+<tbody>
+{{range $d.Runs}}<tr><td><a class="addr" href="/runs/{{.ID}}">{{.Name}}</a></td><td>{{template "run-status" .}}</td><td class="nowrap">{{.Started}}</td><td class="nowrap">{{.Finished}}</td></tr>{{end}}
+</tbody>
+</table>
+{{else}}
+<div class="body"><div class="empty"><p>No runs yet. Enable the scan or start it now.</p></div></div>
+{{end}}
+</section>
+</div>
+{{end}}

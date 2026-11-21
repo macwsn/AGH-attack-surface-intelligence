@@ -1,0 +1,67 @@
+# Custom detection signatures used by the acceptance lab. Format: docs/contracts.md §4.
+- id: wordpress-generator
+  name: WordPress
+  kind: technology
+  category: cms
+  confidence: 95
+  match:
+    all:
+      - { type: body_regex, value: '<meta name="generator" content="WordPress ([0-9.]+)"' }
+  version: { type: body_regex, value: '<meta name="generator" content="WordPress ([0-9.]+)"', group: 1 }
+
+- id: drupal-x-generator
+  name: Drupal
+  kind: technology
+  category: cms
+  confidence: 90
+  match:
+    all:
+      - { type: header, name: X-Generator, value: '^Drupal ([0-9]+)' }
+  version: { type: header, name: X-Generator, value: '^Drupal ([0-9]+)', group: 1 }
+
+- id: netcam
+  name: NETCAM IP Camera
+  kind: iot
+  category: camera
+  confidence: 90
+  match:
+    all:
+      - { type: favicon_sha256, value: 16fbd143c0bf4559bc4e631bd119d18f3e5c61a40dedb8b199cb9a9e6800856f }
+      - { type: title_regex, value: 'NETCAM' }
+  version: { type: body_regex, value: 'Firmware V([0-9.]+)', group: 1 }
+
+- id: admin-panel-login
+  name: Admin panel login form
+  kind: admin-panel
+  confidence: 80
+  request: { method: GET, path: /admin/login }
+  match:
+    all:
+      - { type: status, value: 200 }
+      - { type: body_regex, value: 'type="password"' }
+
+- id: php-session-cookie
+  name: PHP session cookie
+  kind: interesting-cookie
+  confidence: 70
+  request: { method: GET, path: /admin/login }
+  match:
+    all:
+      - { type: cookie, name: '^PHPSESSID$' }
+
+- id: staging-environment
+  name: Staging or test environment
+  kind: staging
+  confidence: 75
+  match:
+    any:
+      - { type: header, name: X-Environment, value: '(?i)^(staging|test|dev)' }
+      - { type: title_regex, value: '(?i)\[(staging|test|dev)\]' }
+
+- id: debug-token-header
+  name: Debug token header exposed
+  kind: interesting-header
+  confidence: 70
+  match:
+    all:
+      - { type: header, name: X-Debug-Token, value: '.+' }

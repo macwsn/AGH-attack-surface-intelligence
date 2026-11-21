@@ -1,0 +1,42 @@
+{{define "content"}}
+<div class="page-head"><div><h1>Signatures</h1>
+<p class="lede">{{len .Data.Signatures}} stored signatures, {{.Data.Enabled}} enabled. Scans use the enabled ones together with the signatures directory.</p></div>
+<div class="actions"><a class="btn" href="/signatures/export">Export YAML</a><a class="btn primary" href="/signatures/new">New signature</a></div></div>
+{{with .Data.Message}}<div class="notice ok" role="status">{{.}}</div>{{end}}
+{{with .Data.Problem}}<div class="notice error" role="alert">Nothing was saved.{{with .Rule}} Rule violated: {{.}}.{{end}} {{.Detail}}</div>{{end}}
+{{if .Data.Signatures}}
+<div class="table-wrap">
+<table class="data">
+<thead><tr><th>ID</th><th>Name</th><th>Kind</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead>
+<tbody>
+{{range .Data.Signatures}}
+<tr{{if not .Enabled}} class="is-off"{{end}}>
+<td><a class="addr" href="/signatures/{{.ID}}">{{.ID}}</a></td>
+<td>{{.Name}}</td>
+<td><span class="kind {{.Kind}}">{{.Kind}}</span></td>
+<td>{{if .Enabled}}<span class="status active">Enabled</span>{{else}}<span class="status inactive">Disabled</span>{{end}}</td>
+<td><span class="num">{{.UpdatedAt.Format "2006-01-02 15:04"}}</span>{{with .UpdatedBy}} <span class="muted">by {{.}}</span>{{end}}</td>
+<td><div class="marks">
+{{if .Enabled}}<form method="post" action="/signatures/{{.ID}}/disable">{{$.CSRFField}}<button class="small" type="submit">Disable</button></form>
+{{else}}<form method="post" action="/signatures/{{.ID}}/enable">{{$.CSRFField}}<button class="small" type="submit">Enable</button></form>{{end}}
+<form method="post" action="/signatures/{{.ID}}/delete">{{$.CSRFField}}<button class="small danger" type="submit">Delete</button></form>
+</div></td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{else}}
+<div class="empty"><p>No signatures yet.</p><p><a class="btn primary" href="/signatures/new">Create a signature</a></p></div>
+{{end}}
+<section class="panel">
+<header><h2>Import signatures</h2></header>
+<div class="body">
+<form method="post" action="/signatures/import">
+{{.CSRFField}}
+<label class="field"><span>Signatures file</span><textarea name="yaml" required>{{.Data.Import}}</textarea><span class="hint">Paste a YAML list of signatures in the format of a signatures directory file. Signatures with a stored id are replaced; new ones are enabled.</span></label>
+<div class="form-actions"><button type="submit">Import signatures</button></div>
+</form>
+</div>
+</section>
+{{end}}

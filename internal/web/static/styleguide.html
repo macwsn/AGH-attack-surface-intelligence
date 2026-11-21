@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Styleguide - ASI</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="shell">
+<aside class="rail">
+<a class="brand" href="/">ASI<small>Attack Surface Intelligence</small></a>
+<nav aria-label="Main">
+<a href="#">Dashboard</a>
+<a href="#" aria-current="page">Hosts</a>
+<a href="#">Changes</a>
+<a href="#">Scans</a>
+<a href="#">Signatures</a>
+<a href="#">Import and export</a>
+</nav>
+<div class="account">
+<span class="who">k.nowak</span>
+<span class="role">editor</span>
+<form><button class="btn small" type="button">Sign out</button></form>
+</div>
+</aside>
+<main>
+
+<div class="page-head">
+<div>
+<h1>Hosts</h1>
+<p class="lede">1 284 hosts in 3 scan definitions. Last run finished 14 minutes ago.</p>
+</div>
+<div class="actions">
+<a class="btn" href="#">Export CSV</a>
+<a class="btn primary" href="#">Add host</a>
+</div>
+</div>
+
+<div class="figures">
+<div class="figure"><span class="value">1 197</span><span class="label">Active hosts</span></div>
+<div class="figure"><span class="value">61</span><span class="label">Unstable</span></div>
+<div class="figure"><span class="value">26</span><span class="label">Inactive</span></div>
+<div class="figure"><span class="value">3 912</span><span class="label">Open services</span></div>
+<div class="figure is-alert"><span class="value">9</span><span class="label">New admin panels</span></div>
+</div>
+
+<form class="filters">
+<label class="grow">Search <input type="search" placeholder="Address, hostname, title"></label>
+<label>Status <select><option>Any</option><option>Active</option><option>Unstable</option><option>Inactive</option></select></label>
+<label>Technology <select><option>Any</option><option>WordPress</option></select></label>
+<label>Port <input type="number" placeholder="443"></label>
+<button type="button">Apply</button>
+</form>
+<div class="result-line"><span>Showing 1-50 of 1 284</span><span class="pager"><a class="btn small" aria-disabled="true">Previous</a><span class="num">1 / 26</span><a class="btn small" href="#">Next</a></span></div>
+
+<div class="table-wrap">
+<table class="data">
+<thead><tr>
+<th aria-sort="ascending"><a href="#">Address</a></th><th>Status</th><th>Services</th><th>Technologies</th><th>Findings</th><th>Last 10 runs</th><th class="num">Interest</th><th>Tags</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><a class="addr" href="#">149.156.96.12</a><br><span class="muted">panel.example.edu.pl</span></td>
+<td><span class="status active">Active</span></td>
+<td class="addr">80, 443</td>
+<td>nginx 1.27, PHP 7.4.3</td>
+<td><div class="marks"><span class="kind admin-panel">Admin panel</span><span class="kind interesting-cookie">Cookie</span></div></td>
+<td><span class="presence" title="Seen in 10 of 10 runs"><i class="seen"></i><i class="seen"></i><i class="seen"></i><i class="seen"></i><i class="seen"></i><i class="seen"></i><i class="seen"></i><i class="seen"></i><i class="seen"></i><i class="seen"></i></span></td>
+<td class="num"><span class="meter high"><progress max="100" value="82"></progress>82</span></td>
+<td><div class="marks"><span class="tag">crown-jewel</span></div></td>
+</tr>
+<tr>
+<td><a class="addr" href="#">149.156.96.47</a></td>
+<td><span class="status unstable">Unstable</span></td>
+<td class="addr">8000</td>
+<td>nginx</td>
+<td><div class="marks"><span class="kind staging">Staging</span></div></td>
+<td><span class="presence" title="Seen in 6 of 9 covering runs"><i class="seen"></i><i class="missed"></i><i class="seen"></i><i class="seen"></i><i class="uncovered"></i><i class="missed"></i><i class="seen"></i><i class="seen"></i><i class="seen"></i><i class="missed"></i></span></td>
+<td class="num"><span class="meter"><progress max="100" value="45"></progress>45</span></td>
+<td></td>
+</tr>
+<tr class="is-off">
+<td><a class="addr" href="#">149.156.97.201</a></td>
+<td><span class="status inactive">Inactive</span></td>
+<td class="addr">80</td>
+<td>WordPress 6.4.2</td>
+<td><div class="marks"><span class="kind technology">CMS</span><span class="kind iot">IoT</span><span class="kind custom">Custom</span></div></td>
+<td><span class="presence"><i class="seen"></i><i class="seen"></i><i class="seen"></i><i class="seen"></i><i class="seen"></i><i class="seen"></i><i class="seen"></i><i class="missed"></i><i class="missed"></i><i class="missed"></i></span></td>
+<td class="num"><span class="meter"><progress max="100" value="12"></progress>12</span></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h2>Changes and detail</h2>
+<div class="cols">
+<section class="panel">
+<header><h2>Changes in the last run</h2><a class="more" href="#">All changes</a></header>
+<table class="data">
+<tbody>
+<tr><td><span class="change new">New host</span></td><td class="addr">149.156.98.19</td><td>Metrics Console on 80</td></tr>
+<tr><td><span class="change changed">Changed</span></td><td class="addr">149.156.98.18:80</td><td class="diff">title <del>Intranet v1</del> <ins>Intranet v2</ins></td></tr>
+<tr><td><span class="change missing">Missing</span></td><td class="addr">149.156.98.17</td><td class="muted">Missed 1 of 3 runs before it counts as inactive</td></tr>
+<tr><td><span class="change returned">Returned</span></td><td class="addr">149.156.98.33</td><td class="muted">Usually seen 08:00-16:00</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="panel">
+<header><h2>Service 443/tcp</h2></header>
+<div class="body">
+<dl class="kv">
+<dt>Title</dt><dd>Admin Panel - Sign in</dd>
+<dt>Status code</dt><dd class="num">200</dd>
+<dt>Redirects</dt><dd class="addr">https://149.156.96.12/admin/login</dd>
+<dt>Certificate</dt><dd>admin.example.edu.pl, self-signed, expires in 12 days</dd>
+<dt>Confidence</dt><dd><span class="meter"><progress max="100" value="90"></progress>90</span></dd>
+</dl>
+</div>
+</section>
+
+<section class="panel">
+<header><h2>Changes by type, last 5 runs</h2></header>
+<div class="body">
+<div class="bars">
+<span>New</span><progress class="bar new" max="32" value="14"></progress><span class="num">14</span>
+<span>Changed</span><progress class="bar changed" max="32" value="32"></progress><span class="num">32</span>
+<span>Missing</span><progress class="bar missing" max="32" value="8"></progress><span class="num">8</span>
+</div>
+</div>
+</section>
+</div>
+
+<h2>Forms and messages</h2>
+<div class="cols">
+<section class="panel">
+<header><h2>Edit host</h2></header>
+<div class="body">
+<div class="notice ok">Saved. Later scans keep these values.</div>
+<label class="field"><span>Owner</span><input type="text" value="Web team"><span class="hint">Who to ask about this host.</span></label>
+<label class="field"><span>Criticality</span><select><option>Normal</option><option>High</option></select></label>
+<label class="field"><span>Notes</span><textarea>Migrating to the new cluster in March.</textarea></label>
+<label class="field"><span>Max rate</span><input type="number" value="0" aria-invalid="true"><span class="problem">Enter a rate between 1 and 5000 packets per second.</span></label>
+<label class="check"><input type="checkbox" checked> Re-probe unstable hosts at the end of a run</label>
+<div class="form-actions"><button class="primary" type="button">Save changes</button><a class="btn" href="#">Cancel</a><button class="danger" type="button">Delete host</button></div>
+</div>
+</section>
+<section class="panel">
+<header><h2>Messages</h2></header>
+<div class="body">
+<div class="notice">The scan is paused until the next window opens at 22:00.</div>
+<div class="notice warn">3 rows were skipped. Row 14: "10.0.0.300" is not an address.</div>
+<div class="notice error">The scan could not start: nmap is not installed in this image.</div>
+<nav class="tabs"><a href="#" aria-current="page">Services</a><a href="#">History</a><a href="#">Audit</a></nav>
+<div class="empty"><p>No signatures yet.</p><p><a class="btn primary" href="#">Create a signature</a></p></div>
+</div>
+</section>
+</div>
+
+</main>
+</div>
+</body>
+</html>

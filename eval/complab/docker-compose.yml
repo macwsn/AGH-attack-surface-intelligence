@@ -1,0 +1,66 @@
+# Acceptance lab: a fixed /24 with known services. The truth about it lives in expected.json.
+# Stages (driven by run.sh): 1 = baseline, 2 = flap+legacy down, changing -> v2, newhost up, 3 = flap back.
+name: asi-complab
+
+x-nginx: &nginx
+  image: nginx:1.27-alpine
+  restart: "no"
+
+networks:
+  lab:
+    ipam:
+      config:
+        - subnet: 172.31.0.0/24
+          gateway: 172.31.0.1
+
+services:
+  wp:
+    <<: *nginx
+    volumes: ["./services/wp/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/wp/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: 172.31.0.10 } }
+  drupal:
+    <<: *nginx
+    volumes: ["./services/drupal/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/drupal/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: 172.31.0.11 } }
+  admin:
+    <<: *nginx
+    volumes: ["./services/admin/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/admin/tls:/etc/nginx/tls:ro"]
+    networks: { lab: { ipv4_address: 172.31.0.12 } }
+  staging:
+    <<: *nginx
+    volumes: ["./services/staging/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/staging/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: 172.31.0.13 } }
+  ssh:
+    image: alpine/socat:1.8.0.0
+    command: ["TCP-LISTEN:22,fork,reuseaddr", "SYSTEM:echo SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.6; sleep 2"]
+    networks: { lab: { ipv4_address: 172.31.0.14 } }
+  redis:
+    image: redis:7-alpine
+    networks: { lab: { ipv4_address: 172.31.0.15 } }
+  camera:
+    <<: *nginx
+    volumes: ["./services/camera/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/camera/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: 172.31.0.16 } }
+  flap:
+    <<: *nginx
+    volumes: ["./services/flap/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/flap/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: 172.31.0.17 } }
+  changing:
+    <<: *nginx
+    volumes:
+      - "./services/changing-${LAB_CHANGING:-v1}:/etc/nginx/conf.d:ro"
+      - "./services/changing-${LAB_CHANGING:-v1}/html:/usr/share/nginx/html:ro"
+    networks: { lab: { ipv4_address: 172.31.0.18 } }
+  newhost:
+    <<: *nginx
+    profiles: [stage2]
+    volumes: ["./services/newhost/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/newhost/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: 172.31.0.19 } }
+  redirect:
+    <<: *nginx
+    volumes: ["./services/redirect/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/redirect/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: 172.31.0.20 } }
+  legacy:
+    <<: *nginx
+    volumes: ["./services/legacy/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/legacy/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: 172.31.0.21 } }

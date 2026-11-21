@@ -1,0 +1,125 @@
+{
+  "export_1": {
+    "file": "export-1.json",
+    "only_hosts": true,
+    "hosts": {
+      "172.30.0.10": { "status": "active" },
+      "172.30.0.11": { "status": "active" },
+      "172.30.0.12": { "status": "active" },
+      "172.30.0.13": { "status": "active" },
+      "172.30.0.14": { "status": "active" },
+      "172.30.0.15": { "status": "active" },
+      "172.30.0.16": { "status": "active" },
+      "172.30.0.17": { "status": "active" },
+      "172.30.0.18": { "status": "active", "only_services": true, "services": { "80/tcp": { "http": { "title": "Intranet v1" } } } },
+      "172.30.0.20": { "status": "active" },
+      "172.30.0.21": { "status": "active" }
+    }
+  },
+  "export_3": {
+    "file": "export-3.json",
+    "only_hosts": true,
+    "hosts": {
+      "172.30.0.10": {
+        "status": "active",
+        "tags_include": ["crown-jewel"],
+        "notes": "owned by web team",
+        "only_services": true,
+        "services": {
+          "80/tcp": {
+            "service": "http",
+            "http": { "scheme": "http", "status_code": 200, "title": "Campus Blog", "cookies_include": ["wordpress_test_cookie"] },
+            "technologies_include": [{ "name": "WordPress", "version": "6.4.2" }],
+            "findings_include": [{ "signature_id": "wordpress-generator", "kind": "technology" }]
+          }
+        }
+      },
+      "172.30.0.11": {
+        "status": "active",
+        "only_services": true,
+        "services": {
+          "8080/tcp": {
+            "service": "http",
+            "http": { "status_code": 200, "title": "Campus Portal", "headers_include": { "x-generator": "Drupal 10" } },
+            "technologies_include": [{ "name": "Drupal", "version": "10" }]
+          }
+        }
+      },
+      "172.30.0.12": {
+        "status": "active",
+        "only_services": true,
+        "services": {
+          "80/tcp": {
+            "service": "http",
+            "http": { "scheme": "http", "status_code": 200, "title": "Admin Panel - Sign in", "redirect_contains": "/admin/login", "cookies_include": ["PHPSESSID"], "headers_include": { "x-powered-by": "PHP/7.4.3" } },
+            "technologies_include": [{ "name": "PHP" }],
+            "findings_include": [{ "signature_id": "admin-panel-login", "kind": "admin-panel" }, { "signature_id": "php-session-cookie", "kind": "interesting-cookie" }]
+          },
+          "443/tcp": {
+            "http": {
+              "scheme": "https",
+              "status_code": 200,
+              "title": "Admin Panel - Sign in",
+              "tls": { "subject_cn": "admin.lab.asi.test", "sans_include": ["panel.lab.asi.test"], "sha256": "676201470ddb9912b15ef1adbc0b76155e18e3a453e2f56b6bad3bc79b225031", "self_signed": true }
+            },
+            "findings_include": [{ "signature_id": "admin-panel-login", "kind": "admin-panel" }]
+          }
+        }
+      },
+      "172.30.0.13": {
+        "status": "active",
+        "only_services": true,
+        "services": {
+          "8000/tcp": {
+            "http": { "status_code": 200, "title": "[STAGING] Rekrutacja", "headers_include": { "x-environment": "staging" } },
+            "findings_include": [{ "signature_id": "staging-environment", "kind": "staging" }, { "signature_id": "debug-token-header", "kind": "interesting-header" }]
+          }
+        }
+      },
+      "172.30.0.14": { "status": "active", "only_services": true, "services": { "22/tcp": { "service": "ssh", "product_contains": "OpenSSH" } } },
+      "172.30.0.15": { "status": "active", "only_services": true, "services": { "6379/tcp": { "service": "redis" } } },
+      "172.30.0.16": {
+        "status": "active",
+        "only_services": true,
+        "services": {
+          "80/tcp": {
+            "http": { "status_code": 200, "title": "NETCAM Web Client", "favicon_sha256": "16fbd143c0bf4559bc4e631bd119d18f3e5c61a40dedb8b199cb9a9e6800856f" },
+            "findings_include": [{ "signature_id": "netcam", "kind": "iot", "version": "5.4.1" }]
+          }
+        }
+      },
+      "172.30.0.17": { "status": "active", "only_services": true, "services": { "80/tcp": { "http": { "title": "Printer Status" } } } },
+      "172.30.0.18": {
+        "status": "active",
+        "only_services": true,
+        "services": {
+          "80/tcp": { "http": { "title": "Intranet v2", "headers_include": { "x-app-version": "2.0" } } },
+          "8081/tcp": { "http": { "title": "Intranet Reports" } }
+        }
+      },
+      "172.30.0.19": { "status": "active", "only_services": true, "services": { "80/tcp": { "http": { "title": "Metrics Console" } } } },
+      "172.30.0.20": { "status": "active", "only_services": true, "services": { "80/tcp": { "http": { "status_code": 200, "title": "App Home", "redirect_contains": "/app/" } } } },
+      "172.30.0.21": { "status": "inactive" }
+    }
+  },
+  "diff_1_2": {
+    "file": "diff-1-2.json",
+    "only_addresses": ["172.30.0.17", "172.30.0.18", "172.30.0.19", "172.30.0.21"],
+    "must": [
+      { "type": "host_new", "address": "172.30.0.19" },
+      { "type": "host_missing", "address": "172.30.0.17" },
+      { "type": "host_missing", "address": "172.30.0.21" },
+      { "type": "service_new", "address": "172.30.0.18", "port": 8081 },
+      { "type": "service_changed", "address": "172.30.0.18", "port": 80, "fields_include": ["http.title", "http.headers.x-app-version"] }
+    ]
+  },
+  "diff_2_3": {
+    "file": "diff-2-3.json",
+    "only_addresses": ["172.30.0.17", "172.30.0.21"],
+    "must": [
+      { "type": "host_returned", "address": "172.30.0.17" },
+      { "type": "host_inactive", "address": "172.30.0.21" }
+    ]
+  },
+  "csv": { "file": "export-3.csv", "min_rows": 13, "columns_include": ["address", "port", "protocol", "service", "status"] }
+}

@@ -1,0 +1,2 @@
+# one target per line: IP, CIDR or domain
+172.30.0.0/24

@@ -1,0 +1,35 @@
+{{define "content"}}{{with .Data}}
+<div class="page-head"><div><h1>Run {{.Run.Name}}</h1>
+<p class="lede">Status {{.Run.Status}}, started {{.Run.StartedAt.UTC.Format "2006-01-02 15:04"}}.</p></div></div>
+<div class="figures">
+<div class="figure"><span class="value">{{printf "%.1f" .Progress.AddressesPerSecond}}</span><span class="label">Addresses per second</span></div>
+<div class="figure"><span class="value">{{.Progress.GroupsDone}} / {{.Progress.GroupsTotal}}</span><span class="label">Groups done</span></div>
+<div class="figure"><span class="value">{{.Progress.ETA}}</span><span class="label">Estimated time left</span></div>
+<div class="figure"><span class="value">{{.Progress.AddressesDone}} / {{.Progress.AddressesTotal}}</span><span class="label">Addresses scanned</span></div>
+<div class="figure{{if .Failed}} is-alert{{end}}"><span class="value">{{len .Failed}}</span><span class="label">Failed groups</span></div>
+</div>
+{{if .Failed}}
+<h2>Failed groups</h2>
+<div class="table-wrap">
+<table class="data">
+<thead><tr><th class="num">Group</th><th class="num">Addresses</th><th>Reason</th></tr></thead>
+<tbody>
+{{range .Failed}}<tr><td class="num">{{.Index}}</td><td class="num">{{len .Addresses}}</td><td>{{.Reason}}</td></tr>
+{{end}}</tbody>
+</table>
+</div>
+{{end}}
+<h2>Groups</h2>
+{{if .Groups}}
+<div class="table-wrap">
+<table class="data">
+<thead><tr><th class="num">Group</th><th class="num">Addresses</th><th class="num">Hosts</th><th class="num">Duration</th></tr></thead>
+<tbody>
+{{range .Groups}}<tr><td class="num">{{.Index}}</td><td class="num">{{.AddressCount}}</td><td class="num">{{.HostsFound}}</td><td class="num">{{.Duration}}</td></tr>
+{{end}}</tbody>
+</table>
+</div>
+{{else}}
+<div class="empty"><p>No group of this run has finished yet.</p></div>
+{{end}}
+{{end}}{{end}}

@@ -1,0 +1,35 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="page-head">
+<div>
+<h1>Run {{$d.Run.Name}}</h1>
+<p class="lede">{{if $d.Definition.ID}}Run of <a href="/scans/{{$d.Definition.ID}}">{{$d.Definition.Name}}</a>. {{end}}Started {{$d.Run.Started}}{{with $d.Run.Finished}}, finished {{.}}{{end}}. {{template "run-status" $d.Run}}</p>
+</div>
+<div class="actions">
+{{if $d.CanPause}}<form method="post" action="/runs/{{$d.Run.ID}}/pause">{{$.CSRFField}}<button type="submit">Pause run</button></form>{{end}}
+{{if $d.CanResume}}<form method="post" action="/runs/{{$d.Run.ID}}/resume">{{$.CSRFField}}<button class="primary" type="submit">Resume run</button></form>{{end}}
+</div>
+</div>
+{{with $d.Message}}<div class="notice ok" role="status">{{.}}</div>{{end}}
+{{if eq $d.Run.Status "paused"}}{{if $d.Run.Held}}<div class="notice">Paused by a user. Resume the run to continue from its first unfinished group.</div>{{else}}<div class="notice">The run is paused until its next window opens{{with $d.NextWindow}} at {{.}}{{end}}. It continues from its first unfinished group.</div>{{end}}{{end}}
+<div class="figures">
+<div class="figure"><span class="value">{{$d.Progress.Percent}}%</span><span class="label">Done</span></div>
+<div class="figure"><span class="value">{{$d.Progress.Done}} / {{$d.Progress.Total}}</span><span class="label">Addresses scanned</span></div>
+<div class="figure"><span class="value">{{$d.Progress.Groups}}</span><span class="label">Groups finished</span></div>
+<div class="figure"><span class="value">{{$d.Progress.Hosts}}</span><span class="label">Hosts found</span></div>
+<div class="figure"><span class="value">{{$d.Busy}}</span><span class="label">Group time</span></div>
+<div class="figure"><span class="value">{{if $d.Left}}{{$d.Left}}{{else}}-{{end}}</span><span class="label">Estimated time left</span></div>
+</div>
+{{if $d.Groups}}
+<div class="table-wrap">
+<table class="data">
+<thead><tr><th class="num">Group</th><th class="num">Addresses</th><th class="num">Hosts found</th><th class="num">Duration</th><th>Finished</th></tr></thead>
+<tbody>
+{{range $d.Groups}}<tr><td class="num">{{.Index}}</td><td class="num">{{.Addresses}}</td><td class="num">{{.Hosts}}</td><td class="num">{{.Duration}}</td><td class="nowrap">{{.Completed}}</td></tr>{{end}}
+</tbody>
+</table>
+</div>
+{{else}}
+<div class="empty"><p>No group has finished yet. The time left is estimated from the speed of finished groups.</p></div>
+{{end}}
+{{end}}

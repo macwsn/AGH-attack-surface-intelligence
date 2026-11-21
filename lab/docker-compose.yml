@@ -1,0 +1,83 @@
+# Acceptance lab: a fixed /24 with known services. The truth about it lives in expected.json.
+# Parallel-safe: run.sh picks the compose project (asi-lab-<slot>) and LAB_SLOT sets the third octet of the subnet.
+# Stages (driven by run.sh): 1 = baseline, 2 = flap+legacy down, changing -> v2, newhost up, 3 = flap back.
+
+x-nginx: &nginx
+  image: nginx:1.27-alpine
+  restart: "no"
+
+networks:
+  lab:
+    ipam:
+      config:
+        - subnet: "172.30.${LAB_SLOT:-0}.0/24"
+          gateway: "172.30.${LAB_SLOT:-0}.1"
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment: { POSTGRES_USER: asi, POSTGRES_PASSWORD: asi-lab, POSTGRES_DB: asi }
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U asi"], interval: 2s, timeout: 3s, retries: 30 }
+    networks: { lab: { ipv4_address: "172.30.${LAB_SLOT:-0}.3" } }
+
+  asi:
+    build: { context: .., dockerfile: Dockerfile }
+    entrypoint: ["sleep", "infinity"]
+    environment:
+      ASI_DATABASE_URL: postgres://asi:asi-lab@172.30.${LAB_SLOT:-0}.3:5432/asi?sslmode=disable
+      ASI_MASTER_KEY: bGFiLW9ubHkta2V5LWxhYi1vbmx5LWtleS1sYWItMDE=
+    cap_add: [NET_RAW, NET_ADMIN]
+    depends_on: { postgres: { condition: service_healthy } }
+    volumes: ["./:/lab:ro", "./out:/out"]
+    networks: { lab: { ipv4_address: "172.30.${LAB_SLOT:-0}.2" } }
+
+  wp:
+    <<: *nginx
+    volumes: ["./services/wp/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/wp/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: "172.30.${LAB_SLOT:-0}.10" } }
+  drupal:
+    <<: *nginx
+    volumes: ["./services/drupal/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/drupal/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: "172.30.${LAB_SLOT:-0}.11" } }
+  admin:
+    <<: *nginx
+    volumes: ["./services/admin/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/admin/tls:/etc/nginx/tls:ro"]
+    networks: { lab: { ipv4_address: "172.30.${LAB_SLOT:-0}.12" } }
+  staging:
+    <<: *nginx
+    volumes: ["./services/staging/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/staging/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: "172.30.${LAB_SLOT:-0}.13" } }
+  ssh:
+    image: alpine/socat:1.8.0.0
+    command: ["TCP-LISTEN:22,fork,reuseaddr", "SYSTEM:echo SSH-2.0-OpenSSH_8.9p1 Ubuntu-3ubuntu0.6; sleep 2"]
+    networks: { lab: { ipv4_address: "172.30.${LAB_SLOT:-0}.14" } }
+  redis:
+    image: redis:7-alpine
+    networks: { lab: { ipv4_address: "172.30.${LAB_SLOT:-0}.15" } }
+  camera:
+    <<: *nginx
+    volumes: ["./services/camera/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/camera/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: "172.30.${LAB_SLOT:-0}.16" } }
+  flap:
+    <<: *nginx
+    volumes: ["./services/flap/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/flap/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: "172.30.${LAB_SLOT:-0}.17" } }
+  changing:
+    <<: *nginx
+    volumes:
+      - "./services/changing-${LAB_CHANGING:-v1}:/etc/nginx/conf.d:ro"
+      - "./services/changing-${LAB_CHANGING:-v1}/html:/usr/share/nginx/html:ro"
+    networks: { lab: { ipv4_address: "172.30.${LAB_SLOT:-0}.18" } }
+  newhost:
+    <<: *nginx
+    profiles: [stage2]
+    volumes: ["./services/newhost/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/newhost/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: "172.30.${LAB_SLOT:-0}.19" } }
+  redirect:
+    <<: *nginx
+    volumes: ["./services/redirect/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/redirect/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: "172.30.${LAB_SLOT:-0}.20" } }
+  legacy:
+    <<: *nginx
+    volumes: ["./services/legacy/default.conf:/etc/nginx/conf.d/default.conf:ro", "./services/legacy/html:/usr/share/nginx/html:ro"]
+    networks: { lab: { ipv4_address: "172.30.${LAB_SLOT:-0}.21" } }

@@ -1,0 +1,4 @@
+# never scanned: network gateway, the scanner itself, its database
+172.30.0.1
+172.30.0.2
+172.30.0.3

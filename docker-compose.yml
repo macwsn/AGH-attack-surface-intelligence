@@ -1,0 +1,24 @@
+name: asi
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: asi
+      POSTGRES_PASSWORD: ${ASI_POSTGRES_PASSWORD:-asi}
+      POSTGRES_DB: asi
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U asi"], interval: 2s, timeout: 3s, retries: 30 }
+
+  asi:
+    build: .
+    entrypoint: ["sh", "-c", "asi migrate && exec asi serve"]
+    environment:
+      ASI_DATABASE_URL: postgres://asi:${ASI_POSTGRES_PASSWORD:-asi}@postgres:5432/asi?sslmode=disable
+      ASI_MASTER_KEY: ${ASI_MASTER_KEY:?set ASI_MASTER_KEY to base64 of 32 random bytes, e.g. openssl rand -base64 32}
+      ASI_LISTEN: ":8080"
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on: { postgres: { condition: service_healthy } }
+    healthcheck: { test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/healthz"], interval: 5s, timeout: 3s, retries: 10 }
+
+volumes:
+  pgdata:

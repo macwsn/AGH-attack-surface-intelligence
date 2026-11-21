@@ -1,0 +1,40 @@
+{{define "content"}}
+{{$f := .Data}}
+<div class="page-head"><div><h1>{{if $f.ID}}Edit scan {{$f.Name}}{{else}}New scan{{end}}</h1>
+<p class="lede">What to scan and when. Only the listed ports are scanned, always at the max rate or below.</p></div></div>
+{{if $f.RunOpen}}<div class="notice">A run of this scan is in progress or paused. It keeps its settings; your changes apply from the next run.</div>{{end}}
+{{if $f.Problems}}<div class="notice error" role="alert">The scan was not saved. Correct the fields marked below.</div>{{end}}
+<form method="post" action="{{if $f.ID}}/scans/{{$f.ID}}{{else}}/scans{{end}}">
+{{.CSRFField}}
+<div class="cols">
+<section class="panel">
+<header><h2>Targets and limits</h2></header>
+<div class="body">
+<label class="field"><span>Name</span><input type="text" name="name" value="{{$f.Name}}" required{{with index $f.Problems "name"}} aria-invalid="true"{{end}}>{{with index $f.Problems "name"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Targets</span><textarea name="targets"{{with index $f.Problems "targets"}} aria-invalid="true"{{end}}>{{$f.Targets}}</textarea><span class="hint">One address, CIDR, range or domain per line.</span>{{with index $f.Problems "targets"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Excludes</span><textarea name="excludes"{{with index $f.Problems "excludes"}} aria-invalid="true"{{end}}>{{$f.Excludes}}</textarea><span class="hint">Never scanned. Same format as targets.</span>{{with index $f.Problems "excludes"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Ports</span><input type="text" name="ports" value="{{$f.Ports}}"{{with index $f.Problems "ports"}} aria-invalid="true"{{end}}><span class="hint">Separated by commas, for example 80,443,8080.</span>{{with index $f.Problems "ports"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Max rate</span><input type="number" name="max_rate" min="1" value="{{$f.MaxRate}}"{{with index $f.Problems "max rate"}} aria-invalid="true"{{end}}><span class="hint">Packets and requests per second for the whole run.</span>{{with index $f.Problems "max rate"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Workers</span><input type="number" name="workers" min="1" value="{{$f.Workers}}"{{with index $f.Problems "workers"}} aria-invalid="true"{{end}}><span class="hint">Groups scanned at the same time.</span>{{with index $f.Problems "workers"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Inactive after</span><input type="number" name="inactive_after" min="1" value="{{$f.InactiveAfter}}"{{with index $f.Problems "inactive after"}} aria-invalid="true"{{end}}><span class="hint">Missed runs before a host counts as inactive.</span>{{with index $f.Problems "inactive after"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Signatures directory</span><input type="text" name="signatures_dir" value="{{$f.SignaturesDir}}"{{with index $f.Problems "signatures"}} aria-invalid="true"{{end}}><span class="hint">Path on the server. Leave empty for built-in detection only.</span>{{with index $f.Problems "signatures"}}<span class="problem">{{.}}</span>{{end}}</label>
+</div>
+</section>
+<section class="panel">
+<header><h2>Schedule</h2></header>
+<div class="body">
+<label class="field"><span>Windows</span><textarea name="windows"{{with index $f.Problems "windows"}} aria-invalid="true"{{end}}>{{$f.Windows}}</textarea><span class="hint">One window per line: weekdays and times, for example "mon-fri 22:00-06:00" or "sat,sun 00:00-00:00". A window that ends at or before its start ends the next day. Leave empty to allow any time.</span>{{with index $f.Problems "windows"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Timezone</span><input type="text" name="timezone" value="{{$f.Timezone}}"{{with index $f.Problems "timezone"}} aria-invalid="true"{{end}}><span class="hint">For example Europe/Warsaw. Windows follow daylight saving time.</span>{{with index $f.Problems "timezone"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Frequency</span><select name="frequency"{{with index $f.Problems "frequency"}} aria-invalid="true"{{end}}>
+<option value="daily"{{if eq $f.Frequency "daily"}} selected{{end}}>Once a day</option>
+<option value="weekly"{{if eq $f.Frequency "weekly"}} selected{{end}}>Once a week</option>
+<option value="interval"{{if eq $f.Frequency "interval"}} selected{{end}}>At an interval</option>
+</select>{{with index $f.Problems "frequency"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Interval</span><input type="text" name="every" value="{{$f.Every}}"><span class="hint">Only for "At an interval": time between run starts, for example 6h or 90m.</span></label>
+<p class="muted">A run still going when its window ends is paused and continues in the next window.</p>
+</div>
+</section>
+</div>
+<div class="form-actions"><button class="primary" type="submit">{{if $f.ID}}Save changes{{else}}Create scan{{end}}</button><a class="btn" href="{{if $f.ID}}/scans/{{$f.ID}}{{else}}/scans{{end}}">Cancel</a></div>
+</form>
+{{end}}

@@ -1,0 +1,31 @@
+# Performance harness: a simulated /18 (see responder.py). Supervisor-owned.
+name: asi-bignet
+networks:
+  big:
+    ipam:
+      config:
+        - subnet: 10.99.0.0/18
+          gateway: 10.99.0.1
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment: { POSTGRES_USER: asi, POSTGRES_PASSWORD: asi-bignet, POSTGRES_DB: asi }
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U asi"], interval: 2s, timeout: 3s, retries: 30 }
+    networks: { big: { ipv4_address: 10.99.0.3 } }
+  asi:
+    build: { context: ../.., dockerfile: Dockerfile }
+    entrypoint: ["sleep", "infinity"]
+    environment:
+      ASI_DATABASE_URL: postgres://asi:asi-bignet@10.99.0.3:5432/asi?sslmode=disable
+      ASI_MASTER_KEY: YmlnbmV0LW9ubHkta2V5LWJpZ25ldC1vbmx5LTAwMDE=
+    cap_add: [NET_RAW, NET_ADMIN]
+    depends_on: { postgres: { condition: service_healthy } }
+    volumes: ["./:/bignet:ro", "./out:/out"]
+    networks: { big: { ipv4_address: 10.99.0.2 } }
+  bignet:
+    build: .
+    cap_add: [NET_ADMIN]
+    environment: { BIGNET: 10.99.0.0/18, LIVE_SHARE: "0.03" }
+    volumes: ["./out:/out", "../../lab/services/admin/tls:/tls:ro"]
+    healthcheck: { test: ["CMD", "test", "-f", "/out/ready"], interval: 2s, timeout: 3s, retries: 60 }
+    networks: { big: { ipv4_address: 10.99.0.4 } }

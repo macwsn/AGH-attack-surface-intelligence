@@ -1,0 +1,15 @@
+{{define "content"}}
+<section class="panel">
+<header><h1>Sign in to ASI</h1></header>
+<div class="body">
+{{with .Data.Error}}<div class="notice error" role="alert">{{.}}</div>{{end}}
+<form method="post" action="/login">
+{{.CSRFField}}
+<input type="hidden" name="next" value="{{.Data.Next}}">
+<label class="field"><span>Username</span><input type="text" name="username" value="{{.Data.Username}}" autocomplete="username" required autofocus></label>
+<label class="field"><span>Password</span><input type="password" name="password" autocomplete="current-password" required></label>
+<div class="form-actions"><button class="primary" type="submit">Sign in</button></div>
+</form>
+</div>
+</section>
+{{end}}

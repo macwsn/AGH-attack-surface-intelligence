@@ -1,0 +1,51 @@
+name: hacknation-custom-network
+
+services:
+  custom-api:
+    image: kennethreitz/httpbin
+    ports:
+      - "8888:80"
+    networks:
+      - backend
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: appdb
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: StrongPassword123
+    ports:
+      - "15432:5432"
+    networks:
+      - backend
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    networks:
+      - backend
+
+  gitea:
+    image: gitea/gitea:latest
+    ports:
+      - "3001:3000"
+      - "2223:22"
+    networks:
+      - frontend
+
+  flask-app:
+    image: nginx:alpine
+    ports:
+      - "8787:80"
+    networks:
+      - frontend
+      - backend
+
+networks:
+  frontend:
+    driver: bridge
+
+  backend:
+    driver: bridge
