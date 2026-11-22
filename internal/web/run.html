@@ -1,6 +1,6 @@
 {{define "content"}}{{with .Data}}
 <div class="page-head"><div><h1>Run {{.Run.Name}}</h1>
-<p class="lede">Status {{.Run.Status}}, started {{.Run.StartedAt.UTC.Format "2006-01-02 15:04"}}.</p></div></div>
+<p class="lede">Status {{.Run.Status}}, started {{zoned .Run.StartedAt}}.</p></div></div>
 <div class="figures">
 <div class="figure"><span class="value">{{printf "%.1f" .Progress.AddressesPerSecond}}</span><span class="label">Addresses per second</span></div>
 <div class="figure"><span class="value">{{.Progress.GroupsDone}} / {{.Progress.GroupsTotal}}</span><span class="label">Groups done</span></div>
