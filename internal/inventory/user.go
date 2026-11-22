@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -71,6 +73,18 @@ func (inv *Inventory) EditHostUserFields(ctx context.Context, e Editor, address 
 	})
 }
 
+func cleanTags(tags []string) []string {
+	out := []string{}
+	for _, tag := range tags {
+		for _, t := range strings.FieldsFunc(tag, func(r rune) bool { return r == ',' || r == ';' || r == '\n' || r == '\r' }) {
+			if t = strings.TrimSpace(t); t != "" && !slices.Contains(out, t) {
+				out = append(out, t)
+			}
+		}
+	}
+	return out
+}
+
 type execer interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 }
@@ -78,7 +92,7 @@ type execer interface {
 func updateHostUserFields(ctx context.Context, db execer, addr string, f HostUserFields, sealed sealedUserFields) error {
 	tag, err := db.Exec(ctx, `UPDATE hosts SET tags = $2, notes = $3, display_name = $4, owner = $5,
 			criticality = $6, status_override = $7, user_updated_at = now()
-		WHERE address = $1`, addr, nonNil(f.Tags), sealed.notes, sealed.displayName, sealed.owner, f.Criticality, f.StatusOverride)
+		WHERE address = $1`, addr, cleanTags(f.Tags), sealed.notes, sealed.displayName, sealed.owner, f.Criticality, f.StatusOverride)
 	if err != nil {
 		return fmt.Errorf("update user fields of host %s: %w", addr, err)
 	}

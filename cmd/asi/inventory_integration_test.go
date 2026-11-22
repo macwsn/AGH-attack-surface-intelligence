@@ -725,7 +725,7 @@ func TestExportCSV(t *testing.T) {
 		}
 		web := rows["192.0.2.1/80"]
 		if web == nil || web["protocol"] != "tcp" || web["service"] != "http" || web["status"] != "active" ||
-			web["title"] != `Hello, "world"` || web["tags"] != "a;b,c" {
+			web["title"] != `Hello, "world"` || web["tags"] != "a;b;c" {
 			t.Fatalf("192.0.2.1/80 row = %v", web)
 		}
 		if _, err := time.Parse(time.RFC3339, web["first_seen"]); err != nil {
