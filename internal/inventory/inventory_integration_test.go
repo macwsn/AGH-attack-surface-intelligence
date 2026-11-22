@@ -9,6 +9,7 @@ import (
 	"errors"
 	"math"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -419,5 +420,74 @@ func TestUpdateUnknownHost(t *testing.T) {
 	}
 	if n := rowCounts(t, s)["hosts"]; n != 0 {
 		t.Errorf("hosts has %d rows, want 0", n)
+	}
+}
+
+func TestEditHostUserFieldsWritesAudit(t *testing.T) {
+	ctx := context.Background()
+	inv, s := openInventory(t)
+	r := mustRun(t, inv, "e1", 3)
+	mustRecord(t, inv, r, GroupResult{Index: 0, Hosts: []HostResult{{Address: "10.3.0.1"}}})
+	f := HostUserFields{Tags: []string{"dmz"}, Notes: "n", DisplayName: "D", Owner: "O", Criticality: "high", StatusOverride: "active"}
+	if err := inv.EditHostUserFields(ctx, Editor{Username: "olga", Addr: "192.0.2.7"}, "10.3.0.1", f); err != nil {
+		t.Fatalf("EditHostUserFields: %v", err)
+	}
+	if got, err := inv.GetHostUserFields(ctx, "10.3.0.1"); err != nil || !reflect.DeepEqual(got, f) {
+		t.Errorf("GetHostUserFields = %+v, %v", got, err)
+	}
+	var actor, target, addr string
+	if err := s.Pool.QueryRow(ctx, `SELECT actor, target, address FROM audit_log WHERE action = 'host.edit'`).Scan(&actor, &target, &addr); err != nil ||
+		actor != "olga" || target != "10.3.0.1" || addr != "192.0.2.7" {
+		t.Errorf("audit row = %q %q %q, %v", actor, target, addr, err)
+	}
+	for name, call := range map[string]error{
+		"unknown host":    inv.EditHostUserFields(ctx, Editor{Username: "olga"}, "10.3.0.9", f),
+		"bad override":    inv.EditHostUserFields(ctx, Editor{Username: "olga"}, "10.3.0.1", HostUserFields{StatusOverride: "gone"}),
+		"invalid address": inv.EditHostUserFields(ctx, Editor{Username: "olga"}, "nope", f),
+	} {
+		if call == nil {
+			t.Errorf("%s: no error", name)
+		}
+	}
+	var n int
+	if err := s.Pool.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE action = 'host.edit'`).Scan(&n); err != nil || n != 1 {
+		t.Errorf("audit rows = %d, %v; failed edits must not be audited", n, err)
+	}
+}
+
+// REQ-INVENTORY-005 AC1: owner, display name and the targets and excludes of a run are stored encrypted and read back in plain text.
+func TestOwnerDisplayNameAndRunScopeEncrypted(t *testing.T) {
+	ctx := context.Background()
+	inv, s := openInventory(t)
+	r, err := inv.CreateRun(ctx, RunSpec{Name: "r1", Settings: RunSettings{Targets: []string{"MARKER-TARGET-1"}, Excludes: []string{"MARKER-EXCL-1"}, Ports: []int{80}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustRecord(t, inv, r, GroupResult{Index: 0, Addresses: []string{"10.0.0.1"}, Hosts: []HostResult{{Address: "10.0.0.1"}}})
+	if err := inv.UpdateHostUserFields(ctx, "10.0.0.1", HostUserFields{DisplayName: "MARKER-NAME-1", Owner: "MARKER-OWNER-1"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, table := range schemaTables(t, s) {
+		var text string
+		if err := s.Pool.QueryRow(ctx, `SELECT COALESCE(string_agg(t::text, ' '), '') FROM "`+table+`" t`).Scan(&text); err != nil {
+			t.Fatalf("select %s: %v", table, err)
+		}
+		for _, m := range []string{"MARKER-TARGET-1", "MARKER-EXCL-1", "MARKER-NAME-1", "MARKER-OWNER-1"} {
+			if strings.Contains(text, m) {
+				t.Errorf("table %s holds %s in plain text", table, m)
+			}
+		}
+	}
+	h := findHost(t, mustExport(t, inv, ""), "10.0.0.1")
+	if h.DisplayName != "MARKER-NAME-1" || h.Owner != "MARKER-OWNER-1" {
+		t.Errorf("export display name %q owner %q", h.DisplayName, h.Owner)
+	}
+	page, err := inv.ListHosts(ctx, HostQuery{Text: "marker-name"})
+	if err != nil || page.Total != 1 || page.Hosts[0].DisplayName != "MARKER-NAME-1" {
+		t.Errorf("search by display name = %+v, %v", page, err)
+	}
+	got, err := inv.RunByName(ctx, "r1")
+	if err != nil || !slices.Equal(got.Settings.Targets, []string{"MARKER-TARGET-1"}) || !slices.Equal(got.Settings.Excludes, []string{"MARKER-EXCL-1"}) {
+		t.Errorf("run settings = %+v, %v", got.Settings, err)
 	}
 }

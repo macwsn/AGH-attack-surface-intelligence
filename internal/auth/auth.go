@@ -38,6 +38,22 @@ var AllPermissions = []Permission{
 	PermRoleManage,
 }
 
+var PermissionDescriptions = map[Permission]string{
+	PermInventoryRead:   "See hosts, services, findings, changes and runs.",
+	PermInventoryEdit:   "Edit the tags, owner, criticality, notes and status override of a host.",
+	PermInventoryCreate: "Add hosts and services by hand.",
+	PermInventoryDelete: "Delete hosts and services from the inventory.",
+	PermScanRun:         "See scans, start them now and pause or resume their runs.",
+	PermScanConfigure:   "Create and change scans and the DefectDojo connection.",
+	PermSignatureManage: "Add, change and delete detection signatures.",
+	PermExport:          "Download exports and send runs to DefectDojo.",
+	PermImport:          "Import hosts and services from JSON or CSV files.",
+	PermUserManage:      "Add, change and disable users and read the audit log.",
+	PermRoleManage:      "Create, change and delete custom roles.",
+}
+
+func (p Permission) Description() string { return PermissionDescriptions[p] }
+
 const (
 	RoleAdmin    = "admin"
 	RoleEditor   = "editor"
@@ -48,6 +64,7 @@ const (
 var (
 	ErrPasswordTooShort   = errors.New("password must be at least 12 characters")
 	ErrInvalidCredentials = errors.New("invalid username or password")
+	ErrSamePassword       = errors.New("new password must differ from the current one")
 	ErrRateLimited        = errors.New("too many failed logins, try again later")
 	ErrNoSession          = errors.New("no valid session")
 	ErrUnknownUser        = errors.New("unknown user")
@@ -57,12 +74,15 @@ var (
 	ErrRoleInUse          = errors.New("role is assigned to a user")
 	ErrBuiltinRole        = errors.New("built-in role cannot be changed")
 	ErrUnknownPermission  = errors.New("unknown permission")
-	ErrLastAdmin          = errors.New("the last admin cannot be deleted or demoted")
+	ErrLastAdmin          = errors.New("the last enabled admin cannot be deleted, demoted or disabled")
+	ErrPermissionNotHeld  = errors.New("the actor's role does not hold the permission")
+	ErrOwnRole            = errors.New("the actor cannot change their own role")
 )
 
 type User struct {
 	Username  string
 	Role      string
+	Disabled  bool
 	CreatedAt time.Time
 }
 
@@ -90,6 +110,8 @@ type Actor struct {
 	Username string
 	Addr     string
 }
+
+const localAddr = "local"
 
 type Config struct {
 	Now             func() time.Time

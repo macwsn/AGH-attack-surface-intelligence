@@ -1,0 +1,27 @@
+name: asi-agh-prod
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: asi
+      POSTGRES_PASSWORD: asi
+      POSTGRES_DB: asi
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U asi -d asi"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  asi:
+    image: asi:agh
+    entrypoint: ["sleep", "infinity"]
+    cap_add: [NET_RAW, NET_ADMIN]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    environment:
+      ASI_DATABASE_URL: postgres://asi:asi@postgres:5432/asi?sslmode=disable
+      ASI_MASTER_KEY: ${ASI_MASTER_KEY}
+    volumes:
+      - ./work:/work
+      - ../results/agh:/out
+    depends_on:
+      postgres:
+        condition: service_healthy

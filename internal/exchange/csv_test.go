@@ -3,6 +3,7 @@ package exchange
 import (
 	"bytes"
 	"encoding/csv"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -68,5 +69,32 @@ func TestCSVExport(t *testing.T) {
 	e := rows[3]
 	if e[col["address"]] != "10.0.0.2" || e[col["status"]] != "inactive" || e[col["port"]] != "" || e[col["protocol"]] != "" || e[col["service"]] != "" {
 		t.Errorf("host without services row = %v", e)
+	}
+}
+
+// REQ-INVENTORY-020
+func TestCSVExportNeutralizesFormulas(t *testing.T) {
+	exp := inventory.Export{Hosts: []inventory.ExportHost{{
+		Address: "10.0.0.1", Status: "active", Tags: []string{"@tag"},
+		Services: []inventory.ExportService{{Port: 80, Protocol: "tcp", Service: "http", Product: "+cmd", Version: "-1",
+			HTTP: &probe.HTTP{Scheme: "http", StatusCode: 200, Title: `=HYPERLINK("http://evil","x")`}}},
+	}}}
+	var buf bytes.Buffer
+	if err := WriteCSV(&buf, exp); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := csv.NewReader(&buf).ReadAll()
+	if err != nil || len(rows) != 2 {
+		t.Fatalf("rows = %v, %v", rows, err)
+	}
+	got := map[string]string{}
+	for i, h := range CSVHeader {
+		got[h] = rows[1][i]
+	}
+	if got["title"] != `'=HYPERLINK("http://evil","x")` || got["product"] != "'+cmd" || got["version"] != "'-1" || got["tags"] != "'@tag" || got["address"] != "10.0.0.1" {
+		t.Fatalf("row = %v", got)
+	}
+	if got := NeutralizeRow([]string{"\tx", "\rx", "a=b", "", "'=x"}); !slices.Equal(got, []string{"'\tx", "'\rx", "a=b", "", "'=x"}) {
+		t.Fatalf("NeutralizeRow = %q", got)
 	}
 }

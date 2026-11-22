@@ -26,7 +26,7 @@ func WriteCSV(w io.Writer, exp inventory.Export) error {
 		tags := strings.Join(h.Tags, ";")
 		if len(h.Services) == 0 {
 			row := append(append([]string{}, base...), "", "", "", "", "", "", "", "", "", "", tags, formatTime(h.FirstSeen), formatTime(h.LastSeen))
-			if err := cw.Write(row); err != nil {
+			if err := cw.Write(NeutralizeRow(row)); err != nil {
 				return fmt.Errorf("write csv row for %s: %w", h.Address, err)
 			}
 			continue
@@ -55,7 +55,7 @@ func WriteCSV(w io.Writer, exp inventory.Export) error {
 				strconv.Itoa(s.Port), s.Protocol, s.Service, s.Product, s.Version,
 				scheme, code, title, strings.Join(techs, ";"), strings.Join(finds, ";"), tags,
 				formatTime(s.FirstSeen), formatTime(s.LastSeen))
-			if err := cw.Write(row); err != nil {
+			if err := cw.Write(NeutralizeRow(row)); err != nil {
 				return fmt.Errorf("write csv row for %s:%d: %w", h.Address, s.Port, err)
 			}
 		}
@@ -72,4 +72,11 @@ func formatTime(t time.Time) string {
 		return ""
 	}
 	return t.UTC().Format(time.RFC3339)
+}
+
+func NeutralizeRow(row []string) []string {
+	for i, c := range row {
+		row[i] = neutralize(c)
+	}
+	return row
 }

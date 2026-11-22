@@ -11,12 +11,10 @@
 <aside class="rail">
 <a class="brand" href="/">ASI<small>Attack Surface Intelligence</small></a>
 <nav aria-label="Main">
-<a href="#">Dashboard</a>
-<a href="#" aria-current="page">Hosts</a>
-<a href="#">Changes</a>
-<a href="#">Scans</a>
-<a href="#">Signatures</a>
-<a href="#">Import and export</a>
+<div class="nav-group"><h2 class="nav-heading">Overview</h2><a href="#">Dashboard</a><a href="#">Changes</a></div>
+<div class="nav-group"><h2 class="nav-heading">Inventory</h2><a href="#" aria-current="page">Hosts</a><a href="#">Groups</a></div>
+<div class="nav-group"><h2 class="nav-heading">Scanning</h2><a href="#">Scans</a><a href="#">Signatures</a></div>
+<div class="nav-group"><h2 class="nav-heading">Data</h2><a href="#">Import</a><a href="#">Export</a><a href="#">DefectDojo</a></div>
 </nav>
 <div class="account">
 <span class="who">k.nowak</span>
@@ -73,9 +71,9 @@
 <tr>
 <td><a class="addr" href="#">149.156.96.47</a></td>
 <td><span class="status unstable">Unstable</span></td>
-<td class="addr">8000</td>
+<td class="addr">22, <span class="status unstable" title="Unstable service">8000</span></td>
 <td>nginx</td>
-<td><div class="marks"><span class="kind staging">Staging</span></div></td>
+<td><div class="marks"><span class="kind staging">Staging</span><span class="kind outdated">Outdated version</span><span class="kind slow">Slower than usual</span><span class="kind timeout">Timed out</span></div></td>
 <td><span class="presence" title="Seen in 6 of 9 covering runs"><i class="seen"></i><i class="missed"></i><i class="seen"></i><i class="seen"></i><i class="uncovered"></i><i class="missed"></i><i class="seen"></i><i class="seen"></i><i class="seen"></i><i class="missed"></i></span></td>
 <td class="num"><span class="meter"><progress max="100" value="45"></progress>45</span></td>
 <td></td>
@@ -102,6 +100,9 @@
 <tbody>
 <tr><td><span class="change new">New host</span></td><td class="addr">149.156.98.19</td><td>Metrics Console on 80</td></tr>
 <tr><td><span class="change changed">Changed</span></td><td class="addr">149.156.98.18:80</td><td class="diff">title <del>Intranet v1</del> <ins>Intranet v2</ins></td></tr>
+<tr><td><span class="change changed">Changed</span></td><td class="addr">149.156.98.18:443</td><td class="diff">http.headers.server <del>nginx</del> <span class="none">(none)</span><br>http.headers.x-frame-options <span class="none">(none)</span> <ins>DENY</ins></td></tr>
+<tr><td><span class="change changed">Changed</span></td><td class="addr">149.156.98.19:80</td><td class="diff">HTTP data no longer available</td></tr>
+<tr><td><span class="change changed">Changed</span></td><td class="addr">149.156.98.20:443</td><td class="diff"><details><summary>7 changed fields</summary>http.title <del>a</del> <ins>b</ins><br>http.status_code <del>200</del> <ins>302</ins><br>...</details></td></tr>
 <tr><td><span class="change missing">Missing</span></td><td class="addr">149.156.98.17</td><td class="muted">Missed 1 of 3 runs before it counts as inactive</td></tr>
 <tr><td><span class="change returned">Returned</span></td><td class="addr">149.156.98.33</td><td class="muted">Usually seen 08:00-16:00</td></tr>
 </tbody>
@@ -118,6 +119,45 @@
 <dt>Certificate</dt><dd>admin.example.edu.pl, self-signed, expires in 12 days</dd>
 <dt>Confidence</dt><dd><span class="meter"><progress max="100" value="90"></progress>90</span></dd>
 </dl>
+</div>
+</section>
+
+<details class="panel">
+<summary>Edit host</summary>
+<div class="body"><p class="muted">A collapsed panel: forms that are not the main task of the page. Closed by default, open when the form has problems.</p></div>
+</details>
+
+<section class="panel">
+<header><h2>Presence, last 6 runs</h2></header>
+<div class="body">
+<svg class="strip" role="img" aria-label="Seen in 3 of 5 covering runs" width="60" height="16" viewBox="0 0 60 16"><rect class="seen" x="0.5" y="0.5" width="7" height="15"><title>lab-1, 2026-11-16 08:05: seen</title></rect><rect class="missed" x="10.5" y="0.5" width="7" height="15"><title>lab-2, 2026-11-17 22:05: missed</title></rect><rect class="uncovered" x="20.5" y="0.5" width="7" height="15"><title>lab-3, 2026-11-18 08:05: not covered</title></rect><rect class="seen" x="30.5" y="0.5" width="7" height="15"><title>lab-4, 2026-11-19 09:05: seen</title></rect><rect class="missed" x="40.5" y="0.5" width="7" height="15"><title>lab-5, 2026-11-20 23:05: missed</title></rect><rect class="seen" x="50.5" y="0.5" width="7" height="15"><title>lab-6, 2026-11-21 14:05: seen</title></rect></svg>
+<p class="muted">Usually seen 08:00-16:00</p>
+</div>
+</section>
+
+<section class="panel">
+<header><h2>Changes per run, last 3 runs</h2><a class="more" href="#">All changes</a></header>
+<div class="body">
+<div class="marks"><span class="change new">New or returned</span><span class="change missing">Missing or inactive</span><span class="change changed">Changed</span></div>
+<svg class="chart" role="img" aria-label="New, missing and changed per run, last 3 runs, highest bar 12" width="176" height="192" viewBox="0 0 176 192">
+<line class="axis" x1="0" y1="128" x2="176" y2="128"></line>
+<g><title>lab-2: 12 new, 2 missing, 5 changed (against lab-1)</title><rect class="new" x="4" y="8" width="8" height="120"></rect><rect class="missing" x="14" y="108" width="8" height="20"></rect><rect class="changed" x="24" y="78" width="8" height="50"></rect><text x="6" y="140" transform="rotate(45 6 140)">lab-2</text></g>
+<g><title>lab-3: 1 new, 6 missing, 0 changed (against lab-2)</title><rect class="new" x="40" y="118" width="8" height="10"></rect><rect class="missing" x="50" y="68" width="8" height="60"></rect><rect class="changed" x="60" y="128" width="8" height="0"></rect><text x="42" y="140" transform="rotate(45 42 140)">lab-3</text></g>
+<g><title>lab-4: 3 new, 0 missing, 9 changed (against lab-3)</title><rect class="new" x="76" y="98" width="8" height="30"></rect><rect class="missing" x="86" y="128" width="8" height="0"></rect><rect class="changed" x="96" y="38" width="8" height="90"></rect><text x="78" y="140" transform="rotate(45 78 140)">lab-4</text></g>
+</svg>
+</div>
+</section>
+
+<section class="panel">
+<header><h2>Rate, sent against limit</h2></header>
+<div class="body">
+<svg class="chart" role="img" aria-label="Packets and requests sent per second for each minute against the effective limit, max rate 100 per second" width="50" height="125" viewBox="0 0 50 125">
+<line class="axis" x1="0" y1="4" x2="50" y2="4"></line>
+<line class="axis" x1="0" y1="124" x2="50" y2="124"></line>
+<rect class="sent" x="0" y="34" width="8" height="90"><title>14:05: 75.0 per second sent, limit 100 per second</title></rect><rect class="sent" x="10" y="94" width="8" height="30"><title>14:06: 25.0 per second sent, limit 50 per second</title></rect><rect class="sent" x="20" y="109" width="8" height="15"><title>14:07: 12.5 per second sent, limit 25 per second</title></rect><rect class="sent" x="30" y="100" width="8" height="24"><title>14:08: 20.0 per second sent, limit 35 per second</title></rect><rect class="sent" x="40" y="94" width="8" height="30"><title>14:09: 25.0 per second sent, limit 45 per second</title></rect>
+<polyline class="limit" points="0,4 10,4 10,64 20,64 20,94 30,94 30,82 40,82 40,70 50,70"></polyline>
+</svg>
+<p class="muted">Bars: packets and requests sent per second in each minute. Line: effective limit. Top line: max rate.</p>
 </div>
 </section>
 
@@ -144,7 +184,7 @@
 <label class="field"><span>Notes</span><textarea>Migrating to the new cluster in March.</textarea></label>
 <label class="field"><span>Max rate</span><input type="number" value="0" aria-invalid="true"><span class="problem">Enter a rate between 1 and 5000 packets per second.</span></label>
 <label class="check"><input type="checkbox" checked> Re-probe unstable hosts at the end of a run</label>
-<div class="form-actions"><button class="primary" type="button">Save changes</button><a class="btn" href="#">Cancel</a><button class="danger" type="button">Delete host</button></div>
+<div class="form-actions"><button class="primary" type="button">Save changes</button><a class="btn" href="#">Cancel</a><button class="danger" type="button">Delete host 10.0.0.5</button></div>
 </div>
 </section>
 <section class="panel">
@@ -153,6 +193,17 @@
 <div class="notice">The scan is paused until the next window opens at 22:00.</div>
 <div class="notice warn">3 rows were skipped. Row 14: "10.0.0.300" is not an address.</div>
 <div class="notice error">The scan could not start: nmap is not installed in this image.</div>
+<div class="attention">
+<div class="attention-group"><h3><span class="change new">New hosts</span></h3><ul><li><a class="addr" href="#">10.0.0.5</a></li><li><a class="addr" href="#">10.0.0.9</a></li></ul><p><a href="#">3 more</a></p></div>
+<div class="attention-group"><h3><span class="change missing">Services that went missing</span></h3><ul><li><a class="addr" href="#">10.0.0.1</a> <span class="muted">22/tcp</span></li></ul></div>
+</div>
+<ol class="steps"><li value="1"><h3>Create a scan</h3><p class="muted">Name the networks and ports to scan.</p><p class="step-actions"><a class="btn" href="#">Create a scan</a></p></li><li value="3"><h3>Add users and roles</h3><p class="muted">Give colleagues their own accounts.</p></li></ol>
+<div class="condition">
+<label class="field"><span>Matcher</span><select><option>header</option><option>status</option></select></label>
+<label class="field"><span>Header or cookie name</span><input type="text" value="Server"></label>
+<label class="field grow"><span>Value</span><input type="text" value="nginx(" aria-invalid="true" aria-describedby="sg-problem"><span class="problem" id="sg-problem">Rule violated: regexes are valid RE2. missing closing ).</span></label>
+<button class="small" type="button">Remove</button>
+</div>
 <nav class="tabs"><a href="#" aria-current="page">Services</a><a href="#">History</a><a href="#">Audit</a></nav>
 <div class="empty"><p>No signatures yet.</p><p><a class="btn primary" href="#">Create a signature</a></p></div>
 </div>

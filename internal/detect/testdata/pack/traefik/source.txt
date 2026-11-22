@@ -1,0 +1,7 @@
+captured from the running lab-agh stack
+image: traefik:v3.1 (sha256:74d72c7a1345984f186bddbabcc462b2128d0d8054177dc84afaeac4db1f0f56)
+compose: lab-agh/docker-compose-modern-proxy.yml, service traefik:8080
+capture date: 2026-11-21
+command: curl -sS -i -L --max-redirs 5 http://traefik:8080<path> from a container on the stack network (host ports not published)
+paths: / (root.http), /version (version.http), /api/version (api__version.http)
+state: --api.dashboard=true --api.insecure=true, / redirects to /dashboard/

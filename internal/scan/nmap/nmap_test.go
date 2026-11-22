@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -302,5 +303,384 @@ func TestExecContextCancelKillsProcess(t *testing.T) {
 	}
 	if err := syscall.Kill(pid, 0); !errors.Is(err, syscall.ESRCH) {
 		t.Fatalf("nmap process %d still exists: %v", pid, err)
+	}
+}
+
+// REQ-SCAN-011
+func TestArgsCompressPortRanges(t *testing.T) {
+	ports := []int{21, 80}
+	for p := 8000; p <= 8100; p++ {
+		ports = append(ports, p)
+	}
+	got, err := ServicesArgs([]string{"127.0.0.1"}, ports, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got[5] != "21,80,8000-8100" {
+		t.Fatalf("-p %q, want 21,80,8000-8100", got[5])
+	}
+	all := make([]int, 65535)
+	for i := range all {
+		all[i] = i + 1
+	}
+	got, err = DiscoverArgs([]string{"127.0.0.1"}, Options{ProbePorts: all})
+	if err != nil || got[2] != "-PS1-65535" {
+		t.Fatalf("discover args = %q, %v", got[:3], err)
+	}
+}
+
+func TestParseGuessedService(t *testing.T) {
+	xml := `<nmaprun><host><status state="up"/><address addr="192.0.2.10" addrtype="ipv4"/><ports>
+<port protocol="tcp" portid="8888"><state state="open"/><service name="sun-answerbook" method="table" conf="3"/></port>
+<port protocol="tcp" portid="22"><state state="open"/><service name="ssh" method="probed" conf="10"/></port>
+<port protocol="tcp" portid="81"><state state="closed"/><service name="hosts2-ns" method="table" conf="3"/></port>
+<port protocol="tcp" portid="15432"><state state="open"/></port>
+</ports></host></nmaprun>`
+	hosts, err := Parse(strings.NewReader(xml))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[int]bool{}
+	for _, p := range hosts[0].Ports {
+		got[p.Number] = p.Guessed
+	}
+	want := map[int]bool{8888: true, 22: false, 81: false, 15432: false}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("guessed = %v, want %v", got, want)
+	}
+}
+
+// REQ-SCAN-022
+func TestServicesArgsStandardAndVersionDB(t *testing.T) {
+	got, err := ServicesArgs([]string{"192.0.2.10"}, []int{5432}, Options{Standard: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"-Pn", "-sT", "-sV", "-p", "5432", "-n", "-oX", "-", "192.0.2.10"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("standard args = %q, want %q", got, want)
+	}
+	got, err = ServicesArgs([]string{"192.0.2.10"}, []int{80}, Options{VersionDB: "/tmp/probes"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"-Pn", "-sT", "-sV", "--version-light", "--versiondb", "/tmp/probes", "-p", "80", "-n", "-oX", "-", "192.0.2.10"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("version db args = %q, want %q", got, want)
+	}
+	for _, db := range []string{"probes", "-iL", "--script=x"} {
+		if args, err := ServicesArgs([]string{"192.0.2.10"}, []int{80}, Options{VersionDB: db}); err == nil {
+			t.Errorf("ServicesArgs accepted version db %q: %q", db, args)
+		}
+	}
+}
+
+const sampleProbes = `# header
+Probe TCP NULL q||
+totalwaitms 6000
+softmatch ftp m|^220 .*ftp|i
+match ftp m|^220 vsFTPd| p/vsftpd/
+softmatch ssl m|^\x16\x03|
+match ssh m|^SSH-|
+Probe TCP GetRequest q|GET / HTTP/1.0\r\n\r\n|
+rarity 1
+softmatch http m|^HTTP/1\.1 400 Bad Request\r\n| p|Golang net/http server|
+match http m|^HTTP/1\.[01] \d\d\d .*Server: nginx| p/nginx/
+`
+
+const lightSampleProbes = `# header
+Probe TCP NULL q||
+totalwaitms 6000
+match ftp m|^220 vsFTPd| p/vsftpd/
+softmatch ssl m|^\x16\x03|
+match ssh m|^SSH-|
+match ftp m|^220 .*ftp|i
+Probe TCP GetRequest q|GET / HTTP/1.0\r\n\r\n|
+rarity 1
+match http m|^HTTP/1\.[01] \d\d\d .*Server: nginx| p/nginx/
+match http m|^HTTP/1\.1 400 Bad Request\r\n| p|Golang net/http server|
+`
+
+// REQ-SCAN-022
+func TestWriteLightProbes(t *testing.T) {
+	var out strings.Builder
+	if err := WriteLightProbes(&out, strings.NewReader(sampleProbes)); err != nil {
+		t.Fatal(err)
+	}
+	if out.String() != lightSampleProbes {
+		t.Fatalf("light probes =\n%s\nwant\n%s", out.String(), lightSampleProbes)
+	}
+}
+
+// REQ-SCAN-022
+func TestExecServicesUsesLightProbes(t *testing.T) {
+	fixture, err := filepath.Abs("testdata/services.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	bin := filepath.Join(root, "bin")
+	share := filepath.Join(root, "share", "nmap")
+	for _, d := range []string{bin, share} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(share, "nmap-service-probes"), []byte(sampleProbes), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("NMAPDIR", "")
+	path := filepath.Join(bin, "nmap")
+	script := "#!/bin/sh\nfor a in \"$@\"; do printf '%s\\n' \"$a\"; done > \"" + root + "/args\"\n" +
+		"prev=\nfor a in \"$@\"; do [ \"$prev\" = --versiondb ] && cp \"$a\" \"" + root + "/db\"; prev=$a; done\ncat '" + fixture + "'\n"
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	r := ExecRunner{Path: path}
+	args := func() []string {
+		raw, err := os.ReadFile(filepath.Join(root, "args"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return strings.Split(strings.TrimSuffix(string(raw), "\n"), "\n")
+	}
+	if _, err := r.Services(context.Background(), []string{"192.0.2.10"}, []int{22}, Options{}); err != nil {
+		t.Fatal(err)
+	}
+	got := args()
+	if len(got) < 6 || got[3] != "--version-light" || got[4] != "--versiondb" {
+		t.Fatalf("light argv = %q, want --version-light --versiondb <file>", got)
+	}
+	db, err := os.ReadFile(filepath.Join(root, "db"))
+	if err != nil || string(db) != lightSampleProbes {
+		t.Fatalf("version db passed to nmap = %q (%v), want the light probes", db, err)
+	}
+	if _, err := os.Stat(got[5]); !os.IsNotExist(err) {
+		t.Errorf("light probes file %s left behind: %v", got[5], err)
+	}
+	if _, err := r.Services(context.Background(), []string{"192.0.2.10"}, []int{22}, Options{Standard: true}); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := args(), []string{"-Pn", "-sT", "-sV", "-p", "22", "-n", "-oX", "-", "192.0.2.10"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("standard argv = %q, want %q (stock probes)", got, want)
+	}
+}
+
+const influxProbes = `Probe TCP NULL q||
+softmatch http m|^HTTP/1\.1 400 Bad Request\r\nContent-Type: text/plain(?:; charset=utf-8)?\r\nConnection: close\r\n\r\n400 Bad Request| p|Golang net/http server| cpe:/a:golang:go/
+Probe TCP GetRequest q|GET / HTTP/1.0\r\n\r\n|
+match http m|^HTTP/1\.0 404 Not Found\r\nContent-Type: text/plain; charset=utf-8\r\nX-Content-Type-Options: nosniff\r\nDate: .*\r\nContent-Length: 19\r\n\r\n404 page not found\n| p|Golang net/http server| i/Go-IPFS json-rpc or InfluxDB API/ cpe:/a:golang:go/
+match http m|^HTTP/1\.0 \d\d\d (?:[^\r\n]*\r\n(?!\r\n))*?X-Influxdb-Version: v?([\d.]+)\r\n|s p/InfluxDB http admin/ v/$1/ cpe:/a:influxdata:influxdb:$1/
+softmatch http m|^HTTP/1\.[01] \d\d\d| p/$1 httpd/
+`
+
+func fakeNmapWithProbes(t *testing.T, probes, script string) (ExecRunner, string) {
+	t.Helper()
+	root := t.TempDir()
+	share := filepath.Join(root, "share")
+	if err := os.MkdirAll(share, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(share, "nmap-service-probes"), []byte(probes), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("NMAPDIR", share)
+	path := filepath.Join(root, "nmap")
+	if err := os.WriteFile(path, []byte("#!/bin/sh\nprintf '%s ' \"$@\" >> \""+root+"/argv\"\necho >> \""+root+"/argv\"\n"+script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return ExecRunner{Path: path}, filepath.Join(root, "argv")
+}
+
+func argvLines(t *testing.T, path string) []string {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.Split(strings.TrimSuffix(string(raw), "\n"), "\n")
+}
+
+// REQ-SCAN-022: recorded nmap 7.99 output for InfluxDB 1.6.6 on 8086.
+func TestExecLightPassMarksSoftMatchInfluxDB(t *testing.T) {
+	asi, err := filepath.Abs("testdata/influxdb-light-asi.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stock, err := filepath.Abs("testdata/influxdb-light-stock.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, argv := fakeNmapWithProbes(t, influxProbes, "case \" $* \" in *' --versiondb '*) cat '"+asi+"' ;; *) cat '"+stock+"' ;; esac\n")
+	hosts, err := r.Services(context.Background(), []string{"192.0.2.30"}, []int{8086}, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p := hosts[0].Ports[0]; p.Product != "Golang net/http server" || !p.Soft {
+		t.Fatalf("light pass = %+v, want the soft match Golang net/http server marked Soft", p)
+	}
+	hosts, err = r.Services(context.Background(), []string{"192.0.2.30"}, []int{8086}, Options{StockProbes: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p := hosts[0].Ports[0]; p.Product != "InfluxDB http admin" || p.Version != "1.6.6" || p.Soft {
+		t.Fatalf("stock light pass = %+v, want InfluxDB http admin 1.6.6, not soft", p)
+	}
+	lines := argvLines(t, argv)
+	if len(lines) != 2 || !strings.Contains(lines[1], "-sV --version-light -p 8086") || strings.Contains(lines[1], "--versiondb") {
+		t.Fatalf("argv = %q, want the second call to be stock nmap -sV --version-light", lines)
+	}
+}
+
+func TestMarkSoft(t *testing.T) {
+	hosts := []Host{{Ports: []Port{
+		{Number: 1, State: "open", Service: "http", Product: "Golang net/http server"},
+		{Number: 2, State: "open", Service: "http", Product: "Golang net/http server", ExtraInfo: "Go-IPFS json-rpc or InfluxDB API"},
+		{Number: 3, State: "open", Service: "http", Product: "InfluxDB http admin", Version: "1.6.6"},
+		{Number: 4, State: "open", Service: "http", Product: "Foo httpd"},
+		{Number: 5, State: "open", Service: "ssl", Product: "Golang net/http server"},
+		{Number: 6, State: "open", Service: "http", Product: "Golang net/http server", Guessed: true},
+		{Number: 7, State: "closed", Service: "http", Product: "Golang net/http server"},
+	}}}
+	if err := MarkSoft(hosts, strings.NewReader(influxProbes)); err != nil {
+		t.Fatal(err)
+	}
+	want := map[int]bool{1: true, 4: true}
+	for _, p := range hosts[0].Ports {
+		if p.Soft != want[p.Number] {
+			t.Errorf("port %d %q %q: soft = %v, want %v", p.Number, p.Product, p.ExtraInfo, p.Soft, want[p.Number])
+		}
+	}
+}
+
+// REQ-SCAN-033: never-probe ports get a connect scan, never a version scan.
+func TestExecNoVersionPortsGetNoVersionDetection(t *testing.T) {
+	fixture, err := filepath.Abs("testdata/services.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, argv := fakeNmapWithProbes(t, sampleProbes, "cat '"+fixture+"'\n")
+	if _, err := r.Services(context.Background(), []string{"192.0.2.10"}, []int{22, 502, 1883}, Options{NoVersion: []int{502, 1883}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Services(context.Background(), []string{"192.0.2.10"}, []int{1883}, Options{NoVersion: []int{1883}}); err != nil {
+		t.Fatal(err)
+	}
+	lines := argvLines(t, argv)
+	if len(lines) != 3 {
+		t.Fatalf("nmap calls = %q, want 3", lines)
+	}
+	for _, l := range lines {
+		_, list, _ := strings.Cut(l, " -p ")
+		list, _, _ = strings.Cut(list, " ")
+		if strings.Contains(l, "-sV") && (strings.Contains(list, "502") || strings.Contains(list, "1883")) {
+			t.Errorf("never-probe port in a version scan: %s", l)
+		}
+	}
+	if !strings.Contains(lines[0], "-sV") || !strings.Contains(lines[0], "-p 22 ") {
+		t.Errorf("first call = %s, want -sV on 22 only", lines[0])
+	}
+	for _, l := range lines[1:] {
+		if !strings.HasPrefix(l, "-Pn -sT -p ") || strings.Contains(l, "-sV") {
+			t.Errorf("never-probe call = %s, want a connect scan without -sV", l)
+		}
+	}
+}
+
+func TestParseBannerAndScriptProperties(t *testing.T) {
+	xml := `<nmaprun><host><status state="up"/><address addr="192.0.2.10" addrtype="ipv4"/><ports>
+<port protocol="tcp" portid="21"><state state="open"/><service name="ftp" method="probed" conf="10" servicefp="SF-Port21-TCP:V=7.95%I=7%D=11/21%Time=692053EA%P=x86_64-pc-linux-gnu%r(NULL,33,&quot;220\x20ftp\.example\.org\x20FTP\x20server\x20\(vsFTPd\x203\.0\.5\)&#xa;SF:\x20ready\r\n&quot;)%r(GenericLines,4,&quot;500\x20&quot;);"/></port>
+<port protocol="tcp" portid="25"><state state="open"/><service name="smtp" method="probed" conf="10"/><script id="banner" output="220 mx.example.org ESMTP Exim 4.96"/></port>
+<port protocol="tcp" portid="5672"><state state="open"/><service name="amqp" product="Advanced Message Queue Protocol" method="probed" conf="10"/><script id="amqp-info" output="..."><table key="capabilities"><elem key="version">nested</elem></table><elem key="product">RabbitMQ</elem><elem key="version">3.13.7</elem></script></port>
+<port protocol="tcp" portid="80"><state state="open"/><service name="http" product="nginx" method="probed" conf="10"/></port>
+</ports></host></nmaprun>`
+	hosts, err := Parse(strings.NewReader(xml))
+	if err != nil {
+		t.Fatal(err)
+	}
+	type info struct{ banner, product, version string }
+	got := map[int]info{}
+	for _, p := range hosts[0].Ports {
+		got[p.Number] = info{p.Banner, p.ScriptProduct, p.ScriptVersion}
+	}
+	want := map[int]info{
+		21:   {banner: "220 ftp.example.org FTP server (vsFTPd 3.0.5) ready\r\n"},
+		25:   {banner: "220 mx.example.org ESMTP Exim 4.96"},
+		5672: {product: "RabbitMQ", version: "3.13.7"},
+		80:   {},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("banners and script properties = %+v, want %+v", got, want)
+	}
+}
+
+func TestWriteLightProbesKeepsVsftpdHardMatchBeforeSoftMatches(t *testing.T) {
+	src := `Probe TCP NULL q||
+totalwaitms 6000
+softmatch ftp m|^220 Welcome to ([-.\w]+) FTP.*\r\n$|i h/$1/
+softmatch ftp m|^220[- ].*ftp server.*\r\n|i
+match ftp m|^220 \(vsFTPd ([-.\w]+)\)\r\n$| p/vsftpd/ v/$1/ o/Unix/ cpe:/a:vsftpd:vsftpd:$1/
+match ftp m|^220 ProFTPD (\d\S+) Server| p/ProFTPD/ v/$1/
+softmatch ftp m|^220-\r?\n220 - ftp|i
+Probe TCP GenericLines q|\r\n\r\n|
+`
+	var out strings.Builder
+	if err := WriteLightProbes(&out, strings.NewReader(src)); err != nil {
+		t.Fatal(err)
+	}
+	pattern := regexp.MustCompile(`^match \S+ m\|(.*)\|(i?)`)
+	for _, c := range []struct{ banner, product string }{
+		{"220 (vsFTPd 3.0.2)\r\n", "p/vsftpd/"},
+		{"220 ProFTPD 1.3.8 Server (Debian) [::ffff:192.0.2.30]\r\n", "p/ProFTPD/"},
+	} {
+		first := ""
+		for _, line := range strings.Split(out.String(), "\n") {
+			m := pattern.FindStringSubmatch(line)
+			if m == nil {
+				continue
+			}
+			expr := m[1]
+			if m[2] == "i" {
+				expr = "(?i)" + expr
+			}
+			if regexp.MustCompile(expr).MatchString(c.banner) {
+				first = line
+				break
+			}
+		}
+		if !strings.Contains(first, c.product) {
+			t.Errorf("first light match for %q = %q, want the hard match with %s", c.banner, first, c.product)
+		}
+	}
+}
+
+// REQ-SCAN-022
+func TestServicesArgsSecondPassBound(t *testing.T) {
+	opts := Options{MaxRate: 100, HostTimeout: 40 * time.Second, MaxRetries: 1, Standard: true}
+	got, err := ServicesArgs([]string{"192.0.2.10", "192.0.2.11"}, []int{21, 6000}, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"-Pn", "-sT", "-sV", "-p", "21,6000", "--max-rate", "100", "--host-timeout", "40000ms", "--max-retries", "1", "-n", "-oX", "-", "192.0.2.10", "192.0.2.11"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("services args = %q, want %q", got, want)
+	}
+	if args, err := ServicesArgs([]string{"192.0.2.1"}, []int{80}, Options{MaxRetries: -1}); err == nil {
+		t.Errorf("negative retries: accepted: %q", args)
+	}
+}
+
+// REQ-SCAN-022
+func TestParseTimedOutHost(t *testing.T) {
+	f, err := os.Open("testdata/timedout.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	hosts, err := Parse(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Host{{Address: "127.0.0.1", Up: true, TimedOut: true}}
+	if !reflect.DeepEqual(hosts, want) {
+		t.Fatalf("hosts = %+v, want %+v", hosts, want)
 	}
 }

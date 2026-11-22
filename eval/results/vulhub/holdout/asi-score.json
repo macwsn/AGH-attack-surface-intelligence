@@ -1,0 +1,320 @@
+{
+ "tool": "asi",
+ "totals": {
+  "services": 11,
+  "hosts_found": 11,
+  "ports_found": 33,
+  "ports_total": 33,
+  "recognised": 6,
+  "version_exact": 3,
+  "version_major_minor": 0,
+  "version_wrong": 1,
+  "version_missing": 7,
+  "admin_expected": 5,
+  "admin_flagged": 1,
+  "admin_false_flags": 1,
+  "outdated_expected": 11,
+  "outdated_flagged": 1,
+  "false_technologies": 0,
+  "unexpected_hosts": [],
+  "summary": "recognised 6/11, version exact 3/11, admin flagged 1/5, false technologies 0"
+ },
+ "services": [
+  {
+   "service": "solr",
+   "address": "172.28.33.10",
+   "product": "Apache Solr",
+   "version": "8.2.0",
+   "category": "search",
+   "host_found": true,
+   "ports": {
+    "5005": true,
+    "8983": true,
+    "18983": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Apache Solr"
+   ],
+   "matched_sources": [
+    "service.product"
+   ],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": true,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "couchdb",
+   "address": "172.28.33.11",
+   "product": "Apache CouchDB",
+   "version": "2.1.0",
+   "category": "database",
+   "host_found": true,
+   "ports": {
+    "5984": true,
+    "5986": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "CouchDB httpd"
+   ],
+   "matched_sources": [
+    "service.product"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "2.1.0"
+   ],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "nacos",
+   "address": "172.28.33.12",
+   "product": "Nacos",
+   "version": "1.4.0",
+   "category": "service-registry",
+   "host_found": true,
+   "ports": {
+    "5005": true,
+    "7848": true,
+    "8848": true
+   },
+   "extra_ports": [],
+   "recognised": false,
+   "matched_names": [],
+   "matched_sources": [],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "metabase",
+   "address": "172.28.33.13",
+   "product": "Metabase",
+   "version": "0.40.4",
+   "category": "analytics",
+   "host_found": true,
+   "ports": {
+    "3000": true
+   },
+   "extra_ports": [],
+   "recognised": false,
+   "matched_names": [],
+   "matched_sources": [],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": true,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "webmin",
+   "address": "172.28.33.14",
+   "product": "Webmin",
+   "version": "1.910",
+   "category": "admin-tool",
+   "host_found": true,
+   "ports": {
+    "10000": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "MiniServ"
+   ],
+   "matched_sources": [
+    "service.product"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "1.910"
+   ],
+   "admin_expected": true,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "glassfish",
+   "address": "172.28.33.15",
+   "product": "GlassFish",
+   "version": "4.1",
+   "category": "app-server",
+   "host_found": true,
+   "ports": {
+    "3700": true,
+    "4848": true,
+    "5005": true,
+    "7676": true,
+    "8080": true,
+    "8181": true,
+    "8686": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Oracle GlassFish"
+   ],
+   "matched_sources": [
+    "service.product"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "4.1"
+   ],
+   "admin_expected": true,
+   "admin_flagged": true,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "influxdb",
+   "address": "172.28.33.16",
+   "product": "InfluxDB",
+   "version": "1.6.6",
+   "category": "database",
+   "host_found": true,
+   "ports": {
+    "8086": true
+   },
+   "extra_ports": [],
+   "recognised": false,
+   "matched_names": [],
+   "matched_sources": [],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "opensmtpd",
+   "address": "172.28.33.17",
+   "product": "OpenSMTPD",
+   "version": "6.6.1p1",
+   "category": "mail",
+   "host_found": true,
+   "ports": {
+    "25": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "OpenSMTPD"
+   ],
+   "matched_sources": [
+    "service.product"
+   ],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "gogs",
+   "address": "172.28.33.18",
+   "product": "Gogs",
+   "version": "0.11.66",
+   "category": "scm",
+   "host_found": true,
+   "ports": {
+    "22": true,
+    "3000": true
+   },
+   "extra_ports": [],
+   "recognised": false,
+   "matched_names": [],
+   "matched_sources": [],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": false,
+   "admin_flagged": true,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "openfire",
+   "address": "172.28.33.19",
+   "product": "Openfire",
+   "version": "4.7.4",
+   "category": "chat-server",
+   "host_found": true,
+   "ports": {
+    "5222": true,
+    "5223": true,
+    "5262": true,
+    "5263": true,
+    "5269": true,
+    "5270": true,
+    "5275": true,
+    "5276": true,
+    "7070": true,
+    "7777": true,
+    "9090": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Ignite Realtime Openfire Jabber server"
+   ],
+   "matched_sources": [
+    "service.product"
+   ],
+   "version_status": "wrong",
+   "versions_seen": [
+    "3.10.0 or later"
+   ],
+   "admin_expected": true,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "mosquitto",
+   "address": "172.28.33.20",
+   "product": "Mosquitto",
+   "version": "1.6.15",
+   "category": "message-queue",
+   "host_found": true,
+   "ports": {
+    "1883": true
+   },
+   "extra_ports": [],
+   "recognised": false,
+   "matched_names": [],
+   "matched_sources": [],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  }
+ ]
+}

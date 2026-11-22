@@ -1,0 +1,3 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Apache httpd 2.4.49 default page (vulhub httpd/CVE-2021-41773: Server Apache/2.4.49 (Unix), It works!), httpd.apache.org
+the eval/vulhub capture of this product is not readable from the builder sandbox; markers written to match it

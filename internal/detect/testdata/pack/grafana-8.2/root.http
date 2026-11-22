@@ -1,0 +1,32 @@
+HTTP/1.1 302 Found
+Cache-Control: no-cache
+Content-Type: text/html; charset=utf-8
+Location: /login
+
+HTTP/1.1 200 OK
+Cache-Control: no-cache
+Content-Type: text/html; charset=UTF-8
+X-Content-Type-Options: nosniff
+X-Frame-Options: deny
+X-Xss-Protection: 1; mode=block
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Grafana</title>
+    <base href="/" />
+    <link rel="icon" type="image/png" href="public/img/fav32.png" />
+  </head>
+  <body class="theme-dark app-grafana">
+    <div class="preloader"><div class="preloader__text">Loading Grafana</div></div>
+    <grafana-app class="grafana-app"></grafana-app>
+    <script nonce="">
+      window.grafanaBootData = {
+        user: {"isSignedIn":false,"id":0,"login":"","email":"","name":"","lightTheme":false,"orgCount":0,"orgId":0,"orgName":"","orgRole":"","isGrafanaAdmin":false,"gravatarUrl":"","timezone":"browser","locale":"en-US"},
+        settings: {"alertingEnabled":true,"allowOrgCreate":false,"appSubUrl":"","authProxyEnabled":false,"buildInfo":{"buildstamp":1638179935,"commit":"cb4ac6cd2f","edition":"Open Source","env":"production","hasUpdate":false,"hideVersion":false,"latestVersion":"","version":"8.2.6"},"disableLoginForm":false,"disableUserSignUp":true,"loginHint":"email or username","passwordHint":"password","oauth":{}},
+        navTree: []
+      };
+    </script>
+  </body>
+</html>

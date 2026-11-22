@@ -121,14 +121,6 @@ func TestMigrateUnreachableDatabase(t *testing.T) {
 	}
 }
 
-func TestNotImplementedCommand(t *testing.T) {
-	env := map[string]string{"ASI_DATABASE_URL": "postgres://asi@127.0.0.1/asi", "ASI_MASTER_KEY": testKey}
-	code, _, stderr := runCLI(env, "import", "--format", "json")
-	if code == 0 || stderr != "asi import: not implemented yet\n" {
-		t.Fatalf("exit %d, stderr %q", code, stderr)
-	}
-}
-
 func buildBinary(t *testing.T) string {
 	t.Helper()
 	bin := filepath.Join(t.TempDir(), "asi")
@@ -183,5 +175,75 @@ func TestUserCreateUsage(t *testing.T) {
 	code, stdout, _ = runCLI(nil, "--help")
 	if code != 0 || !strings.Contains(stdout, "  user       user create --username U --role R [--password-stdin]\n") {
 		t.Fatalf("--help: exit %d, stdout %q", code, stdout)
+	}
+}
+
+// REQ-AUTH-021
+func TestUserAdminUsage(t *testing.T) {
+	env := map[string]string{"ASI_DATABASE_URL": "postgres://asi@127.0.0.1:1/asi", "ASI_MASTER_KEY": testKey}
+	for _, args := range [][]string{
+		{"user", "list", "extra"},
+		{"user", "list", "--username", "alice"},
+		{"user", "set-role", "--username", "alice"},
+		{"user", "set-role", "--role", "admin"},
+		{"user", "set-role", "--username", "alice", "--role", "admin", "extra"},
+		{"user", "set-role", "--username", "alice", "--role", "admin", "--force"},
+		{"user", "delete"},
+		{"user", "delete", "--username", "alice", "--role", "admin"},
+		{"user", "delete", "alice"},
+		{"role"},
+		{"role", "frob"},
+		{"role", "list", "extra"},
+	} {
+		code, stdout, stderr := runCLI(env, args...)
+		if code != 2 || stdout != "" {
+			t.Fatalf("%v: exit %d, stdout %q; want 2 and no stdout", args, code, stdout)
+		}
+		assertUsage(t, stderr)
+	}
+
+	code, stdout, _ := runCLI(nil, "--help")
+	for _, line := range []string{
+		"             user list\n",
+		"             user set-role --username U --role R\n",
+		"             user delete --username U\n",
+		"  role       role list\n",
+	} {
+		if code != 0 || !strings.Contains(stdout, line) {
+			t.Fatalf("--help: exit %d, usage lacks %q:\n%s", code, line, stdout)
+		}
+	}
+}
+
+// REQ-AUTH-021
+func TestParseUser(t *testing.T) {
+	cases := []struct {
+		args []string
+		want userAction
+	}{
+		{[]string{"list"}, userAction{verb: "list"}},
+		{[]string{"set-role", "--username", "alice", "--role", "editor"}, userAction{verb: "set-role", userCreateArgs: userCreateArgs{username: "alice", role: "editor"}}},
+		{[]string{"set-role", "--role=viewer", "--username=bob"}, userAction{verb: "set-role", userCreateArgs: userCreateArgs{username: "bob", role: "viewer"}}},
+		{[]string{"delete", "--username", "alice"}, userAction{verb: "delete", userCreateArgs: userCreateArgs{username: "alice"}}},
+		{[]string{"create", "--username", "alice", "--role", "admin", "--password-stdin"}, userAction{verb: "create", userCreateArgs: userCreateArgs{username: "alice", role: "admin"}}},
+	}
+	for _, tc := range cases {
+		got, err := parseUser(tc.args)
+		if err != nil || got != tc.want {
+			t.Fatalf("parseUser(%v) = %+v, %v; want %+v", tc.args, got, err, tc.want)
+		}
+	}
+	if err := parseRole([]string{"list"}); err != nil {
+		t.Fatalf("parseRole(list) = %v", err)
+	}
+}
+
+// REQ-AUTH-021
+func TestUserAdminConfigErrors(t *testing.T) {
+	for _, args := range [][]string{{"user", "list"}, {"user", "delete", "--username", "alice"}, {"role", "list"}} {
+		code, stdout, stderr := runCLI(map[string]string{"ASI_MASTER_KEY": testKey}, args...)
+		if code != 1 || stdout != "" || stderr != "asi "+args[0]+": ASI_DATABASE_URL is not set\n" {
+			t.Fatalf("%v: exit %d, stdout %q, stderr %q", args, code, stdout, stderr)
+		}
 	}
 }

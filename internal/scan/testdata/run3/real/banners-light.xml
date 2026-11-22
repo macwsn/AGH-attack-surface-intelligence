@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.97 scan initiated Sat Nov 21 22:40:21 2026 as: nmap -Pn -sT -sV -&#45;version-light -&#45;versiondb /p/probes.light -p 21,22,25,110,143 -n -oX - vrf-proftpd vrf-pure vrf-postfix vrf-exim vrf-dovpop vrf-dovimap vrf-ssh vrf-fakeftp vrf-fakeftp2 -->
+<nmaprun scanner="nmap" args="nmap -Pn -sT -sV -&#45;version-light -&#45;versiondb /p/probes.light -p 21,22,25,110,143 -n -oX - vrf-proftpd vrf-pure vrf-postfix vrf-exim vrf-dovpop vrf-dovimap vrf-ssh vrf-fakeftp vrf-fakeftp2" start="1795300821" startstr="Sat Nov 21 22:40:21 2026" version="7.97" xmloutputversion="1.05">
+<scaninfo type="connect" protocol="tcp" numservices="5" services="21-22,25,110,143"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1795300821" endtime="1795300821"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.7" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-proftpd" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="ftp" product="ProFTPD" version="1.3.8" ostype="Unix" method="probed" conf="10"><cpe>cpe:/a:proftpd:proftpd:1.3.8</cpe></service></port>
+<port protocol="tcp" portid="22"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="25"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="smtp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="110"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="pop3" method="table" conf="3"/></port>
+<port protocol="tcp" portid="143"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="imap" method="table" conf="3"/></port>
+</ports>
+<times srtt="494" rttvar="1870" to="100000"/>
+</host>
+<host starttime="1795300821" endtime="1795300821"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.8" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-pure" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="ftp" product="Pure-FTPd" method="probed" conf="10"><cpe>cpe:/a:pureftpd:pure-ftpd</cpe></service></port>
+<port protocol="tcp" portid="22"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="25"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="smtp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="110"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="pop3" method="table" conf="3"/></port>
+<port protocol="tcp" portid="143"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="imap" method="table" conf="3"/></port>
+</ports>
+<times srtt="443" rttvar="1847" to="100000"/>
+</host>
+<host starttime="1795300821" endtime="1795300821"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.9" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-postfix" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="22"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="25"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="smtp" product="Postfix smtpd" hostname=" mail.example.org" method="probed" conf="10"><cpe>cpe:/a:postfix:postfix</cpe></service></port>
+<port protocol="tcp" portid="110"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="pop3" method="table" conf="3"/></port>
+<port protocol="tcp" portid="143"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="imap" method="table" conf="3"/></port>
+</ports>
+<times srtt="397" rttvar="1764" to="100000"/>
+</host>
+<host starttime="1795300821" endtime="1795300821"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.10" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-exim" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="22"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="25"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="smtp" product="Exim smtpd" version="4.96" hostname="mx.example.org" method="probed" conf="10"><cpe>cpe:/a:exim:exim:4.96</cpe></service></port>
+<port protocol="tcp" portid="110"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="pop3" method="table" conf="3"/></port>
+<port protocol="tcp" portid="143"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="imap" method="table" conf="3"/></port>
+</ports>
+<times srtt="292" rttvar="1716" to="100000"/>
+</host>
+<host starttime="1795300821" endtime="1795300821"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.11" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-dovpop" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="22"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="25"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="smtp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="110"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="pop3" method="probed" conf="10"/></port>
+<port protocol="tcp" portid="143"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="imap" method="table" conf="3"/></port>
+</ports>
+<times srtt="246" rttvar="1715" to="100000"/>
+</host>
+<host starttime="1795300821" endtime="1795300821"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.12" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-dovimap" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="22"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="25"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="smtp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="110"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="pop3" method="table" conf="3"/></port>
+<port protocol="tcp" portid="143"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="imap" method="probed" conf="10"/></port>
+</ports>
+<times srtt="195" rttvar="1707" to="100000"/>
+</host>
+<host starttime="1795300821" endtime="1795300821"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.13" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-ssh" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="22"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="ssh" product="OpenSSH" version="9.6p1 Ubuntu 3ubuntu13.5" extrainfo="Ubuntu Linux; protocol 2.0" ostype="Linux" method="probed" conf="10"><cpe>cpe:/a:openbsd:openssh:9.6p1</cpe><cpe>cpe:/o:linux:linux_kernel</cpe></service></port>
+<port protocol="tcp" portid="25"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="smtp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="110"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="pop3" method="table" conf="3"/></port>
+<port protocol="tcp" portid="143"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="imap" method="table" conf="3"/></port>
+</ports>
+<times srtt="179" rttvar="1689" to="100000"/>
+</host>
+<host starttime="1795300821" endtime="1795300821"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.5" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-fakeftp" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="ftp" product="vsftpd" version="3.0.2" ostype="Unix" method="probed" conf="10"><cpe>cpe:/a:vsftpd:vsftpd:3.0.2</cpe></service></port>
+<port protocol="tcp" portid="22"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="25"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="smtp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="110"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="pop3" method="table" conf="3"/></port>
+<port protocol="tcp" portid="143"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="imap" method="table" conf="3"/></port>
+</ports>
+<times srtt="129" rttvar="1690" to="100000"/>
+</host>
+<host starttime="1795300821" endtime="1795300821"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.6" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-fakeftp2" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="ftp" method="probed" conf="10"/></port>
+<port protocol="tcp" portid="22"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="25"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="smtp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="110"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="pop3" method="table" conf="3"/></port>
+<port protocol="tcp" portid="143"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="imap" method="table" conf="3"/></port>
+</ports>
+<times srtt="536" rttvar="1844" to="100000"/>
+</host>
+<runstats><finished time="1795300821" timestr="Sat Nov 21 22:40:21 2026" summary="Nmap done at Sat Nov 21 22:40:21 2026; 9 IP addresses (9 hosts up) scanned in 0.33 seconds" elapsed="0.33" exit="success"/><hosts up="9" down="0" total="9"/>
+</runstats>
+</nmaprun>

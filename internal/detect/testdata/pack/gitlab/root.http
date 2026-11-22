@@ -1,0 +1,27 @@
+HTTP/1.1 302 Found
+Server: nginx
+Location: http://fixture.test/users/sign_in
+X-Gitlab-Meta: {"correlation_id":"01HX0000000000000000000000","version":"1"}
+Content-Type: text/html; charset=utf-8
+
+HTTP/1.1 200 OK
+Server: nginx
+Content-Type: text/html; charset=utf-8
+X-Gitlab-Meta: {"correlation_id":"01HX0000000000000000000001","version":"1"}
+X-Frame-Options: DENY
+Set-Cookie: _gitlab_session=0123456789abcdef; path=/; HttpOnly; SameSite=Lax
+
+<!DOCTYPE html>
+<html class="gl-light" lang="en">
+<head>
+<meta content="GitLab" property="og:site_name">
+<meta content="Sign in · GitLab" property="og:title">
+<title>Sign in · GitLab</title>
+</head>
+<body class="ui-indigo login-page application navless">
+<form class="new_user gl-show-field-errors" id="new_user" action="/users/sign_in" method="post">
+<input class="form-control gl-form-input" autocomplete="username" type="text" name="user[login]" id="user_login">
+<input class="form-control gl-form-input" autocomplete="current-password" type="password" name="user[password]" id="user_password">
+</form>
+</body>
+</html>

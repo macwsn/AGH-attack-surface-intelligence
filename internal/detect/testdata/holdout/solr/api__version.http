@@ -1,0 +1,11 @@
+HTTP/1.1 404 Not Found
+Content-Type: application/json;charset=utf-8
+Content-Length: 214
+
+{
+  "error":{
+    "metadata":[
+      "error-class","org.apache.solr.common.SolrException",
+      "root-error-class","org.apache.solr.common.SolrException"],
+    "msg":"no core retrieved for null",
+    "code":404}}

@@ -1,0 +1,13 @@
+{{define "content"}}{{with .Data}}
+<div class="page-head"><div><h1>Availability of <span class="addr">{{.Address}}</span></h1>
+<p class="lede">Share of covering runs that saw the host, per hour of the day in the timezone of its scans.</p></div></div>
+<section class="panel">
+<header><h2>Hours of the day</h2></header>
+<div class="body">
+<dl class="kv">
+<dt>Hours 00-23</dt><dd>{{template "availability-strip" .}}</dd>
+<dt>Covering runs</dt><dd class="num">{{.Samples}}</dd>
+</dl>
+</div>
+</section>
+{{end}}{{end}}

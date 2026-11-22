@@ -3,6 +3,7 @@ package scantest
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -122,6 +123,9 @@ func (rt roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req.Clone(context.WithValue(req.Context(), targetKey{}, rt.target)))
+	if err := req.Context().Err(); err != nil {
+		return nil, err
+	}
 	resp := rec.Result()
 	resp.Request = req
 	return resp, nil
@@ -145,15 +149,54 @@ func hostOf(target string) string {
 
 type Store struct {
 	Prev           []string
+	Known          []inventory.KnownService
+	Favicons       map[inventory.FaviconKey]string
 	OnRecordGroup  func(g inventory.GroupResult) error
+	OnSetStatus    func(status inventory.RunStatus) error
 	AfterRecording func(g inventory.GroupResult)
 
-	mu       sync.Mutex
-	groups   map[int]inventory.GroupResult
-	failed   map[int]inventory.FailedGroup
-	late     [][]inventory.HostResult
-	statuses []inventory.RunStatus
-	total    int
+	mu         sync.Mutex
+	groups     map[int]inventory.GroupResult
+	failed     map[int]inventory.FailedGroup
+	late       [][]inventory.HostResult
+	statuses   []inventory.RunStatus
+	total      int
+	heartbeats int
+	inFlight   []int
+	rates      map[time.Time]inventory.RateSample
+	packets    int
+}
+
+func (s *Store) RecordRateSamples(ctx context.Context, _ int64, samples []inventory.RateSample) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.rates == nil {
+		s.rates = map[time.Time]inventory.RateSample{}
+	}
+	for _, r := range samples {
+		cur, ok := s.rates[r.Minute]
+		if ok {
+			r.Effective = max(r.Effective, cur.Effective)
+			r.Sent += cur.Sent
+			r.Packets += cur.Packets
+		}
+		s.rates[r.Minute] = r
+	}
+	return nil
+}
+
+func (s *Store) RateSamples() []inventory.RateSample {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]inventory.RateSample, 0, len(s.rates))
+	for _, r := range s.rates {
+		out = append(out, r)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Minute.Before(out[j].Minute) })
+	return out
 }
 
 func (s *Store) RecordGroup(ctx context.Context, _ int64, g inventory.GroupResult) error {
@@ -239,10 +282,35 @@ func (s *Store) AddressTotal() int {
 }
 
 func (s *Store) SetRunStatus(_ context.Context, _ int64, status inventory.RunStatus) error {
+	if s.OnSetStatus != nil {
+		if err := s.OnSetStatus(status); err != nil {
+			return err
+		}
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.statuses = append(s.statuses, status)
 	return nil
+}
+
+func (s *Store) Heartbeat(_ context.Context, _ int64, inFlight int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.heartbeats++
+	s.inFlight = append(s.inFlight, inFlight)
+	return nil
+}
+
+func (s *Store) InFlight() []int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.inFlight)
+}
+
+func (s *Store) Heartbeats() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.heartbeats
 }
 
 func (s *Store) Total() int {
@@ -253,6 +321,10 @@ func (s *Store) Total() int {
 
 func (s *Store) PreviouslyLiveAddresses(context.Context, int64) ([]string, error) {
 	return slices.Clone(s.Prev), nil
+}
+
+func (s *Store) PreviousFavicons(context.Context, int64) (map[inventory.FaviconKey]string, error) {
+	return maps.Clone(s.Favicons), nil
 }
 
 func (s *Store) Export(_ context.Context, run string) (inventory.Export, error) {
@@ -304,4 +376,47 @@ func (s *Store) hosts() []inventory.HostResult {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Address < out[j].Address })
 	return out
+}
+
+func (s *Store) AddRunPackets(_ context.Context, _ int64, packets int) error {
+	if packets < 0 {
+		return fmt.Errorf("negative packet count %d", packets)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.packets += packets
+	return nil
+}
+
+func (s *Store) Packets() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.packets
+}
+
+func (s *Store) RecheckPlan(_ context.Context, run inventory.Run, inScope func(string) bool) (inventory.Run, []inventory.KnownService, error) {
+	order := map[string]int{}
+	for i, a := range run.Settings.Hosts {
+		if _, dup := order[a]; !dup {
+			order[a] = i
+		}
+	}
+	var out []inventory.KnownService
+	for _, k := range s.Known {
+		if inScope != nil && !inScope(k.Address) {
+			continue
+		}
+		if len(run.Settings.Ports) > 0 && !slices.Contains(run.Settings.Ports, k.Port) {
+			continue
+		}
+		if _, ok := order[k.Address]; len(order) > 0 && !ok {
+			continue
+		}
+		out = append(out, k)
+	}
+	sort.SliceStable(out, func(a, b int) bool { return order[out[a].Address] < order[out[b].Address] })
+	if len(out) == 0 {
+		return inventory.Run{}, nil, fmt.Errorf("recheck base: %w", inventory.ErrNoRecheckBase)
+	}
+	return inventory.Run{Name: "base", Status: inventory.RunCompleted}, out, nil
 }

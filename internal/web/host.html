@@ -1,0 +1,141 @@
+{{define "content"}}{{with .Data}}
+<div class="page-head"><div><h1><span class="addr">{{.Address}}</span></h1>
+<p class="lede">{{with .DisplayName}}{{.}} · {{end}}{{with .Hostnames}}<span class="addr">{{.}}</span> · {{end}}State as of run {{.Run}}.</p></div>
+<div class="actions">{{if .Form}}<a class="btn primary" href="/hosts/{{.Address}}?edit=1#edit">Edit host</a>{{end}}<a class="btn" href="/hosts/">All hosts</a><a class="btn" href="/hosts/{{.Address}}/timeline">Timeline</a>{{if .CanDelete}}<a class="btn danger" href="/hosts/{{.Address}}/delete">Delete host {{.Address}}</a>{{end}}</div></div>
+{{if .Saved}}<div class="notice ok">Saved. Later scans keep these values.</div>{{end}}
+{{with .Deleted}}<div class="notice ok" role="status">Service {{.}} deleted.</div>{{end}}
+{{with .Form}}{{if .Problems}}<div class="notice error">The changes were not saved. Fix the marked fields and save again.</div>{{end}}{{end}}
+
+<div class="figures">
+<div class="figure"><span class="value"><span class="status {{.Status}}">{{.StatusLabel}}</span></span><span class="label">Status</span></div>
+<div class="figure"><span class="value">{{.MissedRuns}}</span><span class="label">Missed runs</span></div>
+<div class="figure"><span class="value">{{.Stability}}%</span><span class="label">Stability, last 10 runs</span></div>
+<div class="figure{{if .InterestHigh}} is-alert{{end}}"><span class="value">{{.Interest}}</span><span class="label">Interest</span></div>
+<div class="figure"><span class="value">{{len .Services}}</span><span class="label">Services</span></div>
+</div>
+
+<section class="panel" id="owned">
+<header><h2>Owner, tags and notes</h2></header>
+<div class="body">
+<dl class="kv">
+<dt>Tags</dt><dd>{{if .Tags}}<div class="marks">{{range .Tags}}<span class="tag">{{.}}</span>{{end}}</div>{{else}}<span class="muted">None</span>{{end}}</dd>
+<dt>Owner</dt><dd>{{with .Owner}}{{.}}{{else}}<span class="muted">Not set</span>{{end}}</dd>
+<dt>Criticality</dt><dd>{{with .Criticality}}{{.}}{{else}}<span class="muted">Not set</span>{{end}}</dd>
+<dt>Status override</dt><dd>{{with .StatusOverride}}{{.}}{{else}}<span class="muted">None</span>{{end}}</dd>
+<dt>Notes</dt><dd>{{with .Notes}}{{.}}{{else}}<span class="muted">None</span>{{end}}</dd>
+</dl>
+</div>
+</section>
+
+<h2>Services</h2>
+{{if .Services}}<div class="table-wrap">
+<table class="data">
+<thead><tr><th>Port</th><th>State</th><th>Status</th><th>Service</th><th>Product</th><th>Findings</th>{{if .CanDelete}}<th>Actions</th>{{end}}</tr></thead>
+<tbody>
+{{range .Services}}<tr{{if eq .Status "inactive"}} class="is-off"{{end}}>
+<td class="addr">{{.Key}}</td><td>{{.State}}</td><td><span class="status {{.Status}}">{{.StatusLabel}}</span></td>
+<td>{{.Name}}</td><td>{{.Product}}</td>
+<td><div class="marks">{{range .Kinds}}<span class="kind {{.Class}}">{{.Label}} <span class="num">{{.Count}}</span></span>{{end}}</div></td>
+{{if $.Data.CanDelete}}<td><a class="btn small danger" href="/hosts/{{$.Data.Address}}/services/{{.Port}}/{{.Protocol}}/delete">Delete service {{$.Data.Address}} {{.Port}}/{{.Protocol}}</a></td>{{end}}
+</tr>
+{{end}}</tbody>
+</table>
+</div>{{else}}<div class="empty"><p>No services seen on this host.</p></div>{{end}}
+
+{{range .Services}}{{if or .HTTP .Technologies .Findings .Volatile}}
+<section class="panel">
+<header><h2>Service {{.Key}}</h2>{{with .Name}}<span class="muted">{{.}}</span>{{end}}</header>
+{{with .HTTP}}<div class="body">
+<dl class="kv">
+{{with .URL}}<dt>URL</dt><dd class="addr">{{.}}</dd>{{end}}
+<dt>Status code</dt><dd class="num">{{.StatusCode}}</dd>
+<dt>Title</dt><dd>{{with .Title}}{{.}}{{else}}<span class="muted">None</span>{{end}}</dd>
+<dt>Server</dt><dd>{{with .Server}}{{.}}{{else}}<span class="muted">Not sent</span>{{end}}</dd>
+{{with .Redirects}}<dt>Redirects</dt><dd class="addr">{{range .}}{{.}}<br>{{end}}</dd>{{end}}
+{{with .Cookies}}<dt>Cookies</dt><dd class="addr">{{range .}}{{.}}<br>{{end}}</dd>{{end}}
+{{with .TLS}}<dt>Certificate subject</dt><dd>{{.Subject}}</dd>
+<dt>Issuer</dt><dd>{{.Issuer}}</dd>
+{{with .SANs}}<dt>Names</dt><dd class="addr">{{.}}</dd>{{end}}
+<dt>Valid until</dt><dd>{{.NotAfter}}</dd>
+<dt>Self-signed</dt><dd>{{if .SelfSigned}}Yes{{else}}No{{end}}</dd>{{end}}
+</dl>
+</div>
+{{if .Headers}}<table class="data">
+<thead><tr><th>Header</th><th>Value</th></tr></thead>
+<tbody>
+{{range .Headers}}<tr><td class="addr">{{.Key}}</td><td class="wrap">{{.Value}}</td></tr>
+{{end}}</tbody>
+</table>{{end}}{{end}}
+{{if .Technologies}}<table class="data">
+<thead><tr><th>Technology</th><th>Category</th><th>Version</th><th>Source</th><th class="num">Confidence</th></tr></thead>
+<tbody>
+{{range .Technologies}}<tr><td>{{.Name}}</td><td>{{.Category}}</td><td>{{.Version}}</td><td class="muted">{{.Source}}</td><td class="num"><span class="meter"><progress max="100" value="{{.Confidence}}"></progress>{{.Confidence}}</span></td></tr>
+{{end}}</tbody>
+</table>{{end}}
+{{if .Findings}}<table class="data">
+<thead><tr><th>Finding</th><th>Name</th><th>Signature</th><th>Evidence</th><th class="num">Confidence</th></tr></thead>
+<tbody>
+{{range .Findings}}<tr><td><span class="kind {{.Mark.Class}}">{{.Mark.Label}}</span></td><td>{{.Name}}{{with .Version}} {{.}}{{end}}</td><td class="addr">{{.SignatureID}}</td><td class="wrap addr">{{.Evidence}}</td><td class="num"><span class="meter"><progress max="100" value="{{.Confidence}}"></progress>{{.Confidence}}</span></td></tr>
+{{end}}</tbody>
+</table>{{end}}
+{{if .Volatile}}<table class="data">
+<thead><tr><th>Changes every run</th><th>Last values</th></tr></thead>
+<tbody>
+{{range .Volatile}}<tr><td class="addr">{{.Field}}</td><td class="wrap addr">{{range .Values}}{{.}}<br>{{end}}</td></tr>
+{{end}}</tbody>
+</table>{{end}}
+</section>
+{{end}}{{end}}
+<h2>Response times</h2>
+<p class="muted">Web services of this host over the last {{.Window}} runs. A service is slower than usual when its latest time is above three times the median and above 500 ms.</p>
+{{if .Timings}}<div class="table-wrap">
+<table class="data">
+<thead><tr><th class="num">Port</th><th>Service</th><th class="num">Latest response time</th><th class="num">Median of last {{.Window}} runs</th><th class="num">Runs</th><th>Marks</th></tr></thead>
+<tbody>
+{{range .Timings}}<tr><td class="num addr">{{.Port}}/{{.Protocol}}</td><td>{{.Service}}</td><td class="num">{{.LatestMS}} ms</td><td class="num">{{.MedianMS}} ms</td><td class="num">{{.Runs}}</td><td><div class="marks">{{if .Slower}}<span class="kind slow">Slower than usual</span>{{end}}{{if eq .Error "timeout"}}<span class="kind timeout">Timed out</span>{{end}}</div></td></tr>
+{{end}}</tbody>
+</table>
+</div>{{else}}<div class="empty"><p>No response times yet. They are recorded when a scan reaches a web service on this host.</p></div>{{end}}
+
+<div class="cols">
+<section class="panel">
+<header><h2>Host</h2></header>
+<div class="body">
+<dl class="kv">
+<dt>First seen</dt><dd>{{.FirstSeen}}</dd>
+<dt>Last seen</dt><dd>{{.LastSeen}}</dd>
+<dt>Availability</dt><dd>{{template "availability-strip" .Availability}}{{if .Availability.Samples}} <a href="/hosts/{{.Address}}/availability">By hour</a>{{end}}</dd>
+<dt>Hostnames</dt><dd class="addr">{{with .Hostnames}}{{.}}{{else}}<span class="muted">None</span>{{end}}</dd>
+</dl>
+</div>
+</section>
+
+<section class="panel">
+<header><h2>History</h2></header>
+{{if .History}}<table class="data">
+<thead><tr><th>Run</th><th>Date</th><th>Host</th><th>Services seen</th></tr></thead>
+<tbody>
+{{range .History}}<tr><td>{{.Run}}</td><td class="nowrap">{{.Date}}</td><td>{{if .Seen}}<span class="status active">Seen</span>{{else}}<span class="status inactive">Missed</span>{{end}}</td><td class="addr">{{.Services}}</td></tr>
+{{end}}</tbody>
+</table>{{else}}<div class="empty"><p>No run has covered this address.</p></div>{{end}}
+</section>
+</div>
+
+{{with .Form}}
+<details class="panel" id="edit"{{if or .Problems $.Data.EditOpen}} open{{end}}>
+<summary>Edit host</summary>
+<div class="body">
+<form method="post" action="/hosts/{{$.Data.Address}}">{{$.CSRFField}}
+<label class="field"><span>Tags</span><input type="text" name="tags" value="{{.Tags}}"{{if .Problems.tags}} aria-invalid="true"{{end}}><span class="hint">Separate tags with commas.</span>{{with .Problems.tags}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Display name</span><input type="text" name="display_name" value="{{.DisplayName}}"{{if .Problems.display_name}} aria-invalid="true"{{end}}>{{with .Problems.display_name}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Owner</span><input type="text" name="owner" value="{{.Owner}}"{{if .Problems.owner}} aria-invalid="true"{{end}}><span class="hint">Who to ask about this host.</span>{{with .Problems.owner}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Criticality</span><select name="criticality"{{if .Problems.criticality}} aria-invalid="true"{{end}}>{{range .Criticalities}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select>{{with .Problems.criticality}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Status override</span><select name="status_override"{{if .Problems.status_override}} aria-invalid="true"{{end}}>{{range .Overrides}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select><span class="hint">Shown next to the status the scans derive; it does not replace it.</span>{{with .Problems.status_override}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Notes</span><textarea name="notes"{{if .Problems.notes}} aria-invalid="true"{{end}}>{{.Notes}}</textarea>{{with .Problems.notes}}<span class="problem">{{.}}</span>{{end}}</label>
+<div class="form-actions"><button class="primary" type="submit">Save changes</button><a class="btn" href="/hosts/{{$.Data.Address}}">Cancel</a></div>
+</form>
+</div>
+</details>
+{{end}}
+
+{{end}}{{end}}

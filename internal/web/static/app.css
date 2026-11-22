@@ -92,7 +92,9 @@ p { margin: 0 0 var(--s3); max-width: 70ch; }
 }
 .brand { display: block; padding: 0 var(--s2); color: #fff; text-decoration: none; font-weight: 700; font-size: var(--t-lg); }
 .brand small { display: block; font-weight: 400; font-size: var(--t-xs); color: #a9b5ad; }
-.rail nav { display: flex; flex-direction: column; gap: 1px; }
+.rail nav { display: flex; flex-direction: column; gap: var(--s3); }
+.nav-group { display: flex; flex-direction: column; gap: 1px; }
+.nav-heading { padding: 0 var(--s2); font-size: var(--t-xs); font-weight: 600; color: #a9b5ad; text-transform: uppercase; }
 .rail nav a {
   padding: var(--s2);
   border-radius: var(--radius);
@@ -118,10 +120,12 @@ main { padding: var(--s5) var(--s6) var(--s6); min-width: 0; }
 .page-head .actions { margin-left: auto; display: flex; gap: var(--s2); }
 
 /* ---- panel: a titled section; no shadows, no rounded cards ---- */
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: var(--s5); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: var(--s5); overflow-x: auto; }
 .panel > header { display: flex; align-items: baseline; gap: var(--s3); padding: var(--s3) var(--s4); border-bottom: 1px solid var(--line); }
 .panel > header .more { margin-left: auto; font-size: var(--t-sm); }
 .panel > .body { padding: var(--s4); }
+details.panel > summary { padding: var(--s3) var(--s4); font-weight: 600; cursor: pointer; }
+details.panel[open] > summary { border-bottom: 1px solid var(--line); }
 main > h2 { margin: var(--s5) 0 var(--s3); }
 .panel > table.data { border: 0; }
 .cols { display: grid; gap: var(--s5); grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr)); align-items: start; }
@@ -146,7 +150,7 @@ table.data thead th[aria-sort="ascending"] a::after { content: " \2191"; }
 table.data tbody tr:hover { background: #f7f9f6; }
 table.data tbody tr:last-child td { border-bottom: 0; }
 table.data td.num, table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
-table.data td.wrap { max-width: 28rem; overflow-wrap: anywhere; }
+table.data td.wrap, table.data td.diff { max-width: 28rem; overflow-wrap: anywhere; }
 table.data tr.is-off td { color: var(--ink-3); }
 
 /* ---- status, change and kind marks: a dot plus a word, never colour alone ---- */
@@ -165,8 +169,8 @@ table.data tr.is-off td { color: var(--ink-3); }
 .tag, .kind { display: inline-block; padding: 0 0.4rem; border-radius: var(--radius); font-size: var(--t-xs); line-height: 1.6; white-space: nowrap; }
 .tag { background: var(--sunken); color: var(--ink-2); border: 1px solid var(--line); }
 .kind { border: 1px solid currentColor; font-weight: 600; }
-.kind.admin-panel, .kind.interesting-header, .kind.interesting-cookie { color: var(--alert); background: var(--alert-tint); }
-.kind.staging { color: var(--warn); background: var(--warn-tint); }
+.kind.admin-panel, .kind.interesting-header, .kind.interesting-cookie, .kind.timeout { color: var(--alert); background: var(--alert-tint); }
+.kind.staging, .kind.slow, .kind.outdated { color: var(--warn); background: var(--warn-tint); }
 .kind.iot { color: var(--changed); background: var(--changed-tint); }
 .kind.technology { color: var(--green-dark); background: var(--green-tint); }
 .kind.custom { color: var(--new); background: var(--new-tint); }
@@ -190,6 +194,9 @@ dl.kv dd { margin: 0; overflow-wrap: anywhere; }
 .diff { font-family: var(--mono); font-size: 0.92em; }
 .diff del { background: var(--alert-tint); color: var(--alert); text-decoration: line-through; padding: 0 0.2rem; }
 .diff ins { background: var(--ok-tint); color: var(--ok); text-decoration: none; padding: 0 0.2rem; }
+.diff .none { color: var(--off); }
+.diff del + ins::before, .diff del + .none::before, .diff .none + ins::before { content: "\2192\00a0"; color: var(--off); }
+.diff details > summary { cursor: pointer; }
 
 /* ---- presence strip: one cell per run, oldest first ---- */
 .presence { display: inline-flex; gap: 2px; vertical-align: middle; }
@@ -197,6 +204,24 @@ dl.kv dd { margin: 0; overflow-wrap: anywhere; }
 .presence i.seen { background: var(--ok); }
 .presence i.missed { background: var(--alert-tint); border: 1px solid var(--alert); }
 .presence i.uncovered { background: transparent; border: 1px dashed var(--line-strong); }
+
+/* ---- presence strip as inline SVG (host timeline): <svg class="strip"> with one <rect> per run, oldest first ---- */
+svg.strip { display: block; max-width: 100%; }
+svg.strip rect { fill: var(--sunken); }
+svg.strip rect.seen { fill: var(--ok); }
+svg.strip rect.missed { fill: var(--alert-tint); stroke: var(--alert); stroke-width: 1px; }
+svg.strip rect.uncovered { fill: transparent; stroke: var(--line-strong); stroke-width: 1px; stroke-dasharray: 2 2; }
+
+/* ---- change chart (dashboard): <svg class="chart"> with one <g> per run holding new / missing / changed bars ---- */
+svg.chart { display: block; max-width: 100%; margin-top: var(--s3); }
+svg.chart rect.new { fill: var(--new); }
+svg.chart rect.missing { fill: var(--alert); }
+svg.chart rect.changed { fill: var(--changed); }
+svg.chart line.axis { stroke: var(--line-strong); stroke-width: 1px; }
+svg.chart text { fill: var(--ink-2); font-size: var(--t-xs); }
+/* rate chart (run page): <rect class="sent"> per minute, <polyline class="limit"> for the effective limit */
+svg.chart rect.sent { fill: var(--ink-3); }
+svg.chart polyline.limit { fill: none; stroke: var(--ink); stroke-width: 1px; }
 
 /* ---- horizontal bars for small distributions: <progress class="bar" max value>, no inline styles (CSP) ---- */
 .bars { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; gap: var(--s1) var(--s3); align-items: center; font-size: var(--t-sm); }
@@ -227,6 +252,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
 [aria-invalid="true"] { border-color: var(--alert); }
 .check { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s2); }
 .form-actions { display: flex; gap: var(--s2); margin-top: var(--s4); }
+.condition { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--line); }
+.condition .field { flex: 1 1 9rem; margin-bottom: var(--s3); }
+.condition .field.grow { flex: 2 1 14rem; }
+.condition > button { margin-top: var(--s5); }
 
 .btn, button {
   display: inline-flex;
@@ -265,6 +294,16 @@ button:disabled, .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed;
 .notice.ok { border-color: var(--ok); background: var(--ok-tint); }
 .notice.warn { border-color: var(--warn); background: var(--warn-tint); }
 .notice.error { border-color: var(--alert); background: var(--alert-tint); }
+/* ---- dashboard: needs attention and first-run steps ---- */
+.attention { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+.attention-group ul { list-style: none; margin: var(--s2) 0 0; padding: 0; }
+.attention-group li { padding: var(--s1) 0; border-top: 1px solid var(--line); }
+.attention-group p { margin: var(--s2) 0 0; font-size: var(--t-sm); }
+.steps { margin: 0; padding-left: var(--s5); }
+.steps > li { padding: var(--s2) 0 var(--s3); }
+.steps > li + li { border-top: 1px solid var(--line); }
+.steps p { margin: var(--s1) 0 0; }
+.step-actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
 .empty { padding: var(--s6) var(--s4); text-align: center; color: var(--ink-2); }
 .empty p { margin-left: auto; margin-right: auto; }
 
@@ -277,9 +316,10 @@ button:disabled, .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed;
 .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { opacity: 1; }
 
 @media (max-width: 56rem) {
-  .shell { grid-template-columns: 1fr; }
+  .shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .rail { position: static; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--s3); }
   .rail nav { flex-direction: row; flex-wrap: wrap; }
+  .nav-group { flex-direction: row; flex-wrap: wrap; align-items: center; }
   .account { margin: 0 0 0 auto; padding: 0; border: 0; display: flex; align-items: center; gap: var(--s2); }
   .account .role { margin: 0; }
   main { padding: var(--s4); }

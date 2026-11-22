@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -13,6 +15,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"asi/internal/detect"
@@ -710,6 +713,123 @@ func TestDatabaseSignaturesJoinDirectorySignatures(t *testing.T) {
 	}
 }
 
+type sharedSignatures struct {
+	storedSignatures
+	dir string
+}
+
+func (s sharedSignatures) Set(ctx context.Context) (*detect.Set, error) {
+	sigs, err := s.Enabled(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.dir != "" {
+		files, err := detect.LoadDir(s.dir)
+		if err != nil {
+			return nil, err
+		}
+		sigs = append(files.Signatures, sigs...)
+	}
+	return &detect.Set{Signatures: sigs}, nil
+}
+
+func (s sharedSignatures) Dir() string { return s.dir }
+
+// R11 AC2: a scan with a shared signature source matches its whole set (server directory and database), and a run
+// whose signatures directory is the server's own does not load that directory a second time.
+func TestScanUsesSharedSignatureSet(t *testing.T) {
+	tr := &scantest.Transport{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "<title>x</title>page-a page-b page-c")
+	})}
+	r := &nmaptest.Runner{DiscoverFunc: allUp, ServicesFunc: openPorts(80)}
+	dir := writeSignatures(t)
+	dbSig := "id: sig-c\nname: C\nkind: custom\nconfidence: 40\nmatch: {all: [{type: body_regex, value: page-c}]}\n"
+	for _, runDir := range []string{"", dir} {
+		settings := inventory.RunSettings{Targets: []string{"10.8.0.1"}, Ports: []int{80}, MaxRate: 100, Workers: 1, SignaturesDir: runDir}
+		st := &scantest.Store{}
+		s := &scan.Scanner{Store: st, Runner: r, Transport: tr.For, Signatures: sharedSignatures{storedSignatures{dbSig}, dir}}
+		if err := s.Run(context.Background(), testRun(settings)); err != nil {
+			t.Fatalf("Run with run dir %q: %v", runDir, err)
+		}
+		var ids []string
+		for _, f := range st.Hosts()[0].Services[0].Findings {
+			ids = append(ids, f.SignatureID)
+		}
+		slices.Sort(ids)
+		if !slices.Equal(ids, []string{"sig-a", "sig-b", "sig-c"}) {
+			t.Fatalf("run dir %q: findings = %v, want the shared directory and database signatures", runDir, ids)
+		}
+	}
+}
+
+// REQ-SCAN-010
+func TestSlowServicesRecordedOpenWithTimeout(t *testing.T) {
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+	hold := func(r *http.Request, d time.Duration) bool {
+		select {
+		case <-release:
+		case <-r.Context().Done():
+		case <-time.After(d):
+			return true
+		}
+		return false
+	}
+	handlers := []http.HandlerFunc{
+		func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "<title>fast</title>") },
+		func(w http.ResponseWriter, r *http.Request) { hold(r, time.Hour) },
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Length", "100000")
+			for hold(r, 10*time.Millisecond) {
+				fmt.Fprint(w, "aaaaaaaaaa")
+				w.(http.Flusher).Flush()
+			}
+		},
+		func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, "<title>open forever</title>")
+			w.(http.Flusher).Flush()
+			hold(r, time.Hour)
+		},
+	}
+	var ports []int
+	for _, h := range handlers {
+		srv := httptest.NewServer(h)
+		t.Cleanup(srv.Close)
+		u, _ := url.Parse(srv.URL)
+		p, _ := strconv.Atoi(u.Port())
+		ports = append(ports, p)
+	}
+	r := &nmaptest.Runner{DiscoverFunc: allUp, ServicesFunc: openPorts(ports...)}
+	st := &scantest.Store{}
+	settings := inventory.RunSettings{Targets: []string{"127.0.0.1"}, Ports: ports, MaxRate: 100, Workers: 1, HTTPTimeoutMS: 300}
+	begin := time.Now()
+	if err := (&scan.Scanner{Store: st, Runner: r}).Run(context.Background(), testRun(settings)); err != nil {
+		t.Fatal(err)
+	}
+	if d := time.Since(begin); d > 3*time.Second {
+		t.Errorf("run took %s with a 300ms http timeout", d)
+	}
+	hosts := st.Hosts()
+	if len(hosts) != 1 || len(hosts[0].Services) != len(ports) {
+		t.Fatalf("hosts = %+v", hosts)
+	}
+	for _, s := range hosts[0].Services {
+		if s.State != "open" || s.HTTP == nil {
+			t.Fatalf("service %d = %+v", s.Port, s)
+		}
+		want := "timeout"
+		if s.Port == ports[0] {
+			want = ""
+			if s.HTTP.Title != "fast" {
+				t.Errorf("fast service = %+v", s.HTTP)
+			}
+		}
+		if s.HTTP.Error != want || s.HTTP.ResponseMS <= 0 {
+			t.Errorf("service %d: error %q response_time_ms %d, want error %q", s.Port, s.HTTP.Error, s.HTTP.ResponseMS, want)
+		}
+	}
+}
+
 // REQ-SCAN-002
 func TestMaxRateOneRejected(t *testing.T) {
 	r := &nmaptest.Runner{DiscoverFunc: allUp, ServicesFunc: openPorts(80)}
@@ -720,5 +840,252 @@ func TestMaxRateOneRejected(t *testing.T) {
 	}
 	if c := r.Calls(); len(c) != 0 {
 		t.Fatalf("nmap calls = %v, want none", c)
+	}
+}
+
+// REQ-SCAN-011
+func TestParsePortsListsRangesPresets(t *testing.T) {
+	got, err := scan.ParsePorts("21,80,8000-8100,21000-21010, 80 ,8050")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2+101+11 || got[0] != 21 || got[1] != 80 || got[2] != 8000 || got[102] != 8100 || got[103] != 21000 || got[len(got)-1] != 21010 {
+		t.Fatalf("ParsePorts = %v", got)
+	}
+	if !slices.IsSorted(got) || len(slices.Compact(slices.Clone(got))) != len(got) {
+		t.Fatalf("ParsePorts not normalised: %v", got)
+	}
+	if f := scan.FormatPorts(got); f != "21,80,8000-8100,21000-21010" {
+		t.Fatalf("FormatPorts = %q", f)
+	}
+	for preset, n := range map[string]int{"top100": 100, "top1000": 1000, "all": 65535, "TOP100": 100} {
+		p, err := scan.ParsePorts(preset)
+		if err != nil || len(p) != n || !slices.IsSorted(p) {
+			t.Fatalf("ParsePorts(%q) = %d ports, %v; want %d", preset, len(p), err, n)
+		}
+	}
+	top, _ := scan.ParsePorts("top100")
+	for _, want := range []int{22, 80, 443, 3306, 8080} {
+		if !slices.Contains(top, want) {
+			t.Fatalf("top100 lacks %d", want)
+		}
+	}
+	mixed, err := scan.ParsePorts("top100,8787,22")
+	if err != nil || len(mixed) != 101 || !slices.Contains(mixed, 8787) {
+		t.Fatalf("ParsePorts(top100,8787,22) = %d ports, %v", len(mixed), err)
+	}
+	for bad, part := range map[string]string{
+		"80,8100-8000": `"8100-8000"`, "80,abc": `"abc"`, "80,": `""`, "1-65536": `"1-65536"`, "0-10": `"0-10"`,
+		"80-": `"80-"`, "-80": `"-80"`, "1-2-3": `"1-2-3"`, "top10": `"top10"`, "+80": `"+80"`,
+	} {
+		_, err := scan.ParsePorts(bad)
+		if err == nil || !strings.Contains(err.Error(), part) {
+			t.Errorf("ParsePorts(%q) error = %v, want it to name %s", bad, err, part)
+		}
+	}
+}
+
+// REQ-SCAN-002
+func TestSingleHostGetsWholeNmapShare(t *testing.T) {
+	r := &nmaptest.Runner{DiscoverFunc: allUp, ServicesFunc: openPorts()}
+	ports, err := scan.ParsePorts("1-64")
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := inventory.RunSettings{Targets: []string{"127.0.0.1"}, Ports: ports, MaxRate: 100, Workers: 4}
+	if err := (&scan.Scanner{Store: &scantest.Store{}, Runner: r}).Run(context.Background(), testRun(settings)); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range r.Calls() {
+		if c.Opts.MaxRate != 50 {
+			t.Fatalf("%s MaxRate = %d, want 50 (max rate 100 / 2, one address so one nmap call at a time)", c.Method, c.Opts.MaxRate)
+		}
+		if c.Method == "Services" && len(c.Ports) != 64 {
+			t.Fatalf("Services ports = %v", c.Ports)
+		}
+	}
+}
+
+type mapResolver map[string]string
+
+func (m mapResolver) LookupNetIP(_ context.Context, _, host string) ([]netip.Addr, error) {
+	a, ok := m[host]
+	if !ok {
+		return nil, errors.New("no such host")
+	}
+	return []netip.Addr{netip.MustParseAddr(a)}, nil
+}
+
+// REQ-SCAN-012
+func TestHostnameTargetUsedForHostHeaderAndSNI(t *testing.T) {
+	type seen struct{ host, sni string }
+	var (
+		mu  sync.Mutex
+		got []seen
+	)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s := seen{host: r.Host}
+		if r.TLS != nil {
+			s.sni = r.TLS.ServerName
+		}
+		mu.Lock()
+		got = append(got, s)
+		mu.Unlock()
+		fmt.Fprint(w, "<title>app</title>")
+	})
+	plain := httptest.NewServer(handler)
+	defer plain.Close()
+	secure := httptest.NewTLSServer(handler)
+	defer secure.Close()
+	portOf := func(raw string) int {
+		u, _ := url.Parse(raw)
+		p, _ := strconv.Atoi(u.Port())
+		return p
+	}
+	httpPort, tlsPort := portOf(plain.URL), portOf(secure.URL)
+	r := &nmaptest.Runner{DiscoverFunc: allUp, ServicesFunc: func(_ context.Context, addrs []string, _ []int, _ nmap.Options) ([]nmap.Host, error) {
+		return []nmap.Host{{Address: addrs[0], Up: true, Ports: []nmap.Port{
+			{Number: httpPort, Protocol: "tcp", State: "open", Service: "http"},
+			{Number: tlsPort, Protocol: "tcp", State: "open", Service: "http", Tunnel: "ssl"},
+		}}}, nil
+	}}
+	for _, name := range []string{"host.docker.internal", "localhost"} {
+		got = nil
+		st := &scantest.Store{}
+		settings := inventory.RunSettings{Targets: []string{name}, Ports: []int{httpPort, tlsPort}, MaxRate: 100, Workers: 1}
+		sc := &scan.Scanner{Store: st, Runner: r, Resolver: mapResolver{name: "127.0.0.1"}}
+		if err := sc.Run(context.Background(), testRun(settings)); err != nil {
+			t.Fatalf("%s: Run: %v", name, err)
+		}
+		hosts := st.Hosts()
+		if len(hosts) != 1 || hosts[0].Address != "127.0.0.1" || !slices.Contains(hosts[0].Hostnames, name) || len(hosts[0].Services) != 2 {
+			t.Fatalf("%s: hosts = %+v", name, hosts)
+		}
+		for _, svc := range hosts[0].Services {
+			if svc.HTTP == nil || svc.HTTP.Title != "app" || !strings.Contains(svc.HTTP.URL, name) {
+				t.Fatalf("%s: service %d http = %+v", name, svc.Port, svc.HTTP)
+			}
+		}
+		mu.Lock()
+		want := map[seen]bool{{host: fmt.Sprintf("%s:%d", name, httpPort)}: true, {host: fmt.Sprintf("%s:%d", name, tlsPort), sni: name}: true}
+		for _, s := range got {
+			if !want[s] {
+				t.Errorf("%s: request with Host %q SNI %q, want one of %v", name, s.host, s.sni, want)
+			}
+		}
+		if len(got) == 0 {
+			t.Errorf("%s: no requests", name)
+		}
+		mu.Unlock()
+	}
+}
+
+// REQ-SCAN-012
+func TestHostnameResolvingToPrivateAddressKeepsName(t *testing.T) {
+	r := &nmaptest.Runner{DiscoverFunc: allUp, ServicesFunc: openPorts()}
+	st := &scantest.Store{}
+	settings := inventory.RunSettings{Targets: []string{"host.docker.internal", "127.0.0.1"}, Ports: []int{8787}, MaxRate: 100, Workers: 1}
+	sc := &scan.Scanner{Store: st, Runner: r, Resolver: mapResolver{"host.docker.internal": "192.168.65.254"}}
+	if err := sc.Run(context.Background(), testRun(settings)); err != nil {
+		t.Fatal(err)
+	}
+	byAddr := map[string][]string{}
+	for _, h := range st.Hosts() {
+		byAddr[h.Address] = h.Hostnames
+	}
+	if !slices.Equal(byAddr["192.168.65.254"], []string{"host.docker.internal"}) || len(byAddr["127.0.0.1"]) != 0 || len(byAddr) != 2 {
+		t.Fatalf("hosts = %v", byAddr)
+	}
+}
+
+// REQ-SCAN-024
+func TestRunWritesHeartbeatWhileScanning(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		tr := &scantest.Transport{Hold: make(chan struct{})}
+		r := &nmaptest.Runner{DiscoverFunc: allUp, ServicesFunc: openPorts(80)}
+		st := &scantest.Store{}
+		settings := inventory.RunSettings{Targets: []string{"10.30.0.1"}, Ports: []int{80}, MaxRate: 100, Workers: 1, HTTPTimeoutMS: 45000}
+		s := &scan.Scanner{Store: st, Runner: r, Transport: tr.For, Clock: scantest.NewClock(time.Unix(0, 0))}
+		begin := time.Now()
+		if err := s.Run(context.Background(), testRun(settings)); err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		took := time.Since(begin)
+		if took < 45*time.Second {
+			t.Fatalf("run took %s, want the 45s probe timeout", took)
+		}
+		if n, want := st.Heartbeats(), 1+int(took/(10*time.Second)); n < want {
+			t.Fatalf("heartbeats = %d during a %s run, want at least %d (one at start and one every 10s)", n, took, want)
+		}
+	})
+}
+
+// REQ-SCAN-025
+func TestDatabaseOutageStatusWriteRetried(t *testing.T) {
+	outage := errors.New("dial tcp 127.0.0.1:5432: connection refused")
+	for _, tc := range []struct {
+		name      string
+		failFor   int
+		wantPause bool
+	}{
+		{"database back before the status write gives up", 3, true},
+		{"database still down", 1 << 30, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				var statusCalls int
+				st := &scantest.Store{
+					OnRecordGroup: func(inventory.GroupResult) error { return outage },
+					OnSetStatus: func(inventory.RunStatus) error {
+						if statusCalls++; statusCalls <= tc.failFor {
+							return outage
+						}
+						return nil
+					},
+				}
+				r := &nmaptest.Runner{DiscoverFunc: allUp, ServicesFunc: openPorts(80)}
+				settings := inventory.RunSettings{Targets: []string{"10.31.0.1"}, Ports: []int{80}, MaxRate: 100, Workers: 1}
+				s := &scan.Scanner{Store: st, Runner: r, Transport: (&scantest.Transport{}).For, Clock: scantest.NewClock(time.Unix(0, 0))}
+				err := s.Run(context.Background(), testRun(settings))
+				if err == nil || strings.Contains(err.Error(), "\n") || !errors.Is(err, scan.ErrStoreUnavailable) {
+					t.Fatalf("Run = %v, want a one-line database unavailable error", err)
+				}
+				got := st.Statuses()
+				if paused := len(got) > 0 && got[len(got)-1] == inventory.RunPaused; paused != tc.wantPause {
+					t.Fatalf("statuses = %v after %d status writes, want paused written: %t", got, statusCalls, tc.wantPause)
+				}
+				if !tc.wantPause && (!strings.Contains(err.Error(), "could not be set to paused") || !strings.Contains(err.Error(), "resume")) {
+					t.Fatalf("Run = %v, want it to say the paused status was not written and how to resume", err)
+				}
+			})
+		})
+	}
+}
+
+func TestCheckWorkCeilingIsAddressesTimesPortsAndConfigurable(t *testing.T) {
+	ports := make([]int, 1001)
+	for i := range ports {
+		ports[i] = i + 1
+	}
+	wide := inventory.RunSettings{Targets: []string{"10.0.0.0/14"}, Ports: ports}
+	for _, c := range []struct {
+		name string
+		st   inventory.RunSettings
+		ok   bool
+	}{
+		{"262144 addresses x 1000 ports is the default ceiling", inventory.RunSettings{Targets: wide.Targets, Ports: ports[:1000]}, true},
+		{"262144 addresses x 1001 ports is above it", wide, false},
+		{"duplicate ports count once", inventory.RunSettings{Targets: wide.Targets, Ports: append(slices.Clone(ports[:1000]), 1, 2)}, true},
+		{"excludes are subtracted", inventory.RunSettings{Targets: wide.Targets, Excludes: []string{"10.0.0.0/23"}, Ports: ports}, true},
+		{"a raised ceiling accepts", inventory.RunSettings{Targets: wide.Targets, Ports: ports, MaxWork: 262144 * 1001}, true},
+		{"a lowered ceiling refuses", inventory.RunSettings{Targets: []string{"10.0.0.0/24"}, Ports: ports[:2], MaxWork: 511}, false},
+	} {
+		err := scan.CheckWork(c.st)
+		if c.ok != (err == nil) {
+			t.Errorf("%s: CheckWork = %v, want ok %t", c.name, err, c.ok)
+		}
+		if err != nil && !errors.Is(err, scan.ErrTooMuchWork) {
+			t.Errorf("%s: CheckWork = %v, want ErrTooMuchWork", c.name, err)
+		}
 	}
 }

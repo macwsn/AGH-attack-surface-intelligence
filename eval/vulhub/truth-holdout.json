@@ -1,0 +1,368 @@
+{
+ "lab": "asi-vulhub-holdout",
+ "network": "172.28.33.0/24",
+ "excluded": [
+  "172.28.33.1",
+  "172.28.33.2",
+  "172.28.33.3"
+ ],
+ "ports_verified": "listening sockets read from /proc/net/tcp{,6} in every container, then confirmed with nmap -sT from a helper on the network (a full -p- at --max-rate 500 was too slow for 16 hosts)",
+ "generic_technologies": [
+  "Apache HTTP Server",
+  "Apache httpd",
+  "Apache",
+  "httpd",
+  "nginx",
+  "Jetty",
+  "Apache-Coyote",
+  "Apache Tomcat/Coyote JSP engine",
+  "Golang net/http server",
+  "PHP",
+  "Java",
+  "OpenJDK",
+  "Go",
+  "Golang",
+  "Python",
+  "Perl",
+  "Ruby",
+  "Node.js",
+  "Debian",
+  "Ubuntu",
+  "UNIX",
+  "Linux",
+  "Alpine Linux",
+  "OpenSSH",
+  "SSH",
+  "HTTP",
+  "Basic",
+  "MySQL",
+  "MariaDB",
+  "Jetty",
+  "Erlang",
+  "Erlang OTP",
+  "Servlet",
+  "JSP",
+  "Java Servlet",
+  "Apache Tomcat",
+  "Tomcat",
+  "Spring",
+  "Spring Boot",
+  "HTTP server",
+  "HSTS",
+  "XMPP",
+  "SMTP"
+ ],
+ "benign_libraries": [
+  "jQuery",
+  "jQuery UI",
+  "jQuery Migrate",
+  "Underscore.js",
+  "Backbone.js",
+  "Bootstrap",
+  "Semantic UI",
+  "Vue.js",
+  "Clipboard.js",
+  "YUI",
+  "AngularJS",
+  "React",
+  "Font Awesome",
+  "CodeMirror",
+  "Moment.js",
+  "Lodash",
+  "RequireJS",
+  "Prototype",
+  "Twig",
+  "Symfony"
+ ],
+ "services": [
+  {
+   "name": "solr",
+   "address": "172.28.33.10",
+   "product": "Apache Solr",
+   "aliases": [
+    "Apache Solr",
+    "Solr"
+   ],
+   "version": "8.2.0",
+   "version_source": "image tag; verified: GET /solr/admin/info/system",
+   "category": "search",
+   "ports": [
+    5005,
+    8983,
+    18983
+   ],
+   "http_ports": [
+    8983
+   ],
+   "https_ports": [],
+   "admin_panel": true,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "solr/CVE-2019-17558",
+   "notes": "/ redirects to /solr/, the unauthenticated Solr Admin UI. 5005 = JDWP, 18983 = JMX/RMI; one more random RMI port per start is not in truth."
+  },
+  {
+   "name": "couchdb",
+   "address": "172.28.33.11",
+   "product": "Apache CouchDB",
+   "aliases": [
+    "Apache CouchDB",
+    "CouchDB"
+   ],
+   "version": "2.1.0",
+   "version_source": "image tag; verified: Server header and JSON at /",
+   "category": "database",
+   "ports": [
+    5984,
+    5986
+   ],
+   "http_ports": [
+    5984,
+    5986
+   ],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "couchdb/CVE-2017-12635",
+   "notes": "REST API at /. Vulhub's initd helper container is not run."
+  },
+  {
+   "name": "nacos",
+   "address": "172.28.33.12",
+   "product": "Nacos",
+   "aliases": [
+    "Nacos",
+    "Alibaba Nacos"
+   ],
+   "version": "1.4.0",
+   "version_source": "image tag; verified: GET /nacos/v1/console/server/state",
+   "category": "service-registry",
+   "ports": [
+    5005,
+    7848,
+    8848
+   ],
+   "http_ports": [
+    8848
+   ],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": "/nacos/",
+   "outdated": true,
+   "vulhub_dir": "nacos/CVE-2021-29441",
+   "notes": "/ answers a Tomcat-style 404; the console lives under /nacos/. 5005 = JDWP, 7848 = cluster port."
+  },
+  {
+   "name": "metabase",
+   "address": "172.28.33.13",
+   "product": "Metabase",
+   "aliases": [
+    "Metabase"
+   ],
+   "version": "0.40.4",
+   "version_source": "image tag; verified: GET /api/session/properties",
+   "category": "analytics",
+   "ports": [
+    3000
+   ],
+   "http_ports": [
+    3000
+   ],
+   "https_ports": [],
+   "admin_panel": true,
+   "login_path": "/auth/login",
+   "outdated": true,
+   "vulhub_dir": "metabase/CVE-2021-41277",
+   "notes": "Jetty 9.4.32 underneath."
+  },
+  {
+   "name": "webmin",
+   "address": "172.28.33.14",
+   "product": "Webmin",
+   "aliases": [
+    "Webmin",
+    "MiniServ"
+   ],
+   "version": "1.910",
+   "version_source": "image tag; verified: Server header MiniServ/1.910",
+   "category": "admin-tool",
+   "ports": [
+    10000
+   ],
+   "http_ports": [],
+   "https_ports": [
+    10000
+   ],
+   "admin_panel": true,
+   "login_path": "/",
+   "outdated": true,
+   "vulhub_dir": "webmin/CVE-2019-15107",
+   "notes": "HTTPS only; / is the login form."
+  },
+  {
+   "name": "glassfish",
+   "address": "172.28.33.15",
+   "product": "GlassFish",
+   "aliases": [
+    "GlassFish",
+    "Oracle GlassFish",
+    "Eclipse GlassFish",
+    "GlassFish Server",
+    "GlassFish Server Open Source Edition"
+   ],
+   "version": "4.1",
+   "version_source": "image tag; verified: Server header",
+   "category": "app-server",
+   "ports": [
+    3700,
+    4848,
+    5005,
+    7676,
+    8080,
+    8181,
+    8686
+   ],
+   "http_ports": [
+    8080
+   ],
+   "https_ports": [
+    8181,
+    4848
+   ],
+   "admin_panel": true,
+   "login_path": "/",
+   "outdated": true,
+   "vulhub_dir": "glassfish/CVE-2017-1000028",
+   "notes": "8080/8181 default page; 4848 (HTTPS) is the admin console login, which is why admin_panel is true. 3700 IIOP, 7676 JMS, 8686 JMX, 5005 JDWP."
+  },
+  {
+   "name": "influxdb",
+   "address": "172.28.33.16",
+   "product": "InfluxDB",
+   "aliases": [
+    "InfluxDB",
+    "InfluxData InfluxDB"
+   ],
+   "version": "1.6.6",
+   "version_source": "image tag; verified: X-Influxdb-Version header",
+   "category": "database",
+   "ports": [
+    8086
+   ],
+   "http_ports": [
+    8086
+   ],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "influxdb/CVE-2019-20933",
+   "notes": "/ answers 404 with X-Influxdb-Version."
+  },
+  {
+   "name": "opensmtpd",
+   "address": "172.28.33.17",
+   "product": "OpenSMTPD",
+   "aliases": [
+    "OpenSMTPD",
+    "OpenBSD OpenSMTPD"
+   ],
+   "version": "6.6.1p1",
+   "version_source": "image tag (banner does not carry a version)",
+   "category": "mail",
+   "ports": [
+    25
+   ],
+   "http_ports": [],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "opensmtpd/CVE-2020-7247",
+   "notes": ""
+  },
+  {
+   "name": "gogs",
+   "address": "172.28.33.18",
+   "product": "Gogs",
+   "aliases": [
+    "Gogs"
+   ],
+   "version": "0.11.66",
+   "version_source": "image tag",
+   "category": "scm",
+   "ports": [
+    22,
+    3000
+   ],
+   "http_ports": [
+    3000
+   ],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "gogs/CVE-2018-18925",
+   "notes": "NOT installed: / redirects to /install."
+  },
+  {
+   "name": "openfire",
+   "address": "172.28.33.19",
+   "product": "Openfire",
+   "aliases": [
+    "Openfire",
+    "Ignite Realtime Openfire",
+    "Jive Software Openfire"
+   ],
+   "version": "4.7.4",
+   "version_source": "image tag; verified: GET /login.jsp",
+   "category": "chat-server",
+   "ports": [
+    5222,
+    5223,
+    5262,
+    5263,
+    5269,
+    5270,
+    5275,
+    5276,
+    7070,
+    7777,
+    9090
+   ],
+   "http_ports": [
+    9090,
+    7070
+   ],
+   "https_ports": [],
+   "admin_panel": true,
+   "login_path": "/login.jsp",
+   "outdated": true,
+   "vulhub_dir": "openfire/CVE-2023-32315",
+   "notes": "9090 = admin console, 7070 = HTTP binding, 52xx = XMPP."
+  },
+  {
+   "name": "mosquitto",
+   "address": "172.28.33.20",
+   "product": "Mosquitto",
+   "aliases": [
+    "Mosquitto",
+    "Eclipse Mosquitto"
+   ],
+   "version": "1.6.15",
+   "version_source": "image tag; verified: broker start-up log line",
+   "category": "message-queue",
+   "ports": [
+    1883
+   ],
+   "http_ports": [],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "NOT from Vulhub (official eclipse-mosquitto image). Never-probe target: MQTT must not be sent HTTP; the broker logs every connection."
+  }
+ ]
+}

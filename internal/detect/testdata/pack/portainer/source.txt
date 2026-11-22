@@ -1,0 +1,2 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Portainer CE index.html (title Portainer, ng-app=portainer), docs.portainer.io

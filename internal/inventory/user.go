@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func validStatusOverride(s string) bool {
@@ -17,20 +18,67 @@ func validStatusOverride(s string) bool {
 }
 
 func (inv *Inventory) UpdateHostUserFields(ctx context.Context, address string, f HostUserFields) error {
+	addr, sealed, err := inv.prepareUserFields(address, f)
+	if err != nil {
+		return err
+	}
+	return updateHostUserFields(ctx, inv.db.Pool, addr, f, sealed)
+}
+
+type sealedUserFields struct {
+	notes, displayName, owner []byte
+}
+
+func (inv *Inventory) prepareUserFields(address string, f HostUserFields) (string, sealedUserFields, error) {
+	var sealed sealedUserFields
 	addr, err := normalizeAddress(address)
 	if err != nil {
-		return err
+		return "", sealed, err
 	}
 	if !validStatusOverride(f.StatusOverride) {
-		return fmt.Errorf("inventory: invalid status override %q", f.StatusOverride)
+		return "", sealed, fmt.Errorf("inventory: invalid status override %q", f.StatusOverride)
 	}
-	notes, err := inv.sealString(f.Notes)
+	for _, v := range []struct {
+		dst   *[]byte
+		plain string
+	}{{&sealed.notes, f.Notes}, {&sealed.displayName, f.DisplayName}, {&sealed.owner, f.Owner}} {
+		if *v.dst, err = inv.sealString(v.plain); err != nil {
+			return "", sealed, err
+		}
+	}
+	return addr, sealed, nil
+}
+
+type Editor struct {
+	Username string
+	Addr     string
+}
+
+func (inv *Inventory) EditHostUserFields(ctx context.Context, e Editor, address string, f HostUserFields) error {
+	addr, sealed, err := inv.prepareUserFields(address, f)
 	if err != nil {
 		return err
 	}
-	tag, err := inv.db.Pool.Exec(ctx, `UPDATE hosts SET tags = $2, notes = $3, display_name = $4, owner = $5,
+	return inv.db.Tx(ctx, func(tx pgx.Tx) error {
+		if err := updateHostUserFields(ctx, tx, addr, f, sealed); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO audit_log (actor, action, target, address) VALUES ($1, 'host.edit', $2, $3)`,
+			e.Username, addr, e.Addr); err != nil {
+			return fmt.Errorf("audit edit of host %s: %w", addr, err)
+		}
+		return nil
+	})
+}
+
+type execer interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
+
+func updateHostUserFields(ctx context.Context, db execer, addr string, f HostUserFields, sealed sealedUserFields) error {
+	tag, err := db.Exec(ctx, `UPDATE hosts SET tags = $2, notes = $3, display_name = $4, owner = $5,
 			criticality = $6, status_override = $7, user_updated_at = now()
-		WHERE address = $1`, addr, nonNil(f.Tags), notes, f.DisplayName, f.Owner, f.Criticality, f.StatusOverride)
+		WHERE address = $1`, addr, nonNil(f.Tags), sealed.notes, sealed.displayName, sealed.owner, f.Criticality, f.StatusOverride)
 	if err != nil {
 		return fmt.Errorf("update user fields of host %s: %w", addr, err)
 	}
@@ -46,20 +94,36 @@ func (inv *Inventory) GetHostUserFields(ctx context.Context, address string) (Ho
 		return HostUserFields{}, err
 	}
 	var (
-		f     HostUserFields
-		notes []byte
+		f                         HostUserFields
+		notes, displayName, owner []byte
 	)
 	err = inv.db.Pool.QueryRow(ctx, `SELECT tags, notes, display_name, owner, criticality, status_override
-		FROM hosts WHERE address = $1`, addr).Scan(&f.Tags, &notes, &f.DisplayName, &f.Owner, &f.Criticality, &f.StatusOverride)
+		FROM hosts WHERE address = $1`, addr).Scan(&f.Tags, &notes, &displayName, &owner, &f.Criticality, &f.StatusOverride)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return HostUserFields{}, fmt.Errorf("%w: %s", ErrUnknownHost, addr)
 	}
 	if err != nil {
 		return HostUserFields{}, fmt.Errorf("read user fields of host %s: %w", addr, err)
 	}
-	if f.Notes, err = inv.openString(notes); err != nil {
-		return HostUserFields{}, fmt.Errorf("host %s notes: %w", addr, err)
+	if f.Notes, f.DisplayName, f.Owner, err = inv.openUserFields(notes, displayName, owner); err != nil {
+		return HostUserFields{}, fmt.Errorf("host %s: %w", addr, err)
 	}
 	f.Tags = nonNil(f.Tags)
 	return f, nil
+}
+
+func (inv *Inventory) openUserFields(notes, displayName, owner []byte) (string, string, string, error) {
+	n, err := inv.openString(notes)
+	if err != nil {
+		return "", "", "", fmt.Errorf("notes: %w", err)
+	}
+	d, err := inv.openString(displayName)
+	if err != nil {
+		return "", "", "", fmt.Errorf("display name: %w", err)
+	}
+	o, err := inv.openString(owner)
+	if err != nil {
+		return "", "", "", fmt.Errorf("owner: %w", err)
+	}
+	return n, d, o, nil
 }

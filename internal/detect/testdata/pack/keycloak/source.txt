@@ -1,0 +1,2 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Keycloak welcome page (title Welcome to Keycloak, /resources/<v>/welcome/keycloak.v2/), keycloak.org docs

@@ -1,0 +1,3 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: phpMyAdmin 4.8.1 opened without a login (vulhub phpmyadmin/CVE-2018-12613, config auth: / is the main page with the navigation panel), docs.phpmyadmin.net
+the eval/vulhub capture of this product is not readable from the builder sandbox; markers written to match it

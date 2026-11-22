@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<nmaprun scanner="nmap" args="nmap -sT -sV --version-light -p 21,22,80,3306,5432,5672,6379 -oX - 192.0.2.20" start="1763726410" startstr="Fri Nov 21 12:00:10 2026" version="7.95" xmloutputversion="1.05">
+<scaninfo type="connect" protocol="tcp" numservices="7" services="21-22,80,3306,5432,5672,6379"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1763726410" endtime="1763726425"><status state="up" reason="conn-refused" reason_ttl="0"/>
+<address addr="192.0.2.20" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="ftp" product="vsftpd" version="2.3.4" ostype="Unix" method="probed" conf="10"><cpe>cpe:/a:vsftpd:vsftpd:2.3.4</cpe></service></port>
+<port protocol="tcp" portid="22"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="ssh" product="OpenSSH" version="7.4" extrainfo="protocol 2.0" method="probed" conf="10"><cpe>cpe:/a:openbsd:openssh:7.4</cpe></service></port>
+<port protocol="tcp" portid="80"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="http" product="nginx" version="1.24.0" method="probed" conf="10"><cpe>cpe:/a:igor_sysoev:nginx:1.24.0</cpe></service></port>
+<port protocol="tcp" portid="3306"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="mysql" product="MySQL" version="5.7.44" method="probed" conf="10"><cpe>cpe:/a:mysql:mysql:5.7.44</cpe></service></port>
+<port protocol="tcp" portid="5432"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="postgresql" product="PostgreSQL DB" method="probed" conf="10"><cpe>cpe:/a:postgresql:postgresql</cpe></service></port>
+<port protocol="tcp" portid="5672"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="amqp" product="RabbitMQ" version="3.13.7" extrainfo="AMQP 0-9" method="probed" conf="10"><cpe>cpe:/a:vmware:rabbitmq:3.13.7</cpe></service></port>
+<port protocol="tcp" portid="6379"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="redis" product="Redis key-value store" method="probed" conf="10"/></port>
+</ports>
+<times srtt="380" rttvar="120" to="100000"/>
+</host>
+<runstats><finished time="1763726425" timestr="Fri Nov 21 12:00:25 2026" summary="Nmap done at Fri Nov 21 12:00:25 2026; 1 IP address (1 host up) scanned in 15.10 seconds" elapsed="15.10" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

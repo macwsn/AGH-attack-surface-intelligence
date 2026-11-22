@@ -355,3 +355,164 @@ func TestIdenticalStatesEmpty(t *testing.T) {
 		t.Fatalf("changes not []: %s", got)
 	}
 }
+
+func TestHostMissingExpectedUpNote(t *testing.T) {
+	const addr = "10.0.0.1"
+	run := func(av *inventory.ExportAvailability) string {
+		to := host(addr, unstable)
+		to.Availability = av
+		d := Compute(inventory.Export{Run: "r1", Hosts: []inventory.ExportHost{host(addr, active)}},
+			inventory.Export{Run: "r2", Hosts: []inventory.ExportHost{to}}, Options{})
+		b, err := json.Marshal(d.Changes)
+		if err != nil {
+			t.Fatalf("marshal: %v", err)
+		}
+		return string(b)
+	}
+	if got, want := run(&inventory.ExportAvailability{Expected: "up"}), `[{"type":"host_missing","address":"10.0.0.1","note":"expected up at this hour"}]`; got != want {
+		t.Fatalf("expected up: got %s want %s", got, want)
+	}
+	for _, av := range []*inventory.ExportAvailability{nil, {}, {Expected: "down"}} {
+		if got, want := run(av), `[{"type":"host_missing","address":"10.0.0.1"}]`; got != want {
+			t.Fatalf("no note for %+v: got %s want %s", av, got, want)
+		}
+	}
+}
+
+// REQ-DIFF-003
+func TestServiceLifecycleOnHostThatStaysUp(t *testing.T) {
+	A, U, I := inventory.StatusActive, inventory.StatusUnstable, inventory.StatusInactive
+	states := []inventory.Export{
+		export("r1", host("127.0.0.1", A, svc(3001, A), svc(8787, A))),
+		export("r2", host("127.0.0.1", A, svc(3001, A), svc(8787, U))),
+		export("r3", host("127.0.0.1", A, svc(3001, A), svc(8787, I))),
+		export("r4", host("127.0.0.1", A, svc(3001, A), svc(8787, I))),
+		export("r5", host("127.0.0.1", A, svc(3001, A), svc(8787, A))),
+	}
+	want := []string{ServiceMissing, ServiceInactive, "", ServiceReturned}
+	for i, w := range want {
+		d := Compute(states[i], states[i+1], Options{})
+		if w == "" {
+			if len(d.Changes) != 0 {
+				t.Fatalf("%s->%s: %+v, want no change", d.From, d.To, d.Changes)
+			}
+			continue
+		}
+		if len(d.Changes) != 1 || d.Changes[0].Type != w || d.Changes[0].Port == nil || *d.Changes[0].Port != 8787 {
+			t.Fatalf("%s->%s: %+v, want one %s on port 8787", d.From, d.To, d.Changes, w)
+		}
+	}
+}
+
+func TestDownHourMissKeepsStatusNoChange(t *testing.T) {
+	const addr = "10.0.0.1"
+	to := host(addr, active, svc(80, active))
+	to.Availability = &inventory.ExportAvailability{Expected: "down"}
+	d := Compute(inventory.Export{Run: "r1", Hosts: []inventory.ExportHost{host(addr, active, svc(80, active))}},
+		inventory.Export{Run: "r2", Hosts: []inventory.ExportHost{to}}, Options{})
+	if len(d.Changes) != 0 {
+		t.Fatalf("want no changes, got %+v", d.Changes)
+	}
+}
+
+// REQ-DIFF-009
+func TestResponseTimeNeverChanges(t *testing.T) {
+	const addr = "172.30.0.18"
+	from := webSvc(443, active)
+	from.HTTP.TTFBMS, from.HTTP.ResponseMS = 12, 20
+	to := webSvc(443, active)
+	to.HTTP.TTFBMS, to.HTTP.ResponseMS = 4100, 9000
+	d := Compute(export("r1", host(addr, active, from)), export("r2", host(addr, active, to)), Options{})
+	if len(d.Changes) != 0 {
+		t.Fatalf("response time produced changes: %+v", d.Changes)
+	}
+}
+
+// REQ-DIFF-009
+func TestProbeTimeoutIsNotAChange(t *testing.T) {
+	const addr = "172.30.0.18"
+	good := webSvc(443, active)
+	slow := svc(443, active)
+	slow.HTTP = &probe.HTTP{Scheme: "https", URL: "https://172.30.0.18/", Headers: map[string]string{}, Cookies: []probe.Cookie{}, RedirectChain: []string{}, ResponseMS: 10000, Error: probe.ErrorTimeout}
+	for _, pair := range [][2]inventory.ExportService{{good, slow}, {slow, good}} {
+		d := Compute(export("r1", host(addr, active, pair[0])), export("r2", host(addr, active, pair[1])), Options{})
+		if len(d.Changes) != 0 {
+			t.Fatalf("timed-out probe produced changes: %+v", d.Changes)
+		}
+	}
+	slow.Version = "1.28.0"
+	d := Compute(export("r1", host(addr, active, good)), export("r2", host(addr, active, slow)), Options{})
+	want := []FieldChange{{"version", "1.27.5", "1.28.0"}}
+	if len(d.Changes) != 1 || !reflect.DeepEqual(d.Changes[0].Fields, want) {
+		t.Fatalf("want only the version change, got %+v", d.Changes)
+	}
+}
+
+// REQ-DIFF-014
+func TestNormalizedHeaderChangeShowsRawValues(t *testing.T) {
+	from, to := webSvc(443, active), webSvc(443, active)
+	from.HTTP.Headers = map[string]string{"content-security-policy": "script-src 'nonce-YWFhYWFhYWE='"}
+	to.HTTP.Headers = map[string]string{"content-security-policy": "script-src 'nonce-YmJiYmJiYmI=' 'self'"}
+	d := Compute(export("r1", host("10.0.0.1", active, from)), export("r2", host("10.0.0.1", active, to)), Options{})
+	want := []FieldChange{{Field: "http.headers.content-security-policy", Old: from.HTTP.Headers["content-security-policy"], New: to.HTTP.Headers["content-security-policy"]}}
+	if len(d.Changes) != 1 || !reflect.DeepEqual(d.Changes[0].Fields, want) {
+		t.Fatalf("changes = %+v, want one change with the raw headers %+v", d.Changes, want)
+	}
+}
+
+// REQ-DIFF-015
+func TestLearnedVolatileFieldIsNotAChange(t *testing.T) {
+	from, to := webSvc(443, active), webSvc(443, active)
+	to.HTTP.Title, to.Version = "Intranet v2", "2.0"
+	to.Volatile = []inventory.VolatileField{{Field: "http.title", Values: []any{"Intranet v1", "Intranet v2"}}}
+	d := Compute(export("r1", host("10.0.0.1", active, from)), export("r2", host("10.0.0.1", active, to)), Options{})
+	if len(d.Changes) != 1 || len(d.Changes[0].Fields) != 1 || d.Changes[0].Fields[0].Field != "version" {
+		t.Fatalf("changes = %+v, want only the version change: the title is volatile", d.Changes)
+	}
+}
+
+// REQ-DIFF-016
+func TestUnstableFaviconIsNotAChange(t *testing.T) {
+	from, to := webSvc(443, active), webSvc(443, active)
+	to.HTTP.FaviconSHA256, to.HTTP.FaviconUnstable = "f2", true
+	if d := Compute(export("r1", host("10.0.0.1", active, from)), export("r2", host("10.0.0.1", active, to)), Options{}); len(d.Changes) != 0 {
+		t.Fatalf("changes = %+v, want none for an unstable favicon", d.Changes)
+	}
+	to.HTTP.FaviconUnstable = false
+	if d := Compute(export("r1", host("10.0.0.1", active, from)), export("r2", host("10.0.0.1", active, to)), Options{}); len(d.Changes) != 1 {
+		t.Fatalf("changes = %+v, want the stable favicon change", d.Changes)
+	}
+}
+
+func TestVolatileHeadersFromRunSettingsNeverProduceAChange(t *testing.T) {
+	from := export("v1", host("172.30.0.18", inventory.StatusActive, webSvc(443, inventory.StatusActive)))
+	to := export("v2", host("172.30.0.18", inventory.StatusActive, webSvc(443, inventory.StatusActive)))
+	to.Hosts[0].Services[0].HTTP.Headers = map[string]string{}
+	for k, v := range from.Hosts[0].Services[0].HTTP.Headers {
+		to.Hosts[0].Services[0].HTTP.Headers[k] = v
+	}
+	to.Hosts[0].Services[0].HTTP.Headers["x-trace"] = "t2"
+	if got := Compute(from, to, Options{}).Changes; len(got) != 1 {
+		t.Fatalf("control: changes = %+v, want one service_changed for x-trace", got)
+	}
+	to.VolatileHeaders = []string{" X-Trace "}
+	if got := Compute(from, to, Options{}).Changes; len(got) != 0 {
+		t.Errorf("header listed in the run settings produced changes %+v", got)
+	}
+}
+
+func TestScanDiffSkipsHostsNeverCoveredByAScan(t *testing.T) {
+	imported := host("198.51.100.5", inventory.StatusActive, svc(80, inventory.StatusActive))
+	scanned := host("192.0.2.1", inventory.StatusActive, svc(80, inventory.StatusActive))
+	scanned.ScanCovered = true
+	to := export("s2", imported, scanned)
+	to.Source = inventory.SourceScan
+	got := Compute(export("s1"), to, Options{}).Changes
+	if len(got) != 1 || got[0].Address != "192.0.2.1" || got[0].Type != HostNew {
+		t.Errorf("scan diff changes = %+v, want only host_new 192.0.2.1", got)
+	}
+	to.Source = inventory.SourceImport
+	if got := Compute(export("s1"), to, Options{}).Changes; len(got) != 2 {
+		t.Errorf("import diff changes = %+v, want host_new for both hosts", got)
+	}
+}

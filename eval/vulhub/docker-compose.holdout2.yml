@@ -1,0 +1,60 @@
+# Second HOLDOUT lab: products outside the built-in pack, the first holdout and every other lab.
+# Official upstream images (not Vulhub), pinned. Truth lives in truth-holdout2.json.
+# No published ports, internal bridge only. Do not add `ports:`. Credentials below are lab-only test values.
+name: asi-vulhub-holdout2
+
+networks:
+  vh:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.28.34.0/24
+          ip_range: 172.28.34.240/28
+          gateway: 172.28.34.1
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1.23.13
+    networks: { vh: { ipv4_address: 172.28.34.10 } }
+  vault:
+    image: hashicorp/vault:1.15.6
+    command: ["server", "-dev", "-dev-listen-address=0.0.0.0:8200"]
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=holdout2-test-root
+      - SKIP_SETCAP=true
+    networks: { vh: { ipv4_address: 172.28.34.11 } }
+  consul:
+    image: hashicorp/consul:1.17.3
+    command: ["agent", "-dev", "-client=0.0.0.0"]
+    networks: { vh: { ipv4_address: 172.28.34.12 } }
+  pgadmin:
+    image: dpage/pgadmin4:8.4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
+      - PGADMIN_DEFAULT_PASSWORD=holdout2-test-only
+    networks: { vh: { ipv4_address: 172.28.34.13 } }
+  matomo:
+    image: matomo:5.0.3-apache
+    networks: { vh: { ipv4_address: 172.28.34.14 } }
+  gotify:
+    image: gotify/server:2.4.0
+    networks: { vh: { ipv4_address: 172.28.34.15 } }
+  node-red:
+    image: nodered/node-red:3.1.9
+    networks: { vh: { ipv4_address: 172.28.34.16 } }
+  mailpit:
+    image: axllent/mailpit:v1.15.1
+    networks: { vh: { ipv4_address: 172.28.34.17 } }
+  nats:
+    image: nats:2.10.12-alpine
+    networks: { vh: { ipv4_address: 172.28.34.18 } }
+  zookeeper:
+    image: zookeeper:3.9.2
+    networks: { vh: { ipv4_address: 172.28.34.19 } }
+  memcached:
+    image: memcached:1.6.24-alpine
+    networks: { vh: { ipv4_address: 172.28.34.20 } }
+  mongodb:
+    image: mongo:6.0.14
+    networks: { vh: { ipv4_address: 172.28.34.21 } }

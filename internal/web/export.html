@@ -1,0 +1,19 @@
+{{define "content"}}
+<div class="page-head"><div><h1>Export</h1>
+<p class="lede">{{with .Data.Error}}{{.}}{{else}}{{.Data.Hosts}} hosts match{{with .Data.AsOf}} as of run <code>{{.}}</code>{{end}}; narrow the filter and download JSON or CSV.{{end}}</p></div></div>
+<form class="filters" method="get" action="/export">
+<label class="grow">Search <input type="search" name="q" value="{{.Data.Query}}" placeholder="Address or hostname"></label>
+<label>Status <select name="status">
+<option value="">Any</option>
+<option value="active"{{if eq .Data.Status "active"}} selected{{end}}>Active</option>
+<option value="unstable"{{if eq .Data.Status "unstable"}} selected{{end}}>Unstable</option>
+<option value="inactive"{{if eq .Data.Status "inactive"}} selected{{end}}>Inactive</option>
+</select></label>
+<label>Tag <input type="text" name="tag" value="{{.Data.Tag}}"></label>
+<label>As of run <select name="run"><option value="">Latest</option>{{range .Data.Runs}}<option value="{{.Name}}"{{if eq .Name $.Data.Run}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+<button type="submit">Apply</button>
+<button type="submit" formaction="/export.csv">Export CSV</button>
+<button class="primary" type="submit" formaction="/export.json">Export JSON</button>
+</form>
+<p class="muted">The export contains the hosts that match the filter, in the <code>asi.export/v1</code> format. CSV cells that start with = + - or @ get a leading apostrophe so spreadsheets do not run them.</p>
+{{end}}

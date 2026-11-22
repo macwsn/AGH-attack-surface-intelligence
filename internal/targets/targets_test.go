@@ -134,6 +134,20 @@ func TestExcludesWin(t *testing.T) {
 	}
 }
 
+func TestContainsMatchesAll(t *testing.T) {
+	targets := "10.0.0.0/28\n10.0.0.3\n10.0.0.12-14\nweb.example\n"
+	excludes := "10.0.0.3\n10.0.0.4/31\n10.0.0.9-10\n10.0.0.12\n"
+	res := fakeResolver{"web.example": {"10.0.0.5", "10.0.0.200"}}
+	s := build(t, targets, excludes, res)
+	in := addrs(s)
+	for _, a := range []string{"10.0.0.0", "10.0.0.1", "10.0.0.3", "10.0.0.5", "10.0.0.12", "10.0.0.15", "10.0.0.200", "10.0.0.201", "::ffff:10.0.0.1", "2001:db8::1"} {
+		addr := netip.MustParseAddr(a)
+		if want := slices.Contains(in, addr.Unmap().String()); s.Contains(addr) != want {
+			t.Errorf("Contains(%s) = %v, want %v", a, !want, want)
+		}
+	}
+}
+
 func TestExcludeCIDRCoversNetworkAndBroadcast(t *testing.T) {
 	res := fakeResolver{"edge.example": {"10.0.1.0", "10.0.1.255"}}
 	got := addrs(build(t, "10.0.0.255-255\n10.0.1.0-1\n10.0.1.254-255\n10.0.2.0\nedge.example\n", "10.0.1.0/24\n", res))
@@ -217,4 +231,66 @@ func TestGroupStopsEarly(t *testing.T) {
 	if n != 2 {
 		t.Fatalf("n=%d", n)
 	}
+}
+
+// REQ-SCAN-012
+func TestParseHostsAcceptsSingleLabelNames(t *testing.T) {
+	entries, err := ParseHosts(strings.NewReader("localhost\nhost.docker.internal\n127.0.0.1\ngitea\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, e := range entries {
+		names = append(names, e.Name)
+	}
+	if !slices.Equal(names, []string{"localhost", "host.docker.internal", "", "gitea"}) || entries[2].Kind != KindAddr {
+		t.Fatalf("ParseHosts = %+v", entries)
+	}
+	for _, bad := range []string{"bad_host", "-x", "10.0.0", "2001:db8::1"} {
+		if _, err := ParseHosts(strings.NewReader(bad)); err == nil {
+			t.Errorf("ParseHosts(%q) accepted", bad)
+		}
+	}
+	res := fakeResolver{"localhost": {"127.0.0.1"}, "host.docker.internal": {"192.168.65.254"}}
+	s, err := Build(context.Background(), entries[:3], nil, res)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []Target
+	for tg := range s.All() {
+		got = append(got, tg)
+	}
+	want := []Target{
+		{Addr: netip.MustParseAddr("127.0.0.1"), Hostnames: []string{"localhost"}},
+		{Addr: netip.MustParseAddr("192.168.65.254"), Hostnames: []string{"host.docker.internal"}},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v\nwant %+v", got, want)
+	}
+}
+
+// REQ-SCAN-027
+func TestCountBeforeExpanding(t *testing.T) {
+	for _, tc := range []struct {
+		include, exclude string
+		want             uint64
+	}{
+		{"10.0.0.0/8", "", 1 << 24},
+		{"0.0.0.0/0", "", 1 << 32},
+		{"192.0.2.0/29\n192.0.2.4-12", "192.0.2.10", 12},
+		{"192.0.2.1\nexample.org\nexample.org\nskip.example.org", "skip.example.org", 2},
+	} {
+		if got := Count(mustParseHosts(t, tc.include), mustParseHosts(t, tc.exclude)); got != tc.want {
+			t.Errorf("Count(%q, %q) = %d, want %d", tc.include, tc.exclude, got, tc.want)
+		}
+	}
+}
+
+func mustParseHosts(t *testing.T, text string) []Entry {
+	t.Helper()
+	e, err := ParseHosts(strings.NewReader(text))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return e
 }

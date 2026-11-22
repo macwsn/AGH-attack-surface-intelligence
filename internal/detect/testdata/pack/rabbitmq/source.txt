@@ -1,0 +1,7 @@
+captured from the running lab-agh stack
+image: rabbitmq:3-management (sha256:e582c0bc7766f3342496d8485efb5a1df782b5ce3886ad017e2eaae442311f69)
+compose: lab-agh/docker-compose-custom-network.yml, service rabbitmq:15672
+capture date: 2026-11-21
+command: curl -sS -i -L --max-redirs 5 http://rabbitmq:15672<path> from a container on the stack network (host ports not published)
+paths: / (root.http), /version (version.http), /api/version (api__version.http)
+state: management UI login (port 15672, published by lab-agh as 15673)

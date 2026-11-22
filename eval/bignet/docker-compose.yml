@@ -1,4 +1,4 @@
-# Performance harness: a simulated /18 (see responder.py). Supervisor-owned.
+# Performance harness: a simulated /18 (see responder.py).
 name: asi-bignet
 networks:
   big:

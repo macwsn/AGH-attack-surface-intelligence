@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.993 scan initiated Sat Nov 21 23:46:55 2026 as: nmap -Pn -sT -sV -&#45;version-light -p 8086 -n -oX - 192.0.2.30 -->
+<nmaprun scanner="nmap" args="nmap -Pn -sT -sV -&#45;version-light -p 8086 -n -oX - 192.0.2.30" start="1795301215" startstr="Sat Nov 21 23:46:55 2026" version="7.993" xmloutputversion="1.05">
+<scaninfo type="connect" protocol="tcp" numservices="1" services="8086"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1795301215" endtime="1795301221"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="192.0.2.30" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><port protocol="tcp" portid="8086"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="http" product="InfluxDB http admin" version="1.6.6" method="probed" conf="10"><cpe>cpe:/a:influxdata:influxdb:1.6.6</cpe></service></port>
+</ports>
+<times srtt="97" rttvar="5000" to="100000"/>
+</host>
+<runstats><finished time="1795301221" timestr="Sat Nov 21 23:47:01 2026" summary="Nmap done at Sat Nov 21 23:47:01 2026; 1 IP address (1 host up) scanned in 6.12 seconds" elapsed="6.12" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

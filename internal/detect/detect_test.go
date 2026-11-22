@@ -118,6 +118,8 @@ func TestLoadRejectsUnsafeSignatures(t *testing.T) {
 		{"path with fragment", map[string]string{"a.yaml": head + "  request: {method: GET, path: '/x#y'}\n" + match}, RulePath},
 		{"relative path", map[string]string{"a.yaml": head + "  request: {method: GET, path: admin}\n" + match}, RulePath},
 		{"network-path reference", map[string]string{"a.yaml": head + "  request: {method: GET, path: //evil.example/}\n" + match}, RulePath},
+		{"dot-dot path parameter", map[string]string{"a.yaml": head + "  request: {method: GET, path: '/..;/manager/html'}\n" + match}, RulePath},
+		{"encoded dot-dot path parameter", map[string]string{"a.yaml": head + "  request: {method: GET, path: '/app/%2e%2e;x=1/etc'}\n" + match}, RulePath},
 		{"invalid body regex", map[string]string{"a.yaml": head + "  match: {all: [{type: body_regex, value: '(a'}]}\n"}, RuleRegex},
 		{"invalid header regex", map[string]string{"a.yaml": head + "  match: {any: [{type: header, name: Server, value: '[a'}]}\n"}, RuleRegex},
 		{"invalid cookie regex", map[string]string{"a.yaml": head + "  match: {all: [{type: cookie, name: '*x'}]}\n"}, RuleRegex},
@@ -474,6 +476,40 @@ func TestMergeKeepsHighestConfidence(t *testing.T) {
 	}
 }
 
+// REQ-EXCHANGE-003
+func TestDetectRecordedMatchesStoredResponseOnly(t *testing.T) {
+	set := &Set{Signatures: mustParse(t, `
+- id: shop-title
+  name: Shop
+  kind: technology
+  confidence: 70
+  match: { all: [ { type: title_regex, value: 'Shop v' } ] }
+  version: { type: title_regex, value: 'Shop v([0-9.]+)', group: 1 }
+- id: admin-path
+  name: Admin
+  kind: admin-panel
+  confidence: 80
+  request: { method: GET, path: /admin }
+  match: { all: [ { type: status, value: 200 } ] }
+`)}
+	h := &probe.HTTP{StatusCode: 200, Title: "Shop v2.1", Headers: map[string]string{"server": "nginx/1.27.5"}}
+	res := set.DetectRecorded(h)
+	if len(res.Findings) != 1 || res.Findings[0].SignatureID != "shop-title" || res.Findings[0].Version != "2.1" {
+		t.Fatalf("findings = %+v, want only shop-title (no request for /admin)", res.Findings)
+	}
+	names := map[string]string{}
+	for _, tech := range res.Technologies {
+		names[tech.Name] = tech.Version + " " + tech.Source
+	}
+	if names["Shop"] != "2.1 signature:shop-title" || names["nginx"] != "1.27.5 builtin" {
+		t.Fatalf("technologies = %+v", res.Technologies)
+	}
+	var none *Set
+	if got := none.DetectRecorded(h); len(got.Findings) != 0 || len(got.Technologies) != 1 {
+		t.Fatalf("nil set = %+v", got)
+	}
+}
+
 // REQ-SIGNATURES-001
 func TestParseOneAppliesTheLoaderRules(t *testing.T) {
 	const ok = "id: s\nname: S\nkind: custom\nconfidence: 50\nmatch: {all: [{type: status, value: 200}]}\n"
@@ -567,5 +603,132 @@ func TestEvaluateStoredUsesOnlyTheStoredResponse(t *testing.T) {
 	}
 	if e := sig.EvaluateStored(nil); e.Matched || e.Reason == "" {
 		t.Fatalf("no HTTP = %+v", e)
+	}
+}
+
+// REQ-SIGNATURES-006
+func TestEvaluateHistoryUsesTheStoredBody(t *testing.T) {
+	h := &probe.HTTP{StatusCode: 200, Title: "Jenkins", Headers: map[string]string{}}
+	sig, err := ParseOne([]byte("id: j\nname: Jenkins\nkind: technology\nconfidence: 90\nmatch:\n  all: [{type: title_regex, value: Jenkins}, {type: body_regex, value: 'Jenkins ver'}]\nversion: {type: body_regex, value: 'ver\\. ([0-9.]+)', group: 1}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e, ok := sig.EvaluateHistory(h, []byte("<p>Jenkins ver. 2.401</p>")); !ok || !e.Matched || e.Version != "2.401" {
+		t.Fatalf("with body = %+v, %t; want a match with version 2.401", e, ok)
+	}
+	if e, ok := sig.EvaluateHistory(h, []byte{}); !ok || e.Matched {
+		t.Fatalf("empty body = %+v, %t; want evaluable without a match", e, ok)
+	}
+	if e, ok := sig.EvaluateHistory(h, nil); ok || e.Matched {
+		t.Fatalf("no stored body = %+v, %t; want not evaluable", e, ok)
+	}
+	title, _ := ParseOne([]byte("id: t\nname: T\nkind: custom\nconfidence: 1\nmatch: {all: [{type: title_regex, value: Jenkins}]}\n"))
+	if e, ok := title.EvaluateHistory(h, nil); !ok || !e.Matched {
+		t.Fatalf("title only without body = %+v, %t; want a match", e, ok)
+	}
+	other, _ := ParseOne([]byte("id: o\nname: O\nkind: custom\nconfidence: 1\nrequest: {path: /admin}\nmatch: {all: [{type: status, value: 200}]}\n"))
+	if e, ok := other.EvaluateHistory(h, []byte("x")); ok || e.Matched || !strings.Contains(e.Reason, "/admin") {
+		t.Fatalf("other path = %+v, %t; want not evaluable naming /admin", e, ok)
+	}
+}
+
+func TestSignaturePathIsNormalised(t *testing.T) {
+	for in, want := range map[string]string{"/a//b": "/a/b", "/admin/": "/admin/", "/": "/", "/app;jsessionid=1/x": "/app;jsessionid=1/x"} {
+		src := "id: p\nname: P\nkind: custom\nconfidence: 50\nrequest: {path: '" + in + "'}\nmatch: {all: [{type: status, value: 200}]}\n"
+		sig, err := ParseOne([]byte(src))
+		if err != nil || sig.Path != want {
+			t.Errorf("path %q = %q, %v; want %q", in, sig.Path, err, want)
+		}
+	}
+}
+
+func TestMergeKeepsOneEntryPerSignatureSource(t *testing.T) {
+	got := Merge([]Technology{
+		{Name: "Gitea", Category: "code-hosting", Version: "1.21.4", Confidence: 95, Source: "signature:builtin-gitea"},
+		{Name: "Gitea", Category: "code-hosting", Confidence: 90, Source: "signature:eval-gitea"},
+		{Name: "gitea", Category: "code-hosting", Version: "1.21", Confidence: 80, Source: "signature:builtin-gitea-footer"},
+		{Name: "Gitea", Category: "code-hosting", Version: "1.21.4", Confidence: 70, Source: "signature:eval-gitea"},
+		{Name: "Gitea", Confidence: 60, Source: "signature:other-gitea"},
+		{Name: "WordPress", Category: "cms", Version: "6.4.2", Confidence: 95, Source: "signature:wordpress-generator"},
+		{Name: "WordPress", Category: "cms", Confidence: 70, Source: SourceBuiltin},
+	})
+	want := []Technology{
+		{Name: "Gitea", Category: "code-hosting", Version: "1.21.4", Confidence: 95, Source: "signature:builtin-gitea"},
+		{Name: "Gitea", Category: "code-hosting", Version: "1.21.4", Confidence: 90, Source: "signature:eval-gitea"},
+		{Name: "Gitea", Confidence: 60, Source: "signature:other-gitea"},
+		{Name: "WordPress", Category: "cms", Version: "6.4.2", Confidence: 95, Source: "signature:wordpress-generator"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Merge = %+v, want %+v", got, want)
+	}
+}
+
+// REQ-SIGNATURES-027
+func TestMergeFindingsByKindNameAndVersion(t *testing.T) {
+	in := []Finding{
+		{SignatureID: "a", Kind: KindStaging, Name: "Staging", Confidence: 60, Evidence: "title"},
+		{SignatureID: "v1", Kind: "technology", Name: "Gitea", Version: "1.21.4", Confidence: 95},
+		{SignatureID: "b", Kind: KindStaging, Name: "Staging", Confidence: 75, Evidence: "header"},
+		{SignatureID: "v0", Kind: "technology", Name: "Gitea", Confidence: 90},
+	}
+	once := MergeFindings(in)
+	want := []Finding{
+		{SignatureID: "b", Kind: KindStaging, Name: "Staging", Confidence: 75, Evidence: "header; also matched by a"},
+		{SignatureID: "v1", Kind: "technology", Name: "Gitea", Version: "1.21.4", Confidence: 95},
+		{SignatureID: "v0", Kind: "technology", Name: "Gitea", Confidence: 90},
+	}
+	if !reflect.DeepEqual(once, want) {
+		t.Fatalf("MergeFindings = %+v, want %+v", once, want)
+	}
+	if again := MergeFindings(once); !reflect.DeepEqual(again, want) {
+		t.Errorf("merging again = %+v, want it unchanged", again)
+	}
+	more := MergeFindings(append(once, Finding{SignatureID: "c", Kind: KindStaging, Name: "Staging", Confidence: 80, Evidence: "hostname"}))
+	if more[0].SignatureID != "c" || more[0].Evidence != "hostname; also matched by b, a" {
+		t.Errorf("merge with a stronger finding = %+v, want c keeping the ids b and a", more[0])
+	}
+}
+
+// REQ-SIGNATURES-027: one admin panel and one finding per notable header on a lab service, whatever each signature
+// calls it.
+func TestMergeFindingsAcrossNamesOnLabServices(t *testing.T) {
+	cases := []struct {
+		service, kind, header string
+		ids                   []string
+	}{
+		{"admin", KindAdminPanel, "", []string{"admin-panel-login", "builtin-admin-login"}},
+		{"staging", KindInterestingHeader, "x-debug-token", []string{"debug-token-header", "builtin-header-x-debug-token"}},
+	}
+	for _, c := range cases {
+		t.Run(c.service, func(t *testing.T) {
+			var got []Finding
+			for _, f := range detectLabServiceWithLabSignatures(t, c.service).Findings {
+				if f.Kind == c.kind && (c.header == "" || strings.Contains(strings.ToLower(f.Evidence), c.header)) {
+					got = append(got, f)
+				}
+			}
+			if len(got) != 1 {
+				t.Fatalf("%s findings = %+v, want one", c.kind, got)
+			}
+			for _, id := range c.ids {
+				if got[0].SignatureID != id && !strings.Contains(got[0].Evidence, id) {
+					t.Errorf("merged %s finding %+v does not name %s", c.kind, got[0], id)
+				}
+			}
+		})
+	}
+}
+
+// REQ-SIGNATURES-027: a user signature stays the visible finding when a built-in one matches the same trait more
+// strongly; the merged finding keeps the higher confidence.
+func TestMergeFindingsPrefersUserSignatures(t *testing.T) {
+	got := MergeFindings([]Finding{
+		{SignatureID: "builtin-header-x-debug-token", Kind: KindInterestingHeader, Name: "Debug header exposed", Confidence: 80, Evidence: "X-Debug-Token: <token redacted, 6 characters>"},
+		{SignatureID: "debug-token-header", Kind: KindInterestingHeader, Name: "Debug token header exposed", Confidence: 70, Evidence: `GET /: header x-debug-token matches ".+"`},
+	})
+	want := []Finding{{SignatureID: "debug-token-header", Kind: KindInterestingHeader, Name: "Debug token header exposed", Confidence: 80,
+		Evidence: `GET /: header x-debug-token matches ".+"; also matched by builtin-header-x-debug-token`}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("MergeFindings = %+v, want %+v", got, want)
 	}
 }

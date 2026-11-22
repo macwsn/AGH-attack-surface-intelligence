@@ -27,3 +27,17 @@ func TestProgressOf(t *testing.T) {
 		t.Errorf("all done: %+v, want 100%% and no estimate", p)
 	}
 }
+
+// REQ-SCHEDULE-006: AC2 of T-803xb7cwjk
+func TestProgressWithInFlight(t *testing.T) {
+	if p := ProgressOf(64, 1, nil).WithInFlight(16); p.Done != 16 || p.Percent != 25 || p.HasLeft {
+		t.Errorf("16 of 64 in flight before any group: %+v, want 25%% and no time left yet", p)
+	}
+	groups := []inventory.GroupInfo{{AddressCount: 60, Duration: time.Minute}}
+	if p := ProgressOf(64, 1, groups).WithInFlight(16); p.Done != 64 || p.Percent != 100 {
+		t.Errorf("in flight beyond the total: %+v, want capped at 64", p)
+	}
+	if p := ProgressOf(64, 1, nil).WithInFlight(-3); p.Done != 0 || p.Percent != 0 {
+		t.Errorf("negative in flight: %+v, want unchanged", p)
+	}
+}

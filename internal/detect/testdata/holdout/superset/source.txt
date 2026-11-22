@@ -1,0 +1,1 @@
+documented markers (written fixture, not a capture): vulhub superset/CVE-2023-27524, apache/superset:2.0.1 on 8088

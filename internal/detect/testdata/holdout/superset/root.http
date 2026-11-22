@@ -1,0 +1,30 @@
+HTTP/1.1 302 FOUND
+Server: gunicorn
+Date: Sat, 21 Nov 2026 12:00:00 GMT
+Content-Type: text/html; charset=utf-8
+Location: http://fixture.test/login/
+Content-Length: 209
+
+HTTP/1.1 200 OK
+Server: gunicorn
+Date: Sat, 21 Nov 2026 12:00:00 GMT
+Content-Type: text/html; charset=utf-8
+Set-Cookie: session=eyJfZnJlc2giOmZhbHNlfQ; HttpOnly; Path=/; SameSite=Lax
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Superset</title>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/png" href="/static/assets/images/favicon.png" />
+  </head>
+  <body>
+    <div id="app" data-bootstrap="{&#34;common&#34;: {&#34;application_root&#34;: &#34;/&#34;}}"></div>
+    <form action="" method="post" name="login">
+      <input id="csrf_token" name="csrf_token" type="hidden" value="IjFh">
+      <input id="username" name="username" type="text" value="">
+      <input id="password" name="password" type="password" value="">
+      <input type="submit" value="Sign In">
+    </form>
+  </body>
+</html>

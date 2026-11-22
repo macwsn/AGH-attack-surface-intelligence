@@ -1,0 +1,7 @@
+captured from the running lab-agh stack
+image: vulnerables/web-dvwa:latest (sha256:dae203fe11646a86937bf04db0079adef295f426da68a92b40e3b181f337daa7)
+compose: lab-agh/docker-compose-vulnerable.yml, service dvwa
+capture date: 2026-11-21
+command: curl -sS -i -L --max-redirs 5 http://dvwa<path> from a container on the stack network (host ports not published)
+paths: / (root.http), /version (version.http), /api/version (api__version.http)
+state: / redirects to login.php

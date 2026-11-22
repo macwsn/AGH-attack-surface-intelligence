@@ -1,0 +1,1 @@
+documented markers (written fixture, not a capture): vulhub nexus/CVE-2020-10199, sonatype/nexus3:3.21.1 on 8081

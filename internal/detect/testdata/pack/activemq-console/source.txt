@@ -1,0 +1,3 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Apache ActiveMQ 5.x welcome page of the web console on 8161 (links to admin/ and api/), activemq.apache.org/web-console
+the eval/vulhub capture of this product is not readable from the builder sandbox; markers written to match it

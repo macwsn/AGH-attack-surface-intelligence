@@ -1,0 +1,7 @@
+captured from the running lab-agh stack
+image: gitea/gitea:latest (sha256:aa90e8f00b755b0d665214ab9c14447ea44d3190dbe6b6d0cb46cd9c4f55d309)
+compose: lab-agh/docker-compose-custom-network.yml, service gitea:3000
+capture date: 2026-11-21
+command: curl -sS -i -L --max-redirs 5 http://gitea:3000<path> from a container on the stack network (host ports not published)
+paths: / (root.http), /version (version.http), /api/version (api__version.http)
+state: first start, / shows the installation page as in the lab

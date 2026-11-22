@@ -1,0 +1,2 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: MinIO Console index.html (title MinIO Console), min.io/docs/minio/linux/administration/minio-console.html

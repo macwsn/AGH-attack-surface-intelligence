@@ -1,0 +1,452 @@
+{
+ "tool": "asi",
+ "totals": {
+  "services": 16,
+  "hosts_found": 16,
+  "ports_found": 27,
+  "ports_total": 27,
+  "recognised": 16,
+  "version_exact": 14,
+  "version_major_minor": 0,
+  "version_wrong": 0,
+  "version_missing": 2,
+  "admin_expected": 4,
+  "admin_flagged": 4,
+  "admin_false_flags": 3,
+  "outdated_expected": 16,
+  "outdated_flagged": 16,
+  "false_technologies": 0,
+  "unexpected_hosts": [],
+  "summary": "recognised 16/16, version exact 14/16, admin flagged 4/4, false technologies 0"
+ },
+ "services": [
+  {
+   "service": "joomla",
+   "address": "172.32.0.10",
+   "product": "Joomla",
+   "version": "4.2.7",
+   "category": "cms",
+   "host_found": true,
+   "ports": {
+    "80": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Joomla"
+   ],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": false,
+   "admin_flagged": true,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "drupal",
+   "address": "172.32.0.11",
+   "product": "Drupal",
+   "version": "8.5.0",
+   "category": "cms",
+   "host_found": true,
+   "ports": {
+    "80": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Drupal",
+    "Outdated Drupal"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "8.5.0"
+   ],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "wordpress",
+   "address": "172.32.0.12",
+   "product": "WordPress",
+   "version": "4.6",
+   "category": "cms",
+   "host_found": true,
+   "ports": {
+    "80": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Outdated WordPress",
+    "WordPress"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "4.6"
+   ],
+   "admin_expected": false,
+   "admin_flagged": true,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "tomcat",
+   "address": "172.32.0.13",
+   "product": "Apache Tomcat",
+   "version": "8.0.43",
+   "category": "app-server",
+   "host_found": true,
+   "ports": {
+    "8009": true,
+    "8080": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Apache Tomcat",
+    "Apache Tomcat/Coyote JSP engine",
+    "Outdated Apache Tomcat"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "1.1",
+    "8.0.43"
+   ],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "jenkins",
+   "address": "172.32.0.14",
+   "product": "Jenkins",
+   "version": "2.441",
+   "category": "ci",
+   "host_found": true,
+   "ports": {
+    "8080": true,
+    "50000": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Jenkins",
+    "Outdated Jenkins"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "2.441"
+   ],
+   "admin_expected": true,
+   "admin_flagged": true,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "grafana",
+   "address": "172.32.0.15",
+   "product": "Grafana",
+   "version": "8.2.6",
+   "category": "monitoring",
+   "host_found": true,
+   "ports": {
+    "3000": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Grafana",
+    "Outdated Grafana"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "8.2.6"
+   ],
+   "admin_expected": true,
+   "admin_flagged": true,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "phpmyadmin",
+   "address": "172.32.0.16",
+   "product": "phpMyAdmin",
+   "version": "4.8.1",
+   "category": "admin-tool",
+   "host_found": true,
+   "ports": {
+    "80": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Outdated phpMyAdmin",
+    "phpMyAdmin"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "4.8.1"
+   ],
+   "admin_expected": true,
+   "admin_flagged": true,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "nginx",
+   "address": "172.32.0.17",
+   "product": "nginx",
+   "version": "1.13.2",
+   "category": "web-server",
+   "host_found": true,
+   "ports": {
+    "8080": true,
+    "8081": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Outdated nginx",
+    "nginx"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "1.13.2"
+   ],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "httpd",
+   "address": "172.32.0.18",
+   "product": "Apache HTTP Server",
+   "version": "2.4.49",
+   "category": "web-server",
+   "host_found": true,
+   "ports": {
+    "80": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Apache",
+    "Apache httpd",
+    "Outdated Apache"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "2.4.49"
+   ],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "elasticsearch",
+   "address": "172.32.0.19",
+   "product": "Elasticsearch",
+   "version": "1.4.2",
+   "category": "database",
+   "host_found": true,
+   "ports": {
+    "9200": true,
+    "9300": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Elasticsearch",
+    "Elasticsearch REST API",
+    "Outdated Elasticsearch"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "1.4.2"
+   ],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "redis",
+   "address": "172.32.0.20",
+   "product": "Redis",
+   "version": "4.0.14",
+   "category": "database",
+   "host_found": true,
+   "ports": {
+    "6379": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Outdated Redis",
+    "Redis",
+    "Redis key-value store"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "4.0.14"
+   ],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "activemq",
+   "address": "172.32.0.21",
+   "product": "Apache ActiveMQ",
+   "version": "5.17.3",
+   "category": "message-queue",
+   "host_found": true,
+   "ports": {
+    "1883": true,
+    "5005": true,
+    "5672": true,
+    "8161": true,
+    "61613": true,
+    "61614": true,
+    "61616": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "ActiveMQ",
+    "ActiveMQ OpenWire transport",
+    "Apache ActiveMQ",
+    "Outdated ActiveMQ"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "5.17.3"
+   ],
+   "admin_expected": true,
+   "admin_flagged": true,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "gitea",
+   "address": "172.32.0.22",
+   "product": "Gitea",
+   "version": "1.4.0",
+   "category": "scm",
+   "host_found": true,
+   "ports": {
+    "22": true,
+    "3000": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Gitea"
+   ],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": false,
+   "admin_flagged": true,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "joomla-mysql",
+   "address": "172.32.0.100",
+   "product": "MySQL",
+   "version": "5.7.44",
+   "category": "database",
+   "host_found": true,
+   "ports": {
+    "3306": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "MySQL",
+    "Outdated MySQL"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "5.7.44"
+   ],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "wordpress-mysql",
+   "address": "172.32.0.101",
+   "product": "MySQL",
+   "version": "5.7.44",
+   "category": "database",
+   "host_found": true,
+   "ports": {
+    "3306": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "MySQL",
+    "Outdated MySQL"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "5.7.44"
+   ],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  },
+  {
+   "service": "phpmyadmin-mysql",
+   "address": "172.32.0.102",
+   "product": "MySQL",
+   "version": "5.5.62",
+   "category": "database",
+   "host_found": true,
+   "ports": {
+    "3306": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "MySQL",
+    "Outdated MySQL"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "5.5.62"
+   ],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": true,
+   "false_technologies": []
+  }
+ ]
+}

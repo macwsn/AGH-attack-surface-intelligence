@@ -1,6 +1,7 @@
 # Architecture decisions
 
-Decided up front by the supervisor. A task that needs to deviate says so in its PR body and goes to human review.
+Decided up front by the maintainers. A change that needs to deviate says so in its description and is reviewed by the
+maintainers.
 
 ## Shape
 
@@ -33,8 +34,12 @@ Decided up front by the supervisor. A task that needs to deviate says so in its 
 1. Expand targets minus excludes, split into groups. Group size starts at 64 addresses and adapts to the measured
    speed so a group takes roughly 30-60 s; every group records its duration.
 2. Per group: host discovery (`nmap -sn`, plus a TCP connect to the allowed ports for hosts that drop ICMP), then
-   service detection on live hosts (`nmap -sT -sV --version-light -p <ports> -oX -`), only on the allowed ports.
-3. Per open port that speaks HTTP or TLS: HTTP probe, then built-in detection and signatures.
+   service detection on live hosts (`nmap -sT -sV --version-light -p <ports> -oX -`, soft matches taken as final), only on
+   the allowed ports, then one `nmap -sT -sV` pass at default intensity for the ports left unidentified (setting
+   `service_detection`, default `standard`; `light` skips it).
+3. Per open port that speaks HTTP or TLS, and per port nmap could not identify (tried over HTTP, then TLS): HTTP
+   probe, then built-in detection and signatures. Industrial and printing ports (a fixed list in `internal/scan`) get
+   only a TCP connect: no nmap service probe and no HTTP request.
 4. Results are written per group, so a stopped run (window end, crash, cancel) resumes from the first unfinished group.
 5. `--max-rate` is split once per run: nmap gets half (rounded down), shared by the concurrently running nmap calls so their `--max-rate` values never sum above it, and the probe's token bucket gets the rest; per-host concurrency is 2.
 
@@ -51,7 +56,21 @@ touches a port outside the configured list.
 - Status: seen in the latest run that covered it → `active`; missed `1 … N-1` consecutive covering runs → `unstable`;
   missed `N` → `inactive`. `N` is per run configuration (default 3). `stability` = share of the last 10 covering runs
   in which it was seen. A run "covers" a host only when the host's group completed.
-- Unstable hosts are re-probed once at the end of the run before they are counted as missed.
+- Hosts that were `active` or `unstable` in the previous run and were not found are re-probed once at the end of the
+  run before they are counted as missed.
+- Run modes: a `full` run covers every address of its groups for every port; a `recheck` run (`RunSettings.Mode`)
+  contacts only the known services, i.e. the tcp services `active` or `unstable` as of its base (the latest completed
+  run of the same scan definition, or with the same targets and excludes), and records per covered address the ports
+  it covered (`run_group_addresses.ports`, NULL for full coverage). A service counts as covered by a run only when its
+  address is covered and the port is in that list (or the run observed it), so uncontacted hosts and services keep
+  their state. Every run stores the traffic it sent (`runs.packets`): measured HTTP requests plus an estimate of nmap's
+  packets from addresses and ports.
+- Availability profile: per host 24 hour-of-day buckets, each starting at 0.5 and updated per covering run with an
+  exponentially weighted average `v = v + 0.3 × (x − v)` (x = 1 seen, 0 missed). The hour is that of the covering
+  group's completion time (`run_groups.completed_at`) in the timezone of the run's stored schedule (UTC without one).
+  A host with at least 6 samples, a bucket >= 0.8 and a bucket <= 0.2 is periodic; a miss in an hour whose bucket was
+  <= 0.2 before the run updates the profile but is left out of status, `missed_runs` and stability for the host and
+  its services. The profile is derived from observations at read time, like status; nothing is stored.
 - Technology confidence 0-100: taken from the signature or built-in rule, multiplied by `stability` when reported.
 - Interest score 0-100: weighted sum of finding kinds (admin panel, staging, IoT, notable header/cookie), newness,
   self-signed or expiring certificate, outdated version markers.
@@ -65,8 +84,8 @@ touches a port outside the configured list.
   named set of permissions. Built-in roles: `admin` (all), `editor` (create, delete, edit, read, import, export,
   scan.run, signature.manage), `operator` (edit, read, export), `viewer` (read). Custom roles can be created.
   Every handler declares the permission it needs; a test walks the route table and fails on an undeclared route.
-- Encryption at rest: sensitive columns (response headers, cookie metadata, bodies kept as evidence, notes,
-  DefectDojo token, imported raw files) are stored as AES-256-GCM ciphertext with a key derived from
+- Encryption at rest: sensitive columns (response headers, cookie metadata, bodies kept as evidence, learned field
+  state, finding evidence, notes, DefectDojo connection and token; imported files are not stored at all) are stored as AES-256-GCM ciphertext with a key derived from
   `ASI_MASTER_KEY` (HKDF, key id stored with the value so keys can rotate). Columns needed for search and diff
   (address, port, title, technology names) hold no secrets and stay plain. Deployment docs also require an encrypted
   volume for Postgres.

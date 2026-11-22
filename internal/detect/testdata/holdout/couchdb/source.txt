@@ -1,0 +1,6 @@
+captured from a local container of the Vulhub image
+image: vulhub/couchdb:2.1.0 (sha256:8311286db5b1a08076977084f38567fbf8bec970aa7996f787389e904ef2a64e)
+capture date: 2026-11-22
+command: curl -sS -i -L --max-redirs 5 http://<host>:5984<path> (host rewritten to fixture.test)
+paths: / (root.http), /version (version.http), /api/version (api__version.http)
+state: first start of the image, no configuration

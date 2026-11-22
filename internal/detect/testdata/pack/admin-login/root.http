@@ -1,0 +1,11 @@
+HTTP/1.1 302 Found
+Location: /administrator/
+Content-Type: text/html
+
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+
+<!DOCTYPE html>
+<html><head><title>Administrator Login</title></head>
+<body><form method="post" action="/administrator/"><input type="text" name="user"><input type="password" name="pass"><button type="submit">Log in</button></form></body>
+</html>

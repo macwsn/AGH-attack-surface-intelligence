@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.97 scan initiated Sat Nov 21 22:40:32 2026 as: nmap -Pn -sT -sV -p 21,22,25,110,143 -n -oX - vrf-dovpop vrf-dovimap vrf-fakeftp2 -->
+<nmaprun scanner="nmap" args="nmap -Pn -sT -sV -p 21,22,25,110,143 -n -oX - vrf-dovpop vrf-dovimap vrf-fakeftp2" start="1795300832" startstr="Sat Nov 21 22:40:32 2026" version="7.97" xmloutputversion="1.05">
+<scaninfo type="connect" protocol="tcp" numservices="5" services="21-22,25,110,143"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1795300832" endtime="1795300832"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.11" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-dovpop" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="22"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="25"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="smtp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="110"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="pop3" servicefp="SF-Port110-TCP:V=7.97%I=7%D=11/21%Time=6B021DE0%P=aarch64-alpine-linux-musl%r(NULL,1D,&quot;\+OK\x20Dovecot\x20\(Debian\)\x20ready\.\r\n&quot;);" method="table" conf="3"/></port>
+<port protocol="tcp" portid="143"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="imap" method="table" conf="3"/></port>
+</ports>
+<times srtt="340" rttvar="1768" to="100000"/>
+</host>
+<host starttime="1795300832" endtime="1795300832"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.12" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-dovimap" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="22"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="25"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="smtp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="110"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="pop3" method="table" conf="3"/></port>
+<port protocol="tcp" portid="143"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="imap" servicefp="SF-Port143-TCP:V=7.97%I=7%D=11/21%Time=6B021DE0%P=aarch64-alpine-linux-musl%r(NULL,79,&quot;\*\x20OK\x20\[CAPABILITY\x20IMAP4rev1\x20SASL-IR\x20LOGIN-REFERRALS\x20ID\x20ENABLE\x20IDLE\x20LITERAL\+\x20STARTTLS\x20AUTH=PLAIN\]\x20Dovecot\x20\(Debian\)\x20ready\.\r\n&quot;);" method="table" conf="3"/></port>
+</ports>
+<times srtt="274" rttvar="1741" to="100000"/>
+</host>
+<host starttime="1795300832" endtime="1795300832"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.6" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-fakeftp2" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="ftp" servicefp="SF-Port21-TCP:V=7.97%I=7%D=11/21%Time=6B021DE0%P=aarch64-alpine-linux-musl%r(NULL,35,&quot;220\x20ftp\.example\.org\x20FTP\x20server\x20\(vsFTPd\x203\.0\.5\)\x20ready\r\n&quot;);" method="table" conf="3"/></port>
+<port protocol="tcp" portid="22"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ssh" method="table" conf="3"/></port>
+<port protocol="tcp" portid="25"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="smtp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="110"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="pop3" method="table" conf="3"/></port>
+<port protocol="tcp" portid="143"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="imap" method="table" conf="3"/></port>
+</ports>
+<times srtt="195" rttvar="1707" to="100000"/>
+</host>
+<runstats><finished time="1795300832" timestr="Sat Nov 21 22:40:32 2026" summary="Nmap done at Sat Nov 21 22:40:32 2026; 3 IP addresses (3 hosts up) scanned in 0.64 seconds" elapsed="0.64" exit="success"/><hosts up="3" down="0" total="3"/>
+</runstats>
+</nmaprun>

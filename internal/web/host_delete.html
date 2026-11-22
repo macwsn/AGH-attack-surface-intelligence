@@ -1,0 +1,18 @@
+{{define "content"}}{{with .Data}}
+<div class="page-head"><div>{{if .Service}}<h1>Delete service <span class="addr">{{.Address}} {{.Service.Key}}</span></h1>
+<p class="lede">{{with .Service.Name}}{{.}} · {{end}}{{.Service.StatusLabel}}</p>{{else}}<h1>Delete host <span class="addr">{{.Address}}</span></h1>
+<p class="lede">{{.Services}} services in the inventory.</p>{{end}}</div>
+<div class="actions"><a class="btn" href="{{.HostPath}}">Back to the host</a></div></div>
+<section class="panel">
+<header><h2>Confirm</h2></header>
+<div class="body">
+{{if .Service}}<div class="notice warn">Delete service {{.Service.Key}} of {{.Address}} with its observations, technologies and findings? The host and its other services stay. A later scan that finds the service records it again as new. This cannot be undone.</div>
+<form method="post" action="{{.HostPath}}/services/{{.Service.Port}}/{{.Service.Protocol}}/delete">{{$.CSRFField}}
+<div class="form-actions"><button class="danger" type="submit">Delete service {{.Address}} {{.Service.Key}}</button><a class="btn" href="{{.HostPath}}">Cancel</a></div>
+</form>{{else}}<div class="notice warn">Delete host {{.Address}} with its {{.Services}} services, its history, observations, technologies, findings, tags and notes? A later scan that finds the host records it again as new. This cannot be undone.</div>
+<form method="post" action="{{.HostPath}}/delete">{{$.CSRFField}}
+<div class="form-actions"><button class="danger" type="submit">Delete host {{.Address}}</button><a class="btn" href="{{.HostPath}}">Cancel</a></div>
+</form>{{end}}
+</div>
+</section>
+{{end}}{{end}}

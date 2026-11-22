@@ -1,0 +1,2 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Brother printer web management (/ -> /general/status.html, Server debut/<version>), support.brother.com

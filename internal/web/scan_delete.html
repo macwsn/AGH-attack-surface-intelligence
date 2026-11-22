@@ -1,0 +1,14 @@
+{{define "content"}}{{with .Data}}
+<div class="page-head"><div><h1>Delete scan {{.Name}}</h1>
+<p class="lede">{{if .Enabled}}Enabled{{else}}Disabled{{end}}. Targets: {{len .Settings.Targets}}.</p></div>
+<div class="actions"><a class="btn" href="/scans/{{.ID}}">Back to the scan</a></div></div>
+<section class="panel">
+<header><h2>Confirm</h2></header>
+<div class="body">
+<div class="notice warn">Delete scan {{.Name}} with its targets, ports and schedule? The scheduler starts no new runs of it. Its past runs, their observations and the inventory stay; the runs are shown as of a deleted definition. This cannot be undone.</div>
+<form method="post" action="/scans/{{.ID}}/delete">{{$.CSRFField}}
+<div class="form-actions"><button class="danger" type="submit">Delete scan {{.Name}}</button><a class="btn" href="/scans/{{.ID}}">Cancel</a></div>
+</form>
+</div>
+</section>
+{{end}}{{end}}

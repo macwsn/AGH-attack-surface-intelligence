@@ -252,3 +252,26 @@ func TestExpiredSessionsPurgedOnLogin(t *testing.T) {
 		t.Fatalf("fresh session: %v", err)
 	}
 }
+
+// REQ-AUTH-022 AC1: the session row keeps only a hash of the CSRF token; the token itself is never stored.
+func TestCSRFTokenStoredHashed(t *testing.T) {
+	ctx := context.Background()
+	s := newTestService(t, Config{})
+	createSessTestUser(t, s, "alice", RoleViewer)
+	sess := mustLogin(t, s, "alice")
+	var raw string
+	if err := s.store.Pool.QueryRow(ctx, `SELECT t::text FROM sessions t`).Scan(&raw); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(raw, sess.CSRFToken) || strings.Contains(raw, hex.EncodeToString([]byte(sess.CSRFToken))) {
+		t.Fatalf("sessions row holds the CSRF token: %s", raw)
+	}
+	sum := sha256.Sum256([]byte(sess.CSRFToken))
+	if !strings.Contains(raw, hex.EncodeToString(sum[:])) {
+		t.Fatalf("sessions row %s does not hold the SHA-256 of the CSRF token", raw)
+	}
+	p, err := s.LookupSession(ctx, sess.Token)
+	if err != nil || p.CSRFToken != sess.CSRFToken {
+		t.Fatalf("LookupSession = %+v, %v; want the session's CSRF token", p, err)
+	}
+}

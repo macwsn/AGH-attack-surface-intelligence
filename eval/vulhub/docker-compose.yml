@@ -1,0 +1,112 @@
+# Vulhub lab: real products in known versions for fingerprinting tests. Truth lives in truth.json.
+# Deliberately vulnerable images: no published ports, internal bridge only. Do not add `ports:`.
+name: asi-vulhub
+
+networks:
+  vh:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.32.0.0/24
+          ip_range: 172.32.0.240/28
+          gateway: 172.32.0.1
+
+services:
+  joomla:
+    image: vulhub/joomla:4.2.7
+    platform: linux/amd64
+    depends_on: [joomla-mysql]
+    environment:
+      - JOOMLA_DB_HOST=joomla-mysql
+      - JOOMLA_DB_PORT=3306
+      - JOOMLA_DB_USER=root
+      - JOOMLA_DB_PASSWORD=vulhub
+      - JOOMLA_DB_NAME=joomla
+    networks: { vh: { ipv4_address: 172.32.0.10 } }
+  drupal:
+    image: vulhub/drupal:8.5.0
+    platform: linux/amd64
+    networks: { vh: { ipv4_address: 172.32.0.11 } }
+  wordpress:
+    image: vulhub/wordpress:4.6
+    platform: linux/amd64
+    depends_on: [wordpress-mysql]
+    environment:
+      - WORDPRESS_DB_HOST=wordpress-mysql:3306
+      - WORDPRESS_DB_USER=root
+      - WORDPRESS_DB_PASSWORD=root
+      - WORDPRESS_DB_NAME=wordpress
+    networks: { vh: { ipv4_address: 172.32.0.12 } }
+  tomcat:
+    image: vulhub/tomcat:8.0
+    platform: linux/amd64
+    volumes:
+      - ./src/tomcat/tomcat8/tomcat-users.xml:/usr/local/tomcat/conf/tomcat-users.xml:ro
+      - ./src/tomcat/tomcat8/context.xml:/usr/local/tomcat/webapps/manager/META-INF/context.xml:ro
+      - ./src/tomcat/tomcat8/context.xml:/usr/local/tomcat/webapps/host-manager/META-INF/context.xml:ro
+    networks: { vh: { ipv4_address: 172.32.0.13 } }
+  jenkins:
+    image: vulhub/jenkins:2.441
+    platform: linux/amd64
+    init: true
+    networks: { vh: { ipv4_address: 172.32.0.14 } }
+  grafana:
+    image: vulhub/grafana:8.2.6
+    platform: linux/amd64
+    networks: { vh: { ipv4_address: 172.32.0.15 } }
+  phpmyadmin:
+    image: vulhub/phpmyadmin:4.8.1
+    platform: linux/amd64
+    depends_on: [phpmyadmin-mysql]
+    volumes:
+      - ./config/phpmyadmin.config.inc.php:/var/www/html/config.inc.php:ro
+    networks: { vh: { ipv4_address: 172.32.0.16 } }
+  nginx:
+    image: vulhub/nginx:1.13.2
+    platform: linux/amd64
+    volumes:
+      - ./src/nginx/CVE-2017-7529/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: { vh: { ipv4_address: 172.32.0.17 } }
+  httpd:
+    image: vulhub/httpd:2.4.49
+    platform: linux/amd64
+    networks: { vh: { ipv4_address: 172.32.0.18 } }
+  elasticsearch:
+    image: vulhub/elasticsearch:1.4.2
+    platform: linux/amd64
+    networks: { vh: { ipv4_address: 172.32.0.19 } }
+  redis:
+    image: vulhub/redis:4.0.14
+    platform: linux/amd64
+    networks: { vh: { ipv4_address: 172.32.0.20 } }
+  activemq:
+    image: vulhub/activemq:5.17.3
+    platform: linux/amd64
+    networks: { vh: { ipv4_address: 172.32.0.21 } }
+  gitea:
+    image: vulhub/gitea:1.4.0
+    platform: linux/amd64
+    networks: { vh: { ipv4_address: 172.32.0.22 } }
+
+  joomla-mysql:
+    image: mysql:5.7
+    platform: linux/amd64
+    environment:
+      - MYSQL_ROOT_PASSWORD=vulhub
+    networks: { vh: { ipv4_address: 172.32.0.100 } }
+  wordpress-mysql:
+    image: mysql:5
+    platform: linux/amd64
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    networks: { vh: { ipv4_address: 172.32.0.101 } }
+  phpmyadmin-mysql:
+    image: mysql:5.5
+    platform: linux/amd64
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=yes
+      - MYSQL_DATABASE=test
+      - MYSQL_USER=test
+      - MYSQL_PASSWORD=test
+    networks: { vh: { ipv4_address: 172.32.0.102 } }

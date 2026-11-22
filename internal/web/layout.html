@@ -13,9 +13,9 @@
 <div class="shell">
 <aside class="rail">
 <a class="brand" href="/">ASI<small>Attack Surface Intelligence</small></a>
-<nav aria-label="Main">{{range .Nav}}<a href="{{.Path}}">{{.Label}}</a>{{end}}</nav>
+<nav aria-label="Main">{{range .Nav}}<div class="nav-group">{{with .Heading}}<h2 class="nav-heading">{{.}}</h2>{{end}}{{range .Entries}}<a href="{{.Path}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}</div>{{end}}</nav>
 <div class="account">
-<span class="who">{{.User.Username}}</span>
+<a class="who" href="/account">{{.User.Username}}</a>
 <span class="role">{{.User.Role}}</span>
 <form method="post" action="/logout">{{.CSRFField}}<button class="btn small" type="submit">Sign out</button></form>
 </div>
@@ -32,4 +32,32 @@
 </body>
 </html>
 {{end}}
-{{define "run-status"}}{{if eq .Status "running"}}<span class="status active">Running</span>{{else if eq .Status "paused"}}<span class="status unstable">{{if .Held}}Paused by a user{{else}}Paused{{end}}</span>{{else if eq .Status "failed"}}<span class="change missing">Failed</span>{{else}}<span class="status inactive">Completed</span>{{end}}{{end}}
+{{define "report"}}
+<section class="panel">
+<header><h2>{{if .DryRun}}Dry run{{else}}Run <code>{{.Run}}</code>{{end}}</h2></header>
+<div class="body">
+{{if .DryRun}}<div class="notice">Dry run: {{.Counts}} would be imported. Nothing was recorded.</div>
+{{else if .Hosts}}<div class="notice ok">Imported {{.Counts}} as run <code>{{.Run}}</code>.</div>{{end}}
+<div class="figures">
+<div class="figure"><span class="value">{{.NewHosts}}</span><span class="label">New hosts</span></div>
+<div class="figure"><span class="value">{{.NewServices}}</span><span class="label">New services</span></div>
+<div class="figure"><span class="value">{{.Changed}}</span><span class="label">Changed</span></div>
+<div class="figure"><span class="value">{{.Invalid}}</span><span class="label">Invalid rows</span></div>
+</div>
+{{with .Skipped}}<div class="notice">{{.}} hosts or services are not active in the file and already in the inventory, so they were left as they are.</div>{{end}}
+{{if .Errors}}<div class="notice warn">{{.Invalid}} rows were skipped.{{if gt .Invalid (len .Errors)}} The first {{len .Errors}} are listed.{{end}}</div>
+<div class="table-wrap"><table class="data">
+<thead><tr><th class="num">Row</th><th>Problem</th></tr></thead>
+<tbody>{{range .Errors}}<tr><td class="num">{{.Row}}</td><td>{{.Reason}}</td></tr>{{end}}</tbody>
+</table></div>{{end}}
+{{if .Changes}}<div class="table-wrap"><table class="data">
+<thead><tr><th>Change</th><th>Where</th><th>Detail</th></tr></thead>
+<tbody>{{range .Changes}}<tr><td><span class="change {{.Type}}">{{.Label}}</span></td><td class="addr">{{.Where}}</td>
+<td class="diff">{{range .Fields}}{{.Field}} <del>{{.Old}}</del> <ins>{{.New}}</ins> {{end}}</td></tr>{{end}}</tbody>
+</table></div>
+{{else if .Hosts}}<p class="muted">No changes compared with the current inventory.</p>{{end}}
+</div>
+</section>
+{{end}}
+
+{{define "run-status"}}{{if .Stalled}}<span class="change missing">Stalled (process gone)</span>{{else if eq .Status "running"}}<span class="status active">Running</span>{{else if eq .Status "paused"}}<span class="status unstable">{{if .Held}}Paused by a user{{else}}Paused{{end}}</span>{{else if eq .Status "failed"}}<span class="change missing">Failed</span>{{else}}<span class="status inactive">Completed</span>{{end}}{{end}}

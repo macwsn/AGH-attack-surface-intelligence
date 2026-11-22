@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -31,23 +32,28 @@ func hashToken(token string) ([]byte, bool) {
 	return sum[:], true
 }
 
+func csrfFor(token string) (string, []byte) {
+	mac := hmac.New(sha256.New, []byte(token))
+	mac.Write([]byte("asi csrf token v1"))
+	csrf := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	sum := sha256.Sum256([]byte(csrf))
+	return csrf, sum[:]
+}
+
 func (s *Service) createSession(ctx context.Context, userID int64, username, addr string, now time.Time) (Session, error) {
 	token, err := randomToken()
 	if err != nil {
 		return Session{}, err
 	}
-	csrf, err := randomToken()
-	if err != nil {
-		return Session{}, err
-	}
+	csrf, csrfHash := csrfFor(token)
 	hash, _ := hashToken(token)
 	now = now.Truncate(time.Microsecond)
 	err = s.store.Tx(ctx, func(tx pgx.Tx) error {
 		if err := s.deleteExpiredSessions(ctx, tx, now); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO sessions (token_hash, user_id, csrf_token, created_at, last_used_at, address)
-			VALUES ($1, $2, $3, $4, $4, $5)`, hash, userID, csrf, now, addr); err != nil {
+		if _, err := tx.Exec(ctx, `INSERT INTO sessions (token_hash, user_id, csrf_hash, created_at, last_used_at, address)
+			VALUES ($1, $2, $3, $4, $4, $5)`, hash, userID, csrfHash, now, addr); err != nil {
 			return fmt.Errorf("insert session: %w", err)
 		}
 		return writeAudit(ctx, tx, username, auditLogin, "", addr)
@@ -75,17 +81,25 @@ func (s *Service) LookupSession(ctx context.Context, token string) (Principal, e
 	var p Principal
 	expired := false
 	err := s.store.Tx(ctx, func(tx pgx.Tx) error {
-		var created, lastUsed time.Time
-		err := tx.QueryRow(ctx, `SELECT s.created_at, s.last_used_at, s.csrf_token, u.username, u.role
+		var (
+			created, lastUsed time.Time
+			storedCSRF        []byte
+		)
+		err := tx.QueryRow(ctx, `SELECT s.created_at, s.last_used_at, s.csrf_hash, u.username, u.role
 			FROM sessions s JOIN users u ON u.id = s.user_id
-			WHERE s.token_hash = $1 FOR UPDATE OF s`, hash).
-			Scan(&created, &lastUsed, &p.CSRFToken, &p.Username, &p.Role)
+			WHERE s.token_hash = $1 AND NOT u.disabled FOR UPDATE OF s`, hash).
+			Scan(&created, &lastUsed, &storedCSRF, &p.Username, &p.Role)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNoSession
 		}
 		if err != nil {
 			return fmt.Errorf("look up session: %w", err)
 		}
+		csrf, csrfHash := csrfFor(token)
+		if !hmac.Equal(csrfHash, storedCSRF) {
+			return ErrNoSession
+		}
+		p.CSRFToken = csrf
 		if !now.Before(lastUsed.Add(s.cfg.IdleTimeout)) || !now.Before(created.Add(s.cfg.AbsoluteTimeout)) {
 			if _, err := tx.Exec(ctx, `DELETE FROM sessions WHERE token_hash = $1`, hash); err != nil {
 				return fmt.Errorf("delete expired session: %w", err)

@@ -1,0 +1,34 @@
+HTTP/1.1 302 FOUND
+Server: gunicorn/19.10.0
+Date: Sat, 21 Nov 2026 12:00:00 GMT
+Content-Type: text/html; charset=utf-8
+Content-Length: 221
+Location: http://fixture.test/login/?next=%2Fhome
+X-Frame-Options: DENY
+
+HTTP/1.1 200 OK
+Server: gunicorn/19.10.0
+Date: Sat, 21 Nov 2026 12:00:00 GMT
+Content-Type: text/html; charset=utf-8
+Set-Cookie: session=.eJwlzjEOwj; HttpOnly; Path=/
+X-Frame-Options: DENY
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Airflow</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="/static/appbuilder/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/static/pin_32.png" rel="icon">
+</head>
+<body>
+<div class="container">
+  <form action="" method="post" name="login">
+    <input id="csrf_token" name="csrf_token" type="hidden" value="IjNh">
+    <input class="form-control" id="username" name="username" type="text" value="">
+    <input class="form-control" id="password" name="password" type="password" value="">
+    <input class="btn btn-primary btn-block" type="submit" value="Sign In">
+  </form>
+</div>
+</body>
+</html>

@@ -44,7 +44,11 @@ func (e *ParseError) Error() string {
 
 func (e *ParseError) Unwrap() error { return e.Err }
 
-func Parse(r io.Reader) ([]Entry, error) {
+func Parse(r io.Reader) ([]Entry, error) { return parse(r, false) }
+
+func ParseHosts(r io.Reader) ([]Entry, error) { return parse(r, true) }
+
+func parse(r io.Reader, hostnames bool) ([]Entry, error) {
 	var entries []Entry
 	sc := bufio.NewScanner(r)
 	line := 0
@@ -58,7 +62,7 @@ func Parse(r io.Reader) ([]Entry, error) {
 		if text == "" {
 			continue
 		}
-		e, err := parseEntry(text)
+		e, err := parseEntry(text, hostnames)
 		if err != nil {
 			return nil, &ParseError{Line: line, Text: text, Err: err}
 		}
@@ -71,7 +75,7 @@ func Parse(r io.Reader) ([]Entry, error) {
 	return entries, nil
 }
 
-func parseEntry(s string) (Entry, error) {
+func parseEntry(s string, hostnames bool) (Entry, error) {
 	if strings.Contains(s, "/") {
 		p, err := netip.ParsePrefix(s)
 		if err != nil || !p.Addr().Is4() {
@@ -102,7 +106,7 @@ func parseEntry(s string) (Entry, error) {
 		}
 		return Entry{Kind: KindAddr, First: a, Last: a}, nil
 	}
-	name, err := parseDomain(s)
+	name, err := parseDomain(s, hostnames)
 	if err != nil {
 		return Entry{}, err
 	}
@@ -113,10 +117,10 @@ func looksNumeric(s string) bool {
 	return s != "" && strings.Trim(s, "0123456789.") == ""
 }
 
-func parseDomain(s string) (string, error) {
+func parseDomain(s string, hostnames bool) (string, error) {
 	name := strings.TrimSuffix(strings.ToLower(s), ".")
 	labels := strings.Split(name, ".")
-	if len(name) > 253 || len(labels) < 2 {
+	if len(name) > 253 || (len(labels) < 2 && !hostnames) {
 		return "", errors.New("not a domain name")
 	}
 	for _, l := range labels {
@@ -149,6 +153,31 @@ type span struct{ first, last uint32 }
 type Set struct {
 	spans []span
 	named []Target
+}
+
+func Count(targets, excludes []Entry) uint64 {
+	var include, exclude []span
+	excludedNames := map[string]bool{}
+	for _, e := range excludes {
+		if e.Kind == KindDomain {
+			excludedNames[e.Name] = true
+			continue
+		}
+		exclude = append(exclude, span{toU32(e.First), toU32(e.Last)})
+	}
+	names := map[string]bool{}
+	for _, e := range targets {
+		if e.Kind != KindDomain {
+			include = append(include, span{toU32(e.First), toU32(e.Last)})
+		} else if !excludedNames[e.Name] {
+			names[e.Name] = true
+		}
+	}
+	n := uint64(len(names))
+	for _, sp := range subtract(merge(include), merge(exclude)) {
+		n += uint64(sp.last-sp.first) + 1
+	}
+	return n
 }
 
 func Build(ctx context.Context, targets, excludes []Entry, res Resolver) (*Set, error) {
@@ -228,6 +257,14 @@ func (s *Set) All() iter.Seq[Target] {
 		}
 		emitNamedBelow(1 << 32)
 	}
+}
+
+func (s *Set) Contains(a netip.Addr) bool {
+	a = a.Unmap()
+	if !a.Is4() {
+		return false
+	}
+	return contains(s.spans, toU32(a)) || slices.ContainsFunc(s.named, func(t Target) bool { return t.Addr == a })
 }
 
 func (s *Set) Group(n int) iter.Seq[[]Target] {

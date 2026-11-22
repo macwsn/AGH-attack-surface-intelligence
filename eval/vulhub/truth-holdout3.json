@@ -1,0 +1,292 @@
+{
+ "lab": "asi-vulhub-holdout3",
+ "network": "172.28.35.0/24",
+ "excluded": [
+  "172.28.35.1",
+  "172.28.35.2",
+  "172.28.35.3"
+ ],
+ "ports_verified": "listening sockets read from /proc/net/tcp{,6} in every container, then confirmed with nmap -sT (connect only, no -sV) from a helper on the network",
+ "fixtures": "none; pages deliberately not recorded anywhere (only HTTP status codes were checked at boot)",
+ "generic_technologies": [
+  "Apache HTTP Server",
+  "Apache httpd",
+  "Apache",
+  "httpd",
+  "nginx",
+  "Jetty",
+  "Apache-Coyote",
+  "Apache Tomcat/Coyote JSP engine",
+  "Golang net/http server",
+  "PHP",
+  "Java",
+  "OpenJDK",
+  "Go",
+  "Golang",
+  "Python",
+  "Perl",
+  "Ruby",
+  "Node.js",
+  "Debian",
+  "Ubuntu",
+  "UNIX",
+  "Linux",
+  "Alpine Linux",
+  "OpenSSH",
+  "SSH",
+  "HTTP",
+  "Basic",
+  "MySQL",
+  "MariaDB",
+  "Jetty",
+  "Erlang",
+  "Erlang OTP",
+  "Servlet",
+  "JSP",
+  "Java Servlet",
+  "Apache Tomcat",
+  "Tomcat",
+  "Spring",
+  "Spring Boot",
+  "HTTP server",
+  "HSTS",
+  "XMPP",
+  "SMTP",
+  "Node.js",
+  "Express",
+  "Gunicorn",
+  "Flask",
+  "Vue.js",
+  "React",
+  "Ember.js",
+  "SMTP",
+  "DNS",
+  "gRPC"
+ ],
+ "benign_libraries": [
+  "jQuery",
+  "jQuery UI",
+  "jQuery Migrate",
+  "Underscore.js",
+  "Backbone.js",
+  "Bootstrap",
+  "Semantic UI",
+  "Vue.js",
+  "Clipboard.js",
+  "YUI",
+  "AngularJS",
+  "React",
+  "Font Awesome",
+  "CodeMirror",
+  "Moment.js",
+  "Lodash",
+  "RequireJS",
+  "Prototype",
+  "Twig",
+  "Symfony",
+  "D3",
+  "Chosen",
+  "Highlight.js",
+  "timeago",
+  "Socket.IO",
+  "Ember.js",
+  "Vue.js",
+  "React",
+  "Material UI",
+  "Ace"
+ ],
+ "services": [
+  {
+   "name": "syncthing",
+   "address": "172.28.35.10",
+   "product": "Syncthing",
+   "aliases": [
+    "Syncthing"
+   ],
+   "version": "1.27.4",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "file-sync",
+   "ports": [
+    8384,
+    22000
+   ],
+   "http_ports": [
+    8384
+   ],
+   "https_ports": [],
+   "admin_panel": true,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "8384 = GUI at /, unauthenticated on a fresh instance. 22000 = sync protocol (TLS)."
+  },
+  {
+   "name": "etherpad",
+   "address": "172.28.35.11",
+   "product": "Etherpad",
+   "aliases": [
+    "Etherpad",
+    "Etherpad Lite",
+    "Etherpad-Lite"
+   ],
+   "version": "1.9.7",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "collaboration",
+   "ports": [
+    9001
+   ],
+   "http_ports": [
+    9001
+   ],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": "/admin/",
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "/ is the pad start page."
+  },
+  {
+   "name": "filebrowser",
+   "address": "172.28.35.12",
+   "product": "File Browser",
+   "aliases": [
+    "File Browser",
+    "Filebrowser"
+   ],
+   "version": "2.27.0",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "admin-tool",
+   "ports": [
+    80
+   ],
+   "http_ports": [
+    80
+   ],
+   "https_ports": [],
+   "admin_panel": true,
+   "login_path": "/login",
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "/ is the single-page app that opens on the login form."
+  },
+  {
+   "name": "meilisearch",
+   "address": "172.28.35.13",
+   "product": "Meilisearch",
+   "aliases": [
+    "Meilisearch",
+    "MeiliSearch"
+   ],
+   "version": "1.7.3",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "search",
+   "ports": [
+    7700
+   ],
+   "http_ports": [
+    7700
+   ],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "/ is the built-in search preview (development mode, no key)."
+  },
+  {
+   "name": "kanboard",
+   "address": "172.28.35.14",
+   "product": "Kanboard",
+   "aliases": [
+    "Kanboard"
+   ],
+   "version": "1.2.35",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "project-management",
+   "ports": [
+    80,
+    443
+   ],
+   "http_ports": [
+    80
+   ],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": "/login",
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "/ redirects to /login (application login, not an admin console). 443 serves the same app with a self-signed certificate; not listed as https_ports so run.sh does not wait on it."
+  },
+  {
+   "name": "navidrome",
+   "address": "172.28.35.15",
+   "product": "Navidrome",
+   "aliases": [
+    "Navidrome"
+   ],
+   "version": "0.51.1",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "media-server",
+   "ports": [
+    4533
+   ],
+   "http_ports": [
+    4533
+   ],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": "/app/",
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "/ redirects to /app/ (first-user creation / login)."
+  },
+  {
+   "name": "ntfy",
+   "address": "172.28.35.16",
+   "product": "ntfy",
+   "aliases": [
+    "ntfy"
+   ],
+   "version": "2.9.0",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "notification-server",
+   "ports": [
+    80
+   ],
+   "http_ports": [
+    80
+   ],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "/ is the web app, no login."
+  },
+  {
+   "name": "adguardhome",
+   "address": "172.28.35.17",
+   "product": "AdGuard Home",
+   "aliases": [
+    "AdGuard Home",
+    "AdGuardHome",
+    "AdGuard"
+   ],
+   "version": "0.107.45",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "dns-filter",
+   "ports": [
+    3000
+   ],
+   "http_ports": [
+    3000
+   ],
+   "https_ports": [],
+   "admin_panel": true,
+   "login_path": "/install.html",
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "Not set up: / redirects to /install.html, the admin set-up wizard."
+  }
+ ]
+}

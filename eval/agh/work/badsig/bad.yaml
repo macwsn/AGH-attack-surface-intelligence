@@ -1,0 +1,7 @@
+- id: agh-bad-post
+  name: Unsafe signature (must be rejected)
+  kind: custom
+  confidence: 50
+  request: { method: POST, path: /login }
+  match:
+    all: [ { type: status, value: 200 } ]

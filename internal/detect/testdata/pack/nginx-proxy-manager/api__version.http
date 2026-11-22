@@ -1,0 +1,16 @@
+HTTP/1.1 404 Not Found
+Server: openresty
+Date: Sat, 21 Nov 2026 17:29:52 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 55
+Connection: keep-alive
+X-XSS-Protection: 1; mode=block
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+ETag: W/"37-Bhkuiz+HLeeDJNrr3tkf/QrjbOw"
+Vary: Accept-Encoding
+
+{"error":{"code":404,"message":"Not Found - /version"}}

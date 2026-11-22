@@ -1,0 +1,16 @@
+HTTP/1.1 302 Found
+Server: HP HTTP Server; HP LaserJet Pro M404dn - W1A53A; Serial Number: PHB0000000; Built:Mon Oct 02, 2023 10:00:00AM {LOFPDLPP1N001.2340A.00}
+Location: /hp/device/start
+Content-Length: 0
+
+HTTP/1.1 200 OK
+Server: HP HTTP Server; HP LaserJet Pro M404dn - W1A53A; Serial Number: PHB0000000; Built:Mon Oct 02, 2023 10:00:00AM {LOFPDLPP1N001.2340A.00}
+Content-Type: text/html; charset=UTF-8
+Cache-Control: no-cache
+
+<!DOCTYPE html>
+<html lang="en">
+<head><title>HP LaserJet Pro M404dn&nbsp;&nbsp;&nbsp;10.0.0.25</title>
+<link rel="stylesheet" type="text/css" href="/hp/device/css/hp-ews.css"></head>
+<body><div id="pgDevInfo"><a href="/hp/device/DeviceInformation/View">Device Information</a></div></body>
+</html>

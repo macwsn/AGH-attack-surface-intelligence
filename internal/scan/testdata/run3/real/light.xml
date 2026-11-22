@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.97 scan initiated Sat Nov 21 22:39:27 2026 as: nmap -Pn -sT -sV -&#45;version-light -&#45;versiondb /p/probes.light -p 21,5672,5432 -n -oX - vrf-ftp vrf-rmq vrf-pg -->
+<nmaprun scanner="nmap" args="nmap -Pn -sT -sV -&#45;version-light -&#45;versiondb /p/probes.light -p 21,5672,5432 -n -oX - vrf-ftp vrf-rmq vrf-pg" start="1795300767" startstr="Sat Nov 21 22:39:27 2026" version="7.97" xmloutputversion="1.05">
+<scaninfo type="connect" protocol="tcp" numservices="3" services="21,5432,5672"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1795300767" endtime="1795300777"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.2" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-ftp" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="ftp" servicefp="SF-Port21-TCP:V=7.97%I=2%D=11/21%Time=6B021D9F%P=aarch64-alpine-linux-musl%r(NULL,39,&quot;rosetta\x20error:\x20mmap_anonymous_rw\x20mmap\x20failed,\x20size=1000\n\x20&quot;);" method="table" conf="3"/></port>
+<port protocol="tcp" portid="5432"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="postgresql" method="table" conf="3"/></port>
+<port protocol="tcp" portid="5672"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="amqp" method="table" conf="3"/></port>
+</ports>
+<times srtt="148" rttvar="2866" to="100000"/>
+</host>
+<host starttime="1795300767" endtime="1795300777"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.3" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-rmq" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="5432"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="postgresql" method="table" conf="3"/></port>
+<port protocol="tcp" portid="5672"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="amqp" product="Advanced Message Queue Protocol" method="probed" conf="10"/></port>
+</ports>
+<times srtt="238" rttvar="2884" to="100000"/>
+</host>
+<host starttime="1795300767" endtime="1795300777"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="172.23.0.4" addrtype="ipv4"/>
+<hostnames>
+<hostname name="vrf-pg" type="user"/>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="ftp" method="table" conf="3"/></port>
+<port protocol="tcp" portid="5432"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="postgresql" product="PostgreSQL DB" version="9.6.0 or later" method="probed" conf="10"><cpe>cpe:/a:postgresql:postgresql</cpe></service></port>
+<port protocol="tcp" portid="5672"><state state="closed" reason="conn-refused" reason_ttl="0"/><service name="amqp" method="table" conf="3"/></port>
+</ports>
+<times srtt="206" rttvar="2885" to="100000"/>
+</host>
+<runstats><finished time="1795300777" timestr="Sat Nov 21 22:39:37 2026" summary="Nmap done at Sat Nov 21 22:39:37 2026; 3 IP addresses (3 hosts up) scanned in 10.67 seconds" elapsed="10.67" exit="success"/><hosts up="3" down="0" total="3"/>
+</runstats>
+</nmaprun>

@@ -108,3 +108,7 @@ docker compose -f docker-compose-custom-network.yml down -v
 Środowisko jest przeznaczone wyłącznie do lokalnych testów. Stack vulnerable
 zawiera celowo stare usługi i domyślne, niebezpieczne dane dostępowe — nie
 wystawiaj go do Internetu.
+
+## Zmiana względem oryginału organizatorów
+
+W tej kopii wszystkie publikowane porty są przypięte do `127.0.0.1`, żeby celowo słabe usługi nie były widoczne w sieci lokalnej. Poza tym pliki są bez zmian.

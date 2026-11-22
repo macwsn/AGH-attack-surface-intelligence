@@ -1,0 +1,24 @@
+HTTP/1.1 200 OK
+Server: Apache/2.4.58 (Debian)
+X-Frame-Options: sameorigin
+Content-Type: text/html; charset=UTF-8
+Set-Cookie: roundcube_sessid=0a1b2c3d4e5f6a7b8c9d0e1f2a; path=/; HttpOnly
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roundcube Webmail :: Welcome to Roundcube Webmail</title>
+<script>
+var rcmail = new rcube_webmail();
+rcmail.set_env({"task":"login","x_frame_options":"sameorigin","rcversion":10606});
+</script>
+</head>
+<body class="task-login action-none">
+<form id="login-form" name="login-form" method="post" action="./?_task=login">
+<input type="hidden" name="_task" value="login">
+<input name="_user" id="rcmloginuser" required size="40" autocapitalize="off" autocomplete="off" type="text">
+<input name="_pass" id="rcmloginpwd" required size="40" autocapitalize="off" autocomplete="off" type="password">
+</form>
+</body>
+</html>

@@ -6,13 +6,18 @@
 <p class="lede">{{if $d.Definition.Enabled}}Enabled{{else}}Disabled{{end}}. Runs {{$d.Frequency}} in {{$d.Windows}} ({{$d.Timezone}}).</p>
 </div>
 <div class="actions">
+<a class="btn" href="/scans/{{$d.Definition.ID}}/preview">Preview</a>
+<a class="btn" href="/scans/{{$d.Definition.ID}}/preview?mode=recheck">Preview recheck</a>
 {{if $d.CanConfigure}}<a class="btn" href="/scans/{{$d.Definition.ID}}/edit">Edit scan</a>
-{{if $d.Definition.Enabled}}<form method="post" action="/scans/{{$d.Definition.ID}}/disable">{{$.CSRFField}}<button type="submit">Disable</button></form>
+<a class="btn danger" href="/scans/{{$d.Definition.ID}}/delete">Delete scan {{$d.Definition.Name}}</a>
+{{if $d.Definition.Enabled}}<form method="post" action="/scans/{{$d.Definition.ID}}/disable">{{$.CSRFField}}<button type="submit">Disable scan {{$d.Definition.Name}}</button></form>
 {{else}}<form method="post" action="/scans/{{$d.Definition.ID}}/enable">{{$.CSRFField}}<button type="submit">Enable</button></form>{{end}}{{end}}
-{{if not $d.Open}}<form method="post" action="/scans/{{$d.Definition.ID}}/start">{{$.CSRFField}}<button class="primary" type="submit">Start scan now</button></form>{{end}}
+{{if not $d.Open}}<form method="post" action="/scans/{{$d.Definition.ID}}/start">{{$.CSRFField}}<button class="primary" type="submit">Start scan now</button></form>
+<form method="post" action="/scans/{{$d.Definition.ID}}/start">{{$.CSRFField}}<input type="hidden" name="mode" value="recheck"><button type="submit">Start recheck</button></form>{{end}}
 </div>
 </div>
 {{with $d.Message}}<div class="notice ok" role="status">{{.}}</div>{{end}}
+{{with $d.Problem}}<div class="notice error" role="alert">{{.}}</div>{{end}}
 <div class="cols">
 <section class="panel">
 <header><h2>Settings</h2></header>
@@ -23,23 +28,25 @@
 <dt>Ports</dt><dd class="addr">{{$d.Ports}}</dd>
 <dt>Max rate</dt><dd class="num">{{$d.Settings.MaxRate}} per second</dd>
 <dt>Workers</dt><dd class="num">{{$d.Settings.Workers}}</dd>
+<dt>Rechecks</dt><dd>{{with $d.Definition.Schedule.RecheckEvery}}Every <span class="num">{{.}}</span> between full scans{{else}}<span class="muted">None</span>{{end}}</dd>
 <dt>Inactive after</dt><dd class="num">{{$d.Definition.InactiveAfter}} missed runs</dd>
 <dt>Signatures</dt><dd class="addr">{{with $d.Settings.SignaturesDir}}{{.}}{{else}}<span class="muted">Built-in only</span>{{end}}</dd>
+<dt>Volatile headers</dt><dd class="addr">{{range $i, $h := $d.Settings.VolatileHeaders}}{{if $i}}, {{end}}{{$h}}{{else}}<span class="muted">Built-in list only</span>{{end}}</dd>
 </dl>
 </div>
 </section>
+</div>
 <section class="panel">
 <header><h2>Recent runs</h2></header>
 {{if $d.Runs}}
 <table class="data">
-<thead><tr><th>Run</th><th>Status</th><th>Started</th><th>Finished</th></tr></thead>
+<thead><tr><th>Run</th><th>Mode</th><th>Status</th><th>Started</th><th>Finished</th><th class="num">Packets</th><th class="num">Saving</th></tr></thead>
 <tbody>
-{{range $d.Runs}}<tr><td><a class="addr" href="/runs/{{.ID}}">{{.Name}}</a></td><td>{{template "run-status" .}}</td><td class="nowrap">{{.Started}}</td><td class="nowrap">{{.Finished}}</td></tr>{{end}}
+{{range $d.Runs}}<tr><td><a class="addr" href="/runs/{{.ID}}">{{.Name}}</a></td><td>{{if .Recheck}}Recheck{{else}}Full{{end}}</td><td>{{template "run-status" .}}</td><td class="nowrap">{{.Started}}</td><td class="nowrap">{{.Finished}}</td><td class="num">{{.Packets}}</td><td class="num">{{.Saving}}</td></tr>{{end}}
 </tbody>
 </table>
 {{else}}
 <div class="body"><div class="empty"><p>No runs yet. Enable the scan or start it now.</p></div></div>
 {{end}}
 </section>
-</div>
 {{end}}

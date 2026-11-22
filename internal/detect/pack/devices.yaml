@@ -1,0 +1,165 @@
+# Built-in signatures for appliances and devices, written from each product's documented markers.
+# Format: docs/contracts.md §4. Fixtures: internal/detect/testdata/pack/<product>/.
+- id: builtin-proxmox
+  name: Proxmox VE
+  kind: technology
+  category: virtualization
+  confidence: 95
+  match:
+    any:
+      - { type: header, name: Server, value: '^pve-api-daemon/' }
+      - { type: body_regex, value: '/pve2/js/pvemanagerlib\.js' }
+  version: { type: body_regex, value: 'pvemanagerlib\.js\?ver=([0-9]+(?:\.[0-9]+)+)', group: 1 }
+
+- id: builtin-proxmox-admin
+  name: Proxmox VE
+  kind: admin-panel
+  category: virtualization
+  confidence: 90
+  match:
+    all:
+      - { type: body_regex, value: '/pve2/js/pvemanagerlib\.js' }
+
+- id: builtin-pfsense
+  name: pfSense
+  kind: technology
+  category: firewall
+  confidence: 90
+  match:
+    all:
+      - { type: body_regex, value: 'id="usernamefld"' }
+    any:
+      - { type: title_regex, value: '^pfSense - Login$' }
+      - { type: body_regex, value: 'Login to pfSense' }
+
+- id: builtin-pfsense-admin
+  name: pfSense
+  kind: admin-panel
+  category: firewall
+  confidence: 90
+  match:
+    all:
+      - { type: body_regex, value: 'id="usernamefld"' }
+      - { type: body_regex, value: 'id="passwordfld"' }
+    any:
+      - { type: title_regex, value: '^pfSense - Login$' }
+      - { type: body_regex, value: 'Login to pfSense' }
+
+- id: builtin-synology-dsm
+  name: Synology DSM
+  kind: technology
+  category: nas
+  confidence: 90
+  match:
+    any:
+      - { type: body_regex, value: 'content="DiskStation provides a full-featured network attached storage' }
+      - { type: body_regex, value: 'SYNO\.SDS\.' }
+
+- id: builtin-synology-dsm-admin
+  name: Synology DSM
+  kind: admin-panel
+  category: nas
+  confidence: 85
+  match:
+    all:
+      - { type: body_regex, value: 'SYNO\.SDS\.' }
+
+- id: builtin-mikrotik
+  name: MikroTik RouterOS
+  kind: technology
+  category: network-device
+  confidence: 90
+  match:
+    any:
+      - { type: title_regex, value: '^RouterOS router configuration page$' }
+      - { type: body_regex, value: '<h1>RouterOS v[0-9]' }
+  version: { type: body_regex, value: 'RouterOS v([0-9]+(?:\.[0-9]+)+)', group: 1 }
+
+- id: builtin-mikrotik-admin
+  name: MikroTik RouterOS
+  kind: admin-panel
+  category: network-device
+  confidence: 85
+  match:
+    all:
+      - { type: title_regex, value: '^RouterOS router configuration page$' }
+
+- id: builtin-hikvision
+  name: Hikvision
+  kind: technology
+  category: camera
+  confidence: 90
+  match:
+    any:
+      - { type: header, name: Server, value: '^(?:App-webs|Hikvision-Webs|DNVRS-Webs|DVRDVS-Webs)/' }
+      - { type: body_regex, value: '/doc/page/login\.asp' }
+
+- id: builtin-hikvision-iot
+  name: Hikvision
+  kind: iot
+  category: camera
+  confidence: 90
+  match:
+    any:
+      - { type: header, name: Server, value: '^(?:App-webs|Hikvision-Webs|DNVRS-Webs|DVRDVS-Webs)/' }
+      - { type: body_regex, value: '/doc/page/login\.asp' }
+
+- id: builtin-dahua
+  name: Dahua
+  kind: technology
+  category: camera
+  confidence: 85
+  match:
+    any:
+      - { type: body_regex, value: 'src="/jsBase/' }
+      - { type: body_regex, value: '/baseProj/images/' }
+
+- id: builtin-dahua-iot
+  name: Dahua
+  kind: iot
+  category: camera
+  confidence: 85
+  match:
+    any:
+      - { type: body_regex, value: 'src="/jsBase/' }
+      - { type: body_regex, value: '/baseProj/images/' }
+
+- id: builtin-hp-printer
+  name: HP Printer
+  kind: technology
+  category: printer
+  confidence: 90
+  match:
+    any:
+      - { type: header, name: Server, value: '^HP HTTP Server;' }
+      - { type: body_regex, value: 'href="/hp/device/' }
+
+- id: builtin-hp-printer-iot
+  name: HP Printer
+  kind: iot
+  category: printer
+  confidence: 90
+  match:
+    any:
+      - { type: header, name: Server, value: '^HP HTTP Server;' }
+      - { type: body_regex, value: 'href="/hp/device/' }
+
+- id: builtin-brother-printer
+  name: Brother Printer
+  kind: technology
+  category: printer
+  confidence: 85
+  match:
+    any:
+      - { type: header, name: Server, value: '^debut/[0-9]' }
+      - { type: title_regex, value: '^Brother (?:HL|DCP|MFC)-[A-Z0-9]+' }
+
+- id: builtin-brother-printer-iot
+  name: Brother Printer
+  kind: iot
+  category: printer
+  confidence: 85
+  match:
+    any:
+      - { type: header, name: Server, value: '^debut/[0-9]' }
+      - { type: title_regex, value: '^Brother (?:HL|DCP|MFC)-[A-Z0-9]+' }

@@ -1,0 +1,146 @@
+HTTP/1.1 302 Found
+Date: Sat, 21 Nov 2026 23:42:29 GMT
+X-Frame-Options: SAMEORIGIN
+Set-Cookie: JSESSIONID=node0zadtqv077tqpt5p53hc0wfle1.node0; Path=/; HttpOnly
+Expires: Thu, 01 Jan 1970 00:00:00 GMT
+Location: http://fixture.test/login.jsp?url=%2Findex.jsp
+Content-Length: 0
+
+HTTP/1.1 200 OK
+Date: Sat, 21 Nov 2026 23:42:29 GMT
+X-Frame-Options: SAMEORIGIN
+Content-Type: text/html;charset=utf-8
+Set-Cookie: JSESSIONID=node019nusiyg2fm3m1wwjjynzvxjwk2.node0; Path=/; HttpOnly
+Expires: Thu, 01 Jan 1970 00:00:00 GMT
+Set-Cookie: csrf=UjRcSdMHd8q2pfQ; Path=/; HttpOnly
+Content-Length: 4842
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Openfire Admin Console</title>
+    <script language="JavaScript" type="text/javascript">
+        <!--
+        // break out of frames
+        if (self.parent.frames.length != 0) {
+            self.parent.location=document.location;
+        }
+        function updateFields(el) {
+            if (el.checked) {
+                document.loginForm.username.disabled = true;
+                document.loginForm.password.disabled = true;
+            }
+            else {
+                document.loginForm.username.disabled = false;
+                document.loginForm.password.disabled = false;
+                document.loginForm.username.focus();
+            }
+        }
+        //-->
+    </script>
+    <link rel="stylesheet" href="style/framework/css/bootstrap.min.css" type="text/css">
+    <link rel="stylesheet" href="style/framework/css/font-awesome.min.css" type="text/css">
+    <link rel="stylesheet" href="style/global.css" type="text/css">
+    <link rel="stylesheet" href="style/login.css" type="text/css">
+</head>
+
+<body>
+    <div class="jive-form-body">
+        <div class="row justify-content-center">
+            <div class="jive-form-holder">
+                <div class="jive-form-content">
+                    <div class="jive-form-items">
+                        <img src="images/login_logo.gif" alt="">
+                        <h3>Administration Console</h3>
+                        <form action="login.jsp" name="loginForm" method="post">
+                            <!-- BEGIN hidden input -->
+                             <input type="hidden" name="url" value="/index.jsp"> 
+                            <input type="hidden" name="login" value="true">
+                            <input type="hidden" name="csrf" value="UjRcSdMHd8q2pfQ">
+                            <!-- END hidden input -->
+
+                            <!-- BEGIN login box -->
+                            <div class="jive-body-input-box">
+                                <div class="jive-input-box">
+                                    <input class="form-control" type="text" name="username"  maxlength="50" id="u01" value="" placeholder="username" >
+                                    <span style="position: absolute"><i class="fa fa-user"></i></span>
+                                </div>
+                                <div class="jive-input-box">
+                                    <input class="form-control" type="password" name="password" maxlength="50" id="p01" placeholder="password" >
+                                    <span style="position: absolute"><i class="fa fa-key"></i></span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-lg-12 col-md-12 col-sm-12 ">
+                                    <div class="jive-form-button">
+                                        <button id="submit" type="submit" class="jive-ibtn jive-btn-gradient">Login</button> 
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- END login box -->
+
+                            <!-- BEGIN error box -->
+                            <noscript>
+                                <table class="table table-sm table-responsive table-borderless">
+                                    <tbody>
+                                        <tr>
+                                            <td class="jive-error-text" ><i class="fa fa-close fa-lg"></i></td>
+                                            <td class=" jive-error-text" ><p>Error: You don&#39;t have JavaScript enabled. This tool uses JavaScript and much of it will not work correctly without it enabled. Please turn JavaScript back on and reload this page.</p></td>
+                                        </tr>
+                                    </tbody>
+                                </table> 
+                            </noscript>
+                            
+                            <!-- END error box -->
+                        </form>
+                        <div class="text" id="jive-loginVersion"> Openfire, Version: 4.7.4</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script language="JavaScript" type="text/javascript">
+    <!--
+        if (document.loginForm.username.value == '')  {
+            document.loginForm.username.focus();
+        } else {
+            document.loginForm.password.focus();
+        }
+    //-->
+    </script>
+
+</body>
+</html>

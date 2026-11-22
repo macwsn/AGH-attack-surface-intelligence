@@ -1,0 +1,30 @@
+{{define "content"}}
+{{with .Data}}
+<div class="page-head"><div><h1>Changes</h1>
+{{if not .Empty}}<p class="lede">{{.Total}} changes from run <strong class="addr">{{.From}}</strong> to run <strong class="addr">{{.To}}</strong>; pick other runs to compare or export the list as JSON.</p>{{else}}<p class="lede">What changed between two runs; changes appear here after the second run.</p>{{end}}</div>
+{{if not .Empty}}<div class="actions"><a class="btn" href="/changes.json?from={{.From}}&amp;to={{.To}}">Export JSON</a></div>{{end}}</div>
+{{if .Empty}}
+<div class="empty"><p>Changes appear here once two scan runs have completed.</p></div>
+{{else}}
+<form class="filters" method="get" action="/changes">
+<label>From run <select name="from">{{range .Runs}}<option value="{{.Name}}"{{if eq .Name $.Data.From}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+<label>To run <select name="to">{{range .Runs}}<option value="{{.Name}}"{{if eq .Name $.Data.To}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+<label>Change type <select name="type"><option value="">Any</option>{{range .Kinds}}<option value="{{.Type}}"{{if eq .Type $.Data.Type}} selected{{end}}>{{.Label}}</option>{{end}}</select></label>
+<button type="submit">Apply</button>
+</form>
+<div class="result-line"><span>Showing {{len .Rows}} of {{.Total}} changes</span></div>
+{{if .Rows}}
+<div class="table-wrap">
+<table class="data">
+<thead><tr><th>Change</th><th>Address</th><th>Service</th><th>Details</th><th>Host</th></tr></thead>
+<tbody>
+{{range .Rows}}<tr data-type="{{.Type}}"><td><span class="change {{.Mark}}">{{.Label}}</span></td><td><a class="addr" href="{{.Timeline}}">{{.Address}}</a></td><td class="addr">{{.Service}}</td><td class="diff">{{if .HTTPGone}}HTTP data no longer available{{if .Fields}}<br>{{end}}{{end}}{{if .Folded}}<details><summary>{{len .Fields}} changed fields</summary>{{end}}{{range $i, $f := .Fields}}{{if $i}}<br>{{end}}{{$f.Field}} {{with $f.Old}}<del>{{.}}</del>{{else}}<span class="none">(none)</span>{{end}} {{with $f.New}}<ins>{{.}}</ins>{{else}}<span class="none">(none)</span>{{end}}{{end}}{{if .Folded}}</details>{{end}}</td><td><a href="{{.Host}}">Host page</a></td></tr>
+{{end}}</tbody>
+</table>
+</div>
+{{else}}
+<div class="empty"><p>No changes of this type between these runs.</p></div>
+{{end}}
+{{end}}
+{{end}}
+{{end}}

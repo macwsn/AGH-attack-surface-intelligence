@@ -1,0 +1,75 @@
+# Vulhub HOLDOUT lab: products the built-in signature pack was not written for. Truth lives in truth-holdout.json.
+# Deliberately vulnerable images: no published ports, internal bridge only. Do not add `ports:`.
+name: asi-vulhub-holdout
+
+networks:
+  vh:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.28.33.0/24
+          ip_range: 172.28.33.240/28
+          gateway: 172.28.33.1
+
+x-amd64: &amd64
+  platform: linux/amd64
+
+services:
+  solr:
+    <<: *amd64
+    image: vulhub/solr:8.2.0
+    networks: { vh: { ipv4_address: 172.28.33.10 } }
+  couchdb:
+    <<: *amd64
+    image: vulhub/couchdb:2.1.0
+    environment:
+      COUCHDB_USER: admin
+      COUCHDB_PASSWORD: password
+    networks: { vh: { ipv4_address: 172.28.33.11 } }
+  nacos:
+    <<: *amd64
+    image: vulhub/nacos:1.4.0
+    networks: { vh: { ipv4_address: 172.28.33.12 } }
+  metabase:
+    <<: *amd64
+    image: vulhub/metabase:0.40.4
+    networks: { vh: { ipv4_address: 172.28.33.13 } }
+  webmin:
+    <<: *amd64
+    image: vulhub/webmin:1.910
+    networks: { vh: { ipv4_address: 172.28.33.14 } }
+  glassfish:
+    <<: *amd64
+    image: vulhub/glassfish:4.1
+    environment:
+      - ADMIN_PASSWORD=vulhub_default_password
+      - JAVA_DEBUGGER_PORT=5005
+    networks: { vh: { ipv4_address: 172.28.33.15 } }
+  influxdb:
+    <<: *amd64
+    image: vulhub/influxdb:1.6.6
+    environment:
+      - INFLUXDB_HTTP_AUTH_ENABLED=true
+      - INFLUXDB_ADMIN_USER=admin
+      - INFLUXDB_ADMIN_PASSWORD=admin
+      - INFLUXDB_DB=sample
+    networks: { vh: { ipv4_address: 172.28.33.16 } }
+  opensmtpd:
+    <<: *amd64
+    image: vulhub/opensmtpd:6.6.1p1
+    networks: { vh: { ipv4_address: 172.28.33.17 } }
+  gogs:
+    <<: *amd64
+    image: vulhub/gogs:0.11.66
+    networks: { vh: { ipv4_address: 172.28.33.18 } }
+  openfire:
+    <<: *amd64
+    image: vulhub/openfire:4.7.4
+    networks: { vh: { ipv4_address: 172.28.33.19 } }
+  # Not from Vulhub: official image, here on purpose as a never-probe (MQTT) target with full connection logging.
+  mosquitto:
+    image: eclipse-mosquitto:1.6.15
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks: { vh: { ipv4_address: 172.28.33.20 } }

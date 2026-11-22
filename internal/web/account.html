@@ -1,0 +1,27 @@
+{{define "content"}}
+<div class="page-head"><div><h1>Your account</h1>
+<p class="lede">Change your password here. Only you know it; an admin can reset it but cannot see it.</p></div></div>
+{{if .Data.Done}}<div class="notice ok" role="status">Password changed. Your other sessions have ended.</div>{{end}}
+<section class="panel">
+<header><h2>Account</h2></header>
+<div class="body">
+<dl class="kv">
+<dt>Username</dt><dd>{{.User.Username}}</dd>
+<dt>Role</dt><dd>{{.User.Role}}</dd>
+</dl>
+</div>
+</section>
+<section class="panel">
+<header><h2>Change password</h2></header>
+<div class="body">
+<form method="post" action="/account/password">
+{{.CSRFField}}
+{{$p := .Data.Problems}}
+<label class="field"><span>Current password</span><input type="password" name="current_password" required autocomplete="current-password"{{if $p.Current}} aria-invalid="true"{{end}}>{{with $p.Current}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>New password</span><input type="password" name="password" minlength="12" required autocomplete="new-password"{{if $p.Password}} aria-invalid="true"{{end}}>{{with $p.Password}}<span class="problem">{{.}}</span>{{else}}<span class="hint">At least 12 characters, different from the current one.</span>{{end}}</label>
+<label class="field"><span>Repeat new password</span><input type="password" name="repeat" minlength="12" required autocomplete="new-password"{{if $p.Repeat}} aria-invalid="true"{{end}}>{{with $p.Repeat}}<span class="problem">{{.}}</span>{{end}}</label>
+<div class="form-actions"><button class="primary" type="submit">Change password</button></div>
+</form>
+</div>
+</section>
+{{end}}

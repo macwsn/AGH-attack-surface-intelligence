@@ -1,0 +1,298 @@
+{
+ "product_commit": "6ff06c0865504fe423e8b1f00a3faae5d909989b",
+ "scenarios": [
+  {
+   "scenario": "kill-resume",
+   "status": "NOT RUN",
+   "reason": "",
+   "property": "",
+   "measured": {},
+   "evidence": "eval/results/reliability/run3/kill-resume/",
+   "product_commit": "6ff06c0865504fe423e8b1f00a3faae5d909989b"
+  },
+  {
+   "scenario": "db-restart",
+   "status": "NOT RUN",
+   "reason": "",
+   "property": "",
+   "measured": {},
+   "evidence": "eval/results/reliability/run3/db-restart/",
+   "product_commit": "6ff06c0865504fe423e8b1f00a3faae5d909989b"
+  },
+  {
+   "scenario": "host-vanishes",
+   "status": "NOT RUN",
+   "reason": "",
+   "property": "",
+   "measured": {},
+   "evidence": "eval/results/reliability/run3/host-vanishes/",
+   "product_commit": "6ff06c0865504fe423e8b1f00a3faae5d909989b"
+  },
+  {
+   "scenario": "hostile-http",
+   "status": "PASS",
+   "reason": "completed in 80.3s / 80.3s, all 17 recorded open, zero changes",
+   "property": "17 misbehaving HTTP targets: the run completes in bounded time, the export is valid UTF-8 JSON, bodies are capped, every hostile service is recorded as open, a second identical scan gives zero diff changes, an off-target redirect is recorded but not followed",
+   "measured": {
+    "scan1_seconds": 80.3,
+    "scan2_seconds": 80.3,
+    "scan1_exit": "0",
+    "scan2_exit": "0",
+    "requests_to_offsite_host": 0,
+    "db_bytes_after_two_scans": 9926323,
+    "export": {
+     "export_bytes": 54420,
+     "valid_utf8": true,
+     "valid_json": true,
+     "missing": [],
+     "not_open": [],
+     "no_http": [],
+     "recorded": {
+      "bigbody": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "ten mebibytes",
+       "title_len": 13,
+       "headers": 3,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "loop": {
+       "service": "http",
+       "state": "open",
+       "status_code": 302,
+       "title": "",
+       "title_len": 0,
+       "headers": 4,
+       "redirects": 5,
+       "cookie_name_len": 0
+      },
+      "offsite": {
+       "service": "http",
+       "state": "open",
+       "status_code": 302,
+       "title": "",
+       "title_len": 0,
+       "headers": 4,
+       "redirects": 1,
+       "cookie_name_len": 0
+      },
+      "slowloris": {
+       "service": "http",
+       "state": "open",
+       "status_code": 0,
+       "title": "",
+       "title_len": 0,
+       "headers": 0,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "silent": {
+       "service": "http",
+       "state": "open",
+       "status_code": 0,
+       "title": "",
+       "title_len": 0,
+       "headers": 0,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "slowbody": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "slow body",
+       "title_len": 9,
+       "headers": 2,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "badtls": {
+       "service": "http",
+       "state": "open",
+       "status_code": 0,
+       "title": "",
+       "title_len": 0,
+       "headers": 0,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "garbage": {
+       "service": "http",
+       "state": "open",
+       "status_code": 0,
+       "title": "",
+       "title_len": 0,
+       "headers": 0,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "xss": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "<script>alert(1)</script>",
+       "title_len": 25,
+       "headers": 3,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "longtitle": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+       "title_len": 512,
+       "headers": 3,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "latin2": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "Za\u017c\u00f3\u0142\u0107 g\u0119\u015bl\u0105 ja\u017a\u0144",
+       "title_len": 17,
+       "headers": 3,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "brokenutf": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "broken \ufffd\ufffd \ufffd( \ufffd\ufffd\ufffd end",
+       "title_len": 20,
+       "headers": 3,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "manyheaders": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "many headers",
+       "title_len": 12,
+       "headers": 503,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "crlfnul": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "",
+       "title_len": 0,
+       "headers": 6,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "chunked": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "chunked forever",
+       "title_len": 15,
+       "headers": 2,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "http10": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "http 1.0 no length",
+       "title_len": 18,
+       "headers": 3,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "bigcookie": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "big cookie",
+       "title_len": 10,
+       "headers": 3,
+       "redirects": 0,
+       "cookie_name_len": 256
+      }
+     },
+     "longest_string": 512,
+     "offsite_recorded": true,
+     "offsite_in_inventory": false
+    },
+    "diff": {
+     "changes": 0,
+     "sample": []
+    }
+   },
+   "evidence": "eval/results/reliability/run3/hostile-http/",
+   "product_commit": "6ff06c0865504fe423e8b1f00a3faae5d909989b"
+  },
+  {
+   "scenario": "concurrent-runs",
+   "status": "NOT RUN",
+   "reason": "",
+   "property": "",
+   "measured": {},
+   "evidence": "eval/results/reliability/run3/concurrent-runs/",
+   "product_commit": "6ff06c0865504fe423e8b1f00a3faae5d909989b"
+  },
+  {
+   "scenario": "bad-input",
+   "status": "NOT RUN",
+   "reason": "",
+   "property": "",
+   "measured": {},
+   "evidence": "eval/results/reliability/run3/bad-input/",
+   "product_commit": "6ff06c0865504fe423e8b1f00a3faae5d909989b"
+  },
+  {
+   "scenario": "repeat-stability",
+   "status": "NOT RUN",
+   "reason": "",
+   "property": "",
+   "measured": {},
+   "evidence": "eval/results/reliability/run3/repeat-stability/",
+   "product_commit": "6ff06c0865504fe423e8b1f00a3faae5d909989b"
+  },
+  {
+   "scenario": "key-rotation-and-wrong-key",
+   "status": "NOT RUN",
+   "reason": "",
+   "property": "",
+   "measured": {},
+   "evidence": "eval/results/reliability/run3/key-rotation-and-wrong-key/",
+   "product_commit": "6ff06c0865504fe423e8b1f00a3faae5d909989b"
+  },
+  {
+   "scenario": "port-flap",
+   "status": "NOT RUN",
+   "reason": "",
+   "property": "",
+   "measured": {},
+   "evidence": "eval/results/reliability/run3/port-flap/",
+   "product_commit": "6ff06c0865504fe423e8b1f00a3faae5d909989b"
+  },
+  {
+   "scenario": "sigterm-pause",
+   "status": "NOT RUN",
+   "reason": "",
+   "property": "",
+   "measured": {},
+   "evidence": "eval/results/reliability/run3/sigterm-pause/",
+   "product_commit": "6ff06c0865504fe423e8b1f00a3faae5d909989b"
+  },
+  {
+   "scenario": "recheck-mode",
+   "status": "NOT RUN",
+   "reason": "",
+   "property": "",
+   "measured": {},
+   "evidence": "eval/results/reliability/run3/recheck-mode/",
+   "product_commit": "6ff06c0865504fe423e8b1f00a3faae5d909989b"
+  }
+ ]
+}

@@ -1,0 +1,49 @@
+{{define "content"}}
+{{$d := .Data}}{{$h := $d.Hunt}}
+<div class="page-head"><div><h1>Hunt for <code>{{$h.SignatureID}}</code></h1>
+<p class="lede">Evaluated against {{$d.N $h.Observations}} stored observations from {{$d.SinceLabel}} in {{$d.Took}}{{with $h.LatestRun}}; latest run {{.}}{{end}}. No request was sent.</p></div>
+{{if $d.CanExport}}<div class="actions"><a class="btn" href="/signatures/hunts/{{$h.ID}}/csv">Export CSV</a></div>{{end}}</div>
+{{if $d.Saved}}<div class="notice ok" role="status">Signature {{$h.SignatureID}} saved.{{with $d.Recorded}} Recorded {{.}} findings in run {{$h.LatestRun}}.{{end}}</div>{{end}}
+{{with $d.Problem}}<div class="notice error" role="alert">{{with .Rule}}Rule violated: {{.}}. {{end}}{{.Detail}}</div>{{end}}
+<div class="figures">
+<div class="figure"><span class="value">{{$d.N $h.Matched}}</span><span class="label">Matching services</span></div>
+<div class="figure"><span class="value">{{$d.N $h.InLatest}}</span><span class="label">Match in the latest run</span></div>
+<div class="figure"><span class="value">{{$d.N $h.NotEvaluable}}</span><span class="label">Not evaluable from history</span></div>
+<div class="figure"><span class="value">{{$d.N $h.Observations}}</span><span class="label">Observations read</span></div>
+</div>
+{{if $d.Results}}
+<div class="result-line"><span>Showing {{$d.From}}-{{$d.To}} of {{$d.N $d.Total}}</span><span class="pager">{{with $d.PrevURL}}<a class="btn small" href="{{.}}">Previous</a>{{else}}<a class="btn small" aria-disabled="true">Previous</a>{{end}}<span class="num">{{$d.Page}} / {{$d.Pages}}</span>{{with $d.NextURL}}<a class="btn small" href="{{.}}">Next</a>{{else}}<a class="btn small" aria-disabled="true">Next</a>{{end}}</span></div>
+<div class="table-wrap">
+<table class="data">
+<thead><tr><th>Address</th><th class="num">Port</th><th>Result</th><th>First run</th><th>Last run</th><th>Latest run</th><th>Version</th></tr></thead>
+<tbody>
+{{range $d.Results}}
+<tr{{if not .Evaluable}} class="is-off"{{end}}>
+<td class="addr">{{.Address}}</td>
+<td class="num">{{.Port}}/{{.Protocol}}</td>
+{{if .Evaluable}}<td>Matched</td>
+<td class="addr">{{.FirstRun}}</td>
+<td class="addr">{{.LastRun}}</td>
+<td>{{if .InLatest}}<span class="status active">Matches now</span>{{else}}<span class="status inactive">Matched before</span>{{end}}</td>
+<td>{{with .Version}}<code>{{.}}</code>{{else}}<span class="muted">none extracted</span>{{end}}</td>
+{{else}}<td colspan="5"><span class="muted">Not evaluable from history: the signature needs a response that was never stored for this service.</span></td>{{end}}
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+{{else}}
+<div class="empty"><p>No stored observation matches this signature.</p><p><a class="btn" href="/signatures/new">Write another signature</a></p></div>
+{{end}}
+<section class="panel">
+<header><h2>Save signature</h2></header>
+<div class="body">
+<form method="post" action="/signatures/hunts/{{$h.ID}}/save">
+{{.CSRFField}}
+<label class="field"><span>Hunted YAML</span><textarea name="hunted" rows="10" readonly>{{$h.Source}}</textarea><span class="hint">Saving stores exactly this signature; a stored signature with the same id keeps its enabled state.</span></label>
+{{if and $h.LatestRun $d.CanRecord}}<label class="check"><input type="checkbox" name="record" value="1"> Record the {{$d.N $h.InLatest}} matches of run {{$h.LatestRun}} as findings (source retro-hunt)</label>{{end}}
+<div class="form-actions"><button class="primary" type="submit">Save signature</button><a class="btn" href="/signatures">Cancel</a></div>
+</form>
+</div>
+</section>
+{{end}}

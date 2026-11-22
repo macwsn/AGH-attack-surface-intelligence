@@ -1,0 +1,13 @@
+$ curl -si http://127.0.0.1:8086/ | head -3
+HTTP/1.1 301 Moved Permanently
+Location: http://127.0.0.1:8086/dashboard/
+Date: Sat, 21 Nov 2026 19:31:33 GMT
+$ curl -s http://127.0.0.1:8086/dashboard/ | grep -o "<title>.*</title>"
+<title>Traefik</title>
+$ curl -ski https://127.0.0.1:8086/ | head -1
+HTTP/2 404 
+$ curl -s http://127.0.0.1:8086/api/version
+{"Version":"3.1.7","Codename":"comte","startDate":"2026-11-21T19:31:29.746159419Z"}
+$ curl -si http://127.0.0.1:8474/version
+HTTP/1.1 200 OK
+{"version": "2.12.0"}

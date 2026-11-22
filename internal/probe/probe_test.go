@@ -1,6 +1,7 @@
 package probe
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -13,6 +14,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"net"
 	"net/http"
@@ -511,4 +513,293 @@ func TestFetch(t *testing.T) {
 		}
 	}
 	rec.check(t)
+}
+
+// REQ-SCAN-010
+func TestProbeResponseTime(t *testing.T) {
+	_, _, addr, port := start(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		time.Sleep(150 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		time.Sleep(100 * time.Millisecond)
+		fmt.Fprint(w, "<title>slow</title>")
+	}))
+	s, err := Probe(context.Background(), addr, port, false, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := s.HTTP
+	if h.TTFBMS < 150 || h.TTFBMS >= 250 {
+		t.Errorf("ttfb_ms = %d, want 150..249", h.TTFBMS)
+	}
+	if h.ResponseMS < 250 || h.ResponseMS < h.TTFBMS || h.ResponseMS > 2000 {
+		t.Errorf("response_time_ms = %d (ttfb %d), want >= 250", h.ResponseMS, h.TTFBMS)
+	}
+	if h.Error != "" {
+		t.Errorf("error = %q", h.Error)
+	}
+	out, _ := json.Marshal(h)
+	for _, key := range []string{`"response_time_ms":`, `"ttfb_ms":`} {
+		if !strings.Contains(string(out), key) {
+			t.Errorf("export lacks %s: %s", key, out)
+		}
+	}
+	if strings.Contains(string(out), `"error"`) {
+		t.Errorf("error exported for a good answer: %s", out)
+	}
+	if out, _ := json.Marshal(HTTP{}); strings.Contains(string(out), "response_time_ms") {
+		t.Errorf("response_time_ms not optional: %s", out)
+	}
+}
+
+// REQ-SCAN-010
+func TestProbeSlowServicesCutOff(t *testing.T) {
+	const timeout = 300 * time.Millisecond
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+	wait := func(r *http.Request, d time.Duration) bool {
+		select {
+		case <-release:
+			return false
+		case <-r.Context().Done():
+			return false
+		case <-time.After(d):
+			return true
+		}
+	}
+	cases := map[string]http.HandlerFunc{
+		"stall": func(w http.ResponseWriter, r *http.Request) { wait(r, time.Hour) },
+		"trickle": func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Length", "100000")
+			w.WriteHeader(http.StatusOK)
+			for wait(r, 10*time.Millisecond) {
+				if _, err := w.Write(bytes.Repeat([]byte("a"), 10)); err != nil {
+					return
+				}
+				w.(http.Flusher).Flush()
+			}
+		},
+		"never-close": func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "<title>open forever</title>")
+			w.(http.Flusher).Flush()
+			wait(r, time.Hour)
+		},
+	}
+	for name, h := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, _, addr, port := start(t, h)
+			begin := time.Now()
+			s, err := (&Prober{Timeout: timeout}).Probe(context.Background(), addr, port, false, "")
+			took := time.Since(begin)
+			if err == nil {
+				t.Fatalf("no error, http = %+v", s.HTTP)
+			}
+			if !errors.Is(err, context.DeadlineExceeded) {
+				t.Errorf("err = %v", err)
+			}
+			var te *TimeoutError
+			if !errors.As(err, &te) {
+				t.Fatalf("err %v is not a TimeoutError", err)
+			}
+			if te.HTTP.Error != ErrorTimeout || te.HTTP.Scheme != "http" || te.HTTP.URL != fmt.Sprintf("http://%s:%d/", addr, port) {
+				t.Errorf("http = %+v", te.HTTP)
+			}
+			if te.HTTP.ResponseMS < timeout.Milliseconds() {
+				t.Errorf("response_time_ms = %d, want >= %d", te.HTTP.ResponseMS, timeout.Milliseconds())
+			}
+			if took > timeout+time.Second {
+				t.Errorf("probe took %s with timeout %s", took, timeout)
+			}
+		})
+	}
+}
+
+// REQ-SCAN-010
+func TestProbeCancelledIsNotTimeout(t *testing.T) {
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+	_, _, addr, port := start(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-release:
+		case <-r.Context().Done():
+		}
+	}))
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	_, err := (&Prober{Timeout: 5 * time.Second}).Probe(ctx, addr, port, false, "")
+	var te *TimeoutError
+	if err == nil || errors.As(err, &te) {
+		t.Errorf("err = %v, want a plain error when the caller gives up", err)
+	}
+}
+
+// REQ-SCAN-010
+func TestProbeResponseTimeCountsRedirects(t *testing.T) {
+	_, _, addr, port := start(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(100 * time.Millisecond)
+		if r.URL.Path == "/" {
+			http.Redirect(w, r, "/home", http.StatusFound)
+			return
+		}
+		fmt.Fprint(w, "<title>home</title>")
+	}))
+	s, err := Probe(context.Background(), addr, port, false, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.HTTP.Title != "home" || s.HTTP.TTFBMS < 100 || s.HTTP.TTFBMS >= 200 || s.HTTP.ResponseMS < 200 {
+		t.Errorf("title %q ttfb_ms %d response_time_ms %d, want ttfb of the first hop and the time of both", s.HTTP.Title, s.HTTP.TTFBMS, s.HTTP.ResponseMS)
+	}
+}
+
+// REQ-SCAN-023
+func TestProbeFailureCarriesOnlyError(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	ln.Close()
+	_, err = (&Prober{Timeout: time.Second}).Probe(context.Background(), "127.0.0.1", port, false, "")
+	var fe *FailedError
+	if !errors.As(err, &fe) {
+		t.Fatalf("err = %v, want a FailedError", err)
+	}
+	h, ok := Observed(err)
+	if !ok || h.Error != "connection refused" || h.StatusCode != 0 || h.Title != "" || len(h.Headers) != 0 || len(h.Cookies) != 0 || h.TLS != nil {
+		t.Fatalf("http = %+v, want only error %q", h, "connection refused")
+	}
+}
+
+// REQ-SCAN-023
+func TestProbeKeepsStatusWhenBodyIsCut(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			buf := make([]byte, 4096)
+			_, _ = c.Read(buf)
+			_, _ = io.WriteString(c, "HTTP/1.1 503 Service Unavailable\r\nServer: demo\r\nSet-Cookie: sid=1\r\nContent-Length: 1000\r\n\r\n<title>down for maintenance</title>")
+			c.Close()
+		}
+	}()
+	_, err = (&Prober{Timeout: time.Second}).Probe(context.Background(), "127.0.0.1", ln.Addr().(*net.TCPAddr).Port, false, "")
+	h, ok := Observed(err)
+	if !ok || h.StatusCode != 503 || h.Headers["server"] != "demo" || h.Title != "down for maintenance" || len(h.Cookies) != 1 {
+		t.Fatalf("http = %+v, want status, headers, cookies and title kept", h)
+	}
+	if h.Error != "read body: connection closed" {
+		t.Fatalf("http.error = %q, want the body failure", h.Error)
+	}
+}
+
+func TestFailedHTTPAfterTLSHandshakeFailure(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			b := make([]byte, 512)
+			c.Read(b)
+			c.Write([]byte{0x15, 0x03, 0x03, 0x00, 0x02, 0x02, 0x28})
+			c.Close()
+		}
+	}()
+	port := ln.Addr().(*net.TCPAddr).Port
+	_, err = Probe(context.Background(), "127.0.0.1", port, true, "")
+	if !errors.Is(err, ErrTLSHandshake) {
+		t.Fatalf("Probe err = %v, want ErrTLSHandshake", err)
+	}
+	h := FailedHTTP("127.0.0.1", port, true, "lab.example", err)
+	want := HTTP{Scheme: "https", URL: "https://lab.example:" + strconv.Itoa(port) + "/", Headers: map[string]string{}, Cookies: []Cookie{}, RedirectChain: []string{}, Error: ErrorTLSHandshake}
+	if !reflect.DeepEqual(h, want) {
+		t.Fatalf("FailedHTTP = %+v, want %+v", h, want)
+	}
+	if h := FailedHTTP("127.0.0.1", 443, true, "", errors.New("request: EOF")); h.Error != ErrorRequest || h.URL != "https://127.0.0.1/" {
+		t.Fatalf("FailedHTTP(request error) = %+v", h)
+	}
+	if h := FailedHTTP("127.0.0.1", 443, true, "", context.DeadlineExceeded); h.Error != ErrorTimeout {
+		t.Fatalf("FailedHTTP(timeout) = %+v", h)
+	}
+}
+
+// REQ-SCAN-031
+func TestFaviconFetchedTwiceWhenChanged(t *testing.T) {
+	var mu sync.Mutex
+	fetches, changing := 0, false
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "<title>x</title>") })
+	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		fetches++
+		n := fetches
+		mu.Unlock()
+		if changing {
+			fmt.Fprintf(w, "icon %d", n)
+			return
+		}
+		w.Write(favicon)
+	})
+	_, _, addr, port := start(t, mux)
+	sum := sha256.Sum256(favicon)
+	known := hex.EncodeToString(sum[:])
+	cases := []struct {
+		name         string
+		changing     bool
+		previous     string
+		wantFetches  int
+		wantUnstable bool
+	}{
+		{"same as previous run", false, known, 1, false},
+		{"differs from previous run, same twice", false, "00", 2, false},
+		{"no previous run", true, "", 1, false},
+		{"different per request", true, known, 2, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			mu.Lock()
+			fetches, changing = 0, c.changing
+			mu.Unlock()
+			p := &Prober{Timeout: 5 * time.Second, PreviousFavicon: func(a string, pt int) string {
+				if a != addr || pt != port {
+					t.Errorf("PreviousFavicon(%s, %d), want %s %d", a, pt, addr, port)
+				}
+				return c.previous
+			}}
+			s, err := p.Probe(context.Background(), addr, port, false, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if fetches != c.wantFetches || s.HTTP.FaviconUnstable != c.wantUnstable || s.HTTP.FaviconSHA256 == "" {
+				t.Fatalf("fetches = %d unstable = %v sha = %q, want %d %v", fetches, s.HTTP.FaviconUnstable, s.HTTP.FaviconSHA256, c.wantFetches, c.wantUnstable)
+			}
+			for i := range MaxExtraRequests - 1 {
+				if _, err := s.Fetch(context.Background(), fmt.Sprintf("/p%d", i)); err != nil {
+					t.Fatalf("extra request %d: %v", i, err)
+				}
+			}
+			_, err = s.Fetch(context.Background(), "/last")
+			if over := c.wantFetches == 2; errors.Is(err, ErrRequestLimit) != over {
+				t.Errorf("request cap after favicon refetch: err = %v, want limit reached = %v", err, over)
+			}
+		})
+	}
 }

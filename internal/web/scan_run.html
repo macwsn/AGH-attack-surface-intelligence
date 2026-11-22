@@ -1,12 +1,13 @@
 {{define "content"}}
 {{$d := .Data}}
+<div id="run-live"{{if $d.Live}} hx-get="/runs/{{$d.Run.ID}}" hx-trigger="every 3s" hx-select="#run-live" hx-swap="outerHTML"{{end}}>
 <div class="page-head">
 <div>
 <h1>Run {{$d.Run.Name}}</h1>
-<p class="lede">{{if $d.Definition.ID}}Run of <a href="/scans/{{$d.Definition.ID}}">{{$d.Definition.Name}}</a>. {{end}}Started {{$d.Run.Started}}{{with $d.Run.Finished}}, finished {{.}}{{end}}. {{template "run-status" $d.Run}}</p>
+<p class="lede">{{if $d.Definition.ID}}Run of <a href="/scans/{{$d.Definition.ID}}">{{$d.Definition.Name}}</a>. {{else if $d.Run.DefinitionDeleted}}<span class="status inactive">Definition deleted</span> {{end}}Started {{$d.Run.Started}}{{with $d.Run.Finished}}, finished {{.}}{{end}}. {{template "run-status" $d.Run}}</p>
 </div>
 <div class="actions">
-{{if $d.CanPause}}<form method="post" action="/runs/{{$d.Run.ID}}/pause">{{$.CSRFField}}<button type="submit">Pause run</button></form>{{end}}
+{{if $d.CanPause}}<form method="post" action="/runs/{{$d.Run.ID}}/pause">{{$.CSRFField}}<button type="submit">Pause run {{$d.Run.Name}}</button></form>{{end}}
 {{if $d.CanResume}}<form method="post" action="/runs/{{$d.Run.ID}}/resume">{{$.CSRFField}}<button class="primary" type="submit">Resume run</button></form>{{end}}
 </div>
 </div>
@@ -15,11 +16,52 @@
 <div class="figures">
 <div class="figure"><span class="value">{{$d.Progress.Percent}}%</span><span class="label">Done</span></div>
 <div class="figure"><span class="value">{{$d.Progress.Done}} / {{$d.Progress.Total}}</span><span class="label">Addresses scanned</span></div>
-<div class="figure"><span class="value">{{$d.Progress.Groups}}</span><span class="label">Groups finished</span></div>
+<div class="figure"><span class="value">{{printf "%.1f" $d.Scale.AddressesPerSecond}}</span><span class="label">Addresses per second</span></div>
+<div class="figure"><span class="value">{{$d.Scale.GroupsDone}} / {{$d.Scale.GroupsTotal}}</span><span class="label">Groups done</span></div>
+<div class="figure{{if $d.Failed}} is-alert{{end}}"><span class="value">{{len $d.Failed}}</span><span class="label">Failed groups</span></div>
 <div class="figure"><span class="value">{{$d.Progress.Hosts}}</span><span class="label">Hosts found</span></div>
 <div class="figure"><span class="value">{{$d.Busy}}</span><span class="label">Group time</span></div>
 <div class="figure"><span class="value">{{if $d.Left}}{{$d.Left}}{{else}}-{{end}}</span><span class="label">Estimated time left</span></div>
 </div>
+{{with $d.LeftRange}}<p class="muted">Estimate: {{.}} left, {{$d.LeftFrom}}.</p>{{end}}
+<section class="panel">
+<header><h2>Rate</h2></header>
+<div class="body">
+<dl class="kv">
+<dt>Max rate</dt><dd class="num">{{$d.Rate.MaxRate}} per second</dd>
+<dt>Adaptive rate</dt><dd>{{if $d.Rate.Adaptive}}On{{else}}Off{{end}}</dd>
+<dt>Peak sent</dt><dd class="num">{{printf "%.1f" $d.Rate.Peak}} per second</dd>
+<dt>Average sent</dt><dd class="num">{{printf "%.1f" $d.Rate.Average}} per second</dd>
+<dt>HTTP requests</dt><dd class="num">{{$d.Rate.Requests}} measured</dd>
+<dt>nmap packets</dt><dd class="num">{{$d.Rate.Packets}} estimated, peak {{printf "%.1f" $d.Rate.PacketsPeak}} per second, average {{printf "%.1f" $d.Rate.PacketsAverage}} per second</dd>
+{{if $d.Rate.Adaptive}}<dt>Lowest rate</dt><dd class="num">{{$d.Rate.MinRate}} per second: nmap sends at least one packet per second per slot (nmap slots: {{$d.Rate.Slots}})</dd>{{end}}
+</dl>
+<p class="muted">Sent counts the HTTP requests of the probe, measured as the rate limiter lets each one go. nmap packets are estimated from the addresses and ports of each nmap call, spread over the call; nmap keeps to its own configured rate.</p>
+{{if $d.Rate.Chart.Bars}}
+<svg class="chart" role="img" aria-label="Packets and requests sent per second for each minute against the effective limit, max rate {{$d.Rate.MaxRate}} per second" width="{{$d.Rate.Chart.Width}}" height="{{$d.Rate.Chart.Height}}" viewBox="0 0 {{$d.Rate.Chart.Width}} {{$d.Rate.Chart.Height}}">
+<line class="axis" x1="0" y1="{{$d.Rate.Chart.TopY}}" x2="{{$d.Rate.Chart.Width}}" y2="{{$d.Rate.Chart.TopY}}"></line>
+<line class="axis" x1="0" y1="{{$d.Rate.Chart.AxisY}}" x2="{{$d.Rate.Chart.Width}}" y2="{{$d.Rate.Chart.AxisY}}"></line>
+{{range $d.Rate.Chart.Bars}}<rect class="sent" x="{{.X}}" y="{{.Y}}" width="8" height="{{.Height}}"><title>{{.Title}}</title></rect>{{end}}
+<polyline class="limit" points="{{$d.Rate.Chart.Limit}}"></polyline>
+</svg>
+<p class="muted">Bars: HTTP requests (measured) plus nmap packets (estimated) per second in each minute. Line: effective limit. Top line: max rate.</p>
+{{else}}
+<div class="empty"><p>No minute of this run has been measured yet.</p></div>
+{{end}}
+</div>
+</section>
+{{if $d.Failed}}
+<h2>Failed groups</h2>
+<div class="table-wrap">
+<table class="data">
+<thead><tr><th class="num">Group</th><th class="num">Addresses</th><th>Reason</th></tr></thead>
+<tbody>
+{{range $d.Failed}}<tr><td class="num">{{.Index}}</td><td class="num">{{len .Addresses}}</td><td>{{.Reason}}</td></tr>
+{{end}}</tbody>
+</table>
+</div>
+<h2>Groups</h2>
+{{end}}
 {{if $d.Groups}}
 <div class="table-wrap">
 <table class="data">
@@ -30,6 +72,7 @@
 </table>
 </div>
 {{else}}
-<div class="empty"><p>No group has finished yet. The time left is estimated from the speed of finished groups.</p></div>
+<div class="empty"><p>No group has finished yet. Until one does, the time left is estimated from earlier runs of this scan or from the plan.</p></div>
 {{end}}
+</div>
 {{end}}

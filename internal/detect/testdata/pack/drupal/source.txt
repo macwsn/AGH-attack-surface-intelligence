@@ -1,0 +1,2 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Drupal 10 home page (X-Generator, X-Drupal-Cache, X-Drupal-Dynamic-Cache headers), drupal.org docs

@@ -1,0 +1,3 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Grafana 8.2.6 login page (vulhub grafana/CVE-2021-43798: / -> /login, grafanaBootData with loginHint), grafana.com/docs
+the eval/vulhub capture of this product is not readable from the builder sandbox; markers written to match it

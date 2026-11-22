@@ -1,5 +1,103 @@
 {{define "content"}}
 <div class="page-head"><div><h1>Dashboard</h1>
 <p class="lede">Signed in as <strong class="username">{{.User.Username}}</strong> with role <strong class="role">{{.User.Role}}</strong>.</p></div></div>
-<div class="empty"><p>Findings and recent scan runs will appear here.</p></div>
+{{with .Data}}{{if .NoInventory}}
+<section class="panel"><div class="empty"><p>Your role cannot see inventory data.</p>
+<p>{{range $.Nav}}{{range .Entries}}{{if ne .Path "/"}}<a class="btn" href="{{.Path}}">{{.Label}}</a> {{end}}{{end}}{{end}}</p></div></section>
+{{else}}
+{{if .Attention}}<section class="panel">
+<header><h2>Needs attention</h2><span class="muted">From the latest run</span>{{with .AttentionURL}}<a class="more" href="{{.}}">All changes</a>{{end}}</header>
+<div class="body attention">
+{{range .Attention}}<div class="attention-group">
+<h3><span class="change {{.Class}}">{{.Label}}</span></h3>
+<ul>{{range .Items}}<li>{{if .URL}}<a class="addr" href="{{.URL}}">{{.Address}}</a>{{else}}<span class="addr">{{.Address}}</span>{{end}}{{with .Detail}} <span class="muted">{{.}}</span>{{end}}</li>{{end}}</ul>
+{{if .More}}<p>{{if .MoreURL}}<a href="{{.MoreURL}}">{{.More}}</a>{{else}}<span class="muted">{{.More}}</span>{{end}}</p>{{end}}
+</div>
+{{end}}</div>
+</section>{{end}}
+{{if .Steps}}<section class="panel">
+<header><h2>Get started</h2></header>
+<div class="body">
+<ol class="steps">{{range .Steps}}<li value="{{.Number}}"><h3>{{.Title}}</h3><p class="muted">{{.Text}}</p>{{with .Links}}<p class="step-actions">{{range .}}<a class="btn" href="{{.URL}}">{{.Label}}</a>{{end}}</p>{{end}}</li>{{end}}</ol>
+</div>
+</section>{{end}}
+<div class="figures">
+{{range .HostFigures}}<div class="figure"><span class="value">{{.Value}}</span><span class="label">{{.Label}}</span></div>{{end}}
+{{range .ServiceFigures}}<div class="figure"><span class="value">{{.Value}}</span><span class="label">{{.Label}}</span></div>{{end}}
+</div>
+
+<div class="cols">
+<section class="panel" id="latest-run"{{if .Scan}}{{if .Scan.Live}} hx-get="/" hx-trigger="every 3s" hx-select="#latest-run" hx-swap="outerHTML"{{end}}{{end}}>
+<header><h2>Latest run</h2>{{if .Scan}}<a class="more" href="/hosts/">All hosts</a>{{end}}</header>
+{{with .Scan}}<div class="body">
+<dl class="kv">
+<dt>Run</dt><dd>{{.Run}}</dd>
+<dt>Status</dt><dd>{{if .Running}}<span class="status active">{{.Status}}</span>{{else}}{{.Status}}{{end}}</dd>
+<dt>Started</dt><dd><span title="{{.StartedExact}}">{{.Started}}</span></dd>
+<dt>Groups recorded</dt><dd class="num">{{.Groups}}</dd>
+<dt>Addresses covered</dt><dd class="num">{{.Addresses}}</dd>
+<dt>Hosts found</dt><dd class="num">{{.HostsFound}}</dd>
+{{if .LastGroup}}<dt>Last group</dt><dd><span title="{{.LastGroupExact}}">{{.LastGroup}}</span></dd>{{end}}
+</dl>
+</div>{{else}}<div class="empty"><p>No scan has run yet.</p></div>{{end}}
+</section>
+
+<section class="panel">
+<header><h2>Changes in the latest run</h2>{{if .ChangesURL}}<a class="more" href="{{.ChangesURL}}">All changes</a>{{end}}</header>
+<div class="body">
+{{if .ChangesFrom}}<p class="muted">Scan <a href="{{.ChangesTo.URL}}">{{.ChangesTo.Name}}</a> against scan <a href="{{.ChangesFrom.URL}}">{{.ChangesFrom.Name}}</a></p>
+{{if .Changes}}<div class="bars">
+{{range .Changes}}<span>{{.Label}}</span><progress class="bar {{.Class}}" max="{{.Max}}" value="{{.Count}}"></progress><span class="num">{{.Count}}</span>
+{{end}}</div>
+<div class="marks">{{range .ChangedHosts}}<a class="addr" href="{{.URL}}">{{.Address}}</a>{{end}}{{if .MoreHosts}}<a class="more" href="{{.ChangesURL}}">{{.MoreHosts}} more hosts</a>{{end}}</div>
+{{else}}<div class="empty"><p>No changes since run {{.ChangesFrom.Name}}.</p></div>{{end}}
+{{else if .ChangesTo}}<div class="empty"><p>Changes appear after the second scan. Scan {{.ChangesTo.Name}} is the only completed scan so far.</p></div>
+{{else}}<div class="empty"><p>Changes appear after the second run.</p></div>{{end}}
+{{if .Later}}<dl class="kv">
+{{range .Later}}<dt>{{.Label}}</dt><dd><a href="{{.Run.URL}}">{{.Run.Name}}</a></dd>
+{{end}}</dl>{{end}}
+</div>
+</section>
+</div>
+
+{{if .ShowChart}}{{template "change-chart" .Chart}}{{end}}
+
+<section class="panel">
+<header><h2>Top hosts by interest</h2><a class="more" href="/hosts/?sort=interest&amp;dir=desc">All by interest</a></header>
+{{if .Top}}<table class="data">
+<thead><tr><th>Address</th><th>Name</th><th>Status</th><th>Findings</th><th class="num">Interest</th></tr></thead>
+<tbody>
+{{range .Top}}<tr><td><a class="addr" href="{{.URL}}">{{.Address}}</a></td><td>{{.DisplayName}}</td>
+<td><span class="status {{.Status}}">{{.StatusLabel}}</span></td>
+<td><div class="marks">{{range .Kinds}}<span class="kind {{.Class}}">{{.Label}}</span>{{end}}</div></td>
+<td class="num"><span class="meter{{if .InterestHigh}} high{{end}}"><progress max="100" value="{{.Interest}}"></progress>{{.Interest}}</span></td></tr>
+{{end}}</tbody>
+</table>{{else}}<div class="empty"><p>No hosts yet. Hosts appear here after the first scan run.</p></div>{{end}}
+</section>
+
+<div class="cols">
+<section class="panel">
+<header><h2>Newest admin panels, staging and IoT</h2></header>
+{{if .Findings}}<table class="data">
+<thead><tr><th>Finding</th><th>Host</th><th>Service</th><th>Name</th><th>First seen</th></tr></thead>
+<tbody>
+{{range .Findings}}<tr><td><span class="kind {{.Mark.Class}}">{{.Mark.Label}}</span></td><td><a class="addr" href="{{.URL}}">{{.Address}}</a></td>
+<td class="addr">{{.Service}}</td><td>{{.Name}}</td><td class="nowrap"><span title="{{.SeenExact}}">{{.Seen}}</span></td></tr>
+{{end}}</tbody>
+</table>{{else}}<div class="empty"><p>No admin panels, staging sites or IoT devices found.</p></div>{{end}}
+</section>
+
+<section class="panel">
+<header><h2>Certificates to check</h2></header>
+{{if .Certs}}<table class="data">
+<thead><tr><th>Host</th><th>Service</th><th>Subject</th><th>Problem</th><th>Valid until</th></tr></thead>
+<tbody>
+{{range .Certs}}<tr><td><a class="addr" href="{{.URL}}">{{.Address}}</a></td><td class="addr">{{.Service}}</td><td>{{.Subject}}</td>
+<td><div class="marks">{{if .SelfSigned}}<span class="kind staging">Self-signed</span>{{end}}{{if .Expiring}}<span class="kind admin-panel">Expiring</span>{{end}}</div></td>
+<td class="nowrap"><span title="{{.ExpiryExact}}">{{.Expiry}}</span></td></tr>
+{{end}}</tbody>
+</table>{{else}}<div class="empty"><p>No self-signed or expiring certificates.</p></div>{{end}}
+</section>
+</div>
+{{end}}{{end}}
 {{end}}

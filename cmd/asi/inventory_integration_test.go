@@ -10,7 +10,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
+	"net/http/cookiejar"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	"asi/internal/auth"
 	"asi/internal/diff"
 	"asi/internal/inventory"
 	"asi/internal/scan/nmap"
@@ -31,6 +37,7 @@ import (
 	"asi/internal/scan/scantest"
 	"asi/internal/store"
 	"asi/internal/store/storetest"
+	"asi/internal/web"
 )
 
 type fakeNet struct {
@@ -493,6 +500,132 @@ func TestScanResumeAfterSignal(t *testing.T) {
 	}
 }
 
+func startFakeNmapScan(t *testing.T, bin string, c *cliEnv, name string) (*exec.Cmd, int, func() error) {
+	t.Helper()
+	fakeDir := t.TempDir()
+	child := filepath.Join(fakeDir, "child")
+	script := "#!/bin/sh\nsleep 300 &\necho $! > \"$FAKE_NMAP_CHILD.tmp\"\nmv \"$FAKE_NMAP_CHILD.tmp\" \"$FAKE_NMAP_CHILD\"\nwait\n"
+	if err := os.WriteFile(filepath.Join(fakeDir, "nmap"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(bin, c.scanArgs(name)...)
+	cmd.Env = append(os.Environ(), "PATH="+fakeDir+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"ASI_DATABASE_URL="+c.env["ASI_DATABASE_URL"], "ASI_MASTER_KEY="+testKey, "FAKE_NMAP_CHILD="+child)
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	waitErr := make(chan error, 1)
+	go func() { waitErr <- cmd.Wait() }()
+	wait := func() error {
+		select {
+		case err := <-waitErr:
+			return err
+		case <-time.After(20 * time.Second):
+			cmd.Process.Kill()
+			t.Fatalf("%s: asi did not stop", name)
+			return nil
+		}
+	}
+	deadline := time.Now().Add(15 * time.Second)
+	for {
+		if raw, err := os.ReadFile(child); err == nil {
+			pid, _ := strconv.Atoi(strings.TrimSpace(string(raw)))
+			t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
+			return cmd, pid, wait
+		}
+		if time.Now().After(deadline) {
+			cmd.Process.Kill()
+			t.Fatalf("%s: fake nmap never started its child", name)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+// REQ-SCAN-024
+func TestSIGTERMKillsNmapProcessGroup(t *testing.T) {
+	bin := buildBinary(t)
+	c := newCLIEnv(t, "192.0.2.0/29", "")
+	cmd, child, wait := startFakeNmapScan(t, bin, c, "term")
+	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		t.Fatal(err)
+	}
+	var exitErr *exec.ExitError
+	if err := wait(); !errors.As(err, &exitErr) || exitErr.ExitCode() == 0 {
+		t.Fatalf("wait = %v, want non-zero exit", err)
+	}
+	if err := syscall.Kill(child, 0); err == nil {
+		t.Fatalf("child %d of nmap still running after asi exited on SIGTERM", child)
+	}
+	if head, _ := showRun(t, c, "term"); !strings.HasPrefix(head, "run term status=paused ") {
+		t.Fatalf("after SIGTERM: %q", head)
+	}
+}
+
+// REQ-SCAN-024
+func TestKilledScannerShownStalledAndResumable(t *testing.T) {
+	bin := buildBinary(t)
+	c := newCLIEnv(t, "192.0.2.0/29", "")
+	c.net.up("192.0.2.1", 80)
+	cmd, _, wait := startFakeNmapScan(t, bin, c, "killed")
+	var beat *time.Time
+	if err := c.st.Pool.QueryRow(context.Background(), `SELECT heartbeat_at FROM runs WHERE name = 'killed'`).Scan(&beat); err != nil || beat == nil {
+		t.Fatalf("heartbeat of a running scan = %v, %v; want it written", beat, err)
+	}
+	if head, _ := showRun(t, c, "killed"); !strings.HasPrefix(head, "run killed status=running ") {
+		t.Fatalf("live scan: %q", head)
+	}
+	r := c.net.runner()
+	code, _, stderr := c.runCtx(context.Background(), r, "scan", "resume", "killed")
+	assertOneLineError(t, "resume of a live run", code, stderr, "still running")
+	if len(r.Calls()) != 0 {
+		t.Fatalf("resume of a live run called nmap: %+v", r.Calls())
+	}
+	if err := cmd.Process.Signal(syscall.SIGKILL); err != nil {
+		t.Fatal(err)
+	}
+	_ = wait()
+	if head, _ := showRun(t, c, "killed"); !strings.HasPrefix(head, "run killed status=running ") {
+		t.Fatalf("killed scan with a fresh heartbeat: %q", head)
+	}
+	if _, err := c.st.Pool.Exec(context.Background(), `UPDATE runs SET heartbeat_at = now() - interval '61 seconds' WHERE name = 'killed'`); err != nil {
+		t.Fatal(err)
+	}
+	if head, _ := showRun(t, c, "killed"); !strings.HasPrefix(head, "run killed status=stalled (process gone) ") {
+		t.Fatalf("killed scan, heartbeat 61s old: %q", head)
+	}
+	if code, _, stderr := c.run("scan", "resume", "killed"); code != 0 {
+		t.Fatalf("resume of a stalled run: exit %d, stderr %q", code, stderr)
+	}
+	if head, _ := showRun(t, c, "killed"); !strings.HasPrefix(head, "run killed status=completed ") {
+		t.Fatalf("after resume: %q", head)
+	}
+}
+
+// REQ-SCAN-026
+func TestScanRefusesWrongMasterKey(t *testing.T) {
+	c := newCLIEnv(t, "192.0.2.0/29", "")
+	c.net.up("192.0.2.1", 80)
+	c.scan("k1")
+	c.mustRun("scan", "run", "--targets-file", c.targets, "--ports", "80", "--name", "k-open", "--wait")
+	wrong := map[string]string{"ASI_DATABASE_URL": c.env["ASI_DATABASE_URL"], "ASI_MASTER_KEY": base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32))}
+	for _, args := range [][]string{
+		c.scanArgs("k2"),
+		{"scan", "resume", "k-open"},
+	} {
+		r := c.net.runner()
+		var stdout, stderr bytes.Buffer
+		code := runWith(context.Background(), scanDeps{runner: r}, args, strings.NewReader(""), &stdout, &stderr, func(k string) string { return wrong[k] })
+		assertOneLineError(t, "wrong key "+args[1], code, stderr.String(), "ASI_MASTER_KEY")
+		if calls := r.Calls(); len(calls) != 0 {
+			t.Fatalf("%v with the wrong key called nmap: %+v", args, calls)
+		}
+	}
+	if _, err := c.inv.RunByName(context.Background(), "k2"); !errors.Is(err, inventory.ErrUnknownRun) {
+		t.Fatalf("run k2 = %v, want it never created", err)
+	}
+	c.scan("k3")
+}
+
 func TestExport(t *testing.T) {
 	c := newCLIEnv(t, "192.0.2.0/29", "192.0.2.0")
 	c.net.up("192.0.2.1", 80)
@@ -735,4 +868,280 @@ func TestHostEdit(t *testing.T) {
 	}
 	assertUsage(t, stderr)
 	check("after failed edits", []string{"keep", "a", "c"}, "owned by web team")
+}
+
+type failingTransport struct {
+	mu   sync.Mutex
+	used []string
+}
+
+func (f *failingTransport) For(target string) http.RoundTripper {
+	return roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		f.used = append(f.used, target+" "+r.URL.String())
+		return nil, errors.New("network use during a hunt")
+	})
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+// REQ-SIGNATURES-007 REQ-SIGNATURES-008
+func TestSignatureHunt(t *testing.T) {
+	c := newCLIEnv(t, "192.0.2.0/29", "")
+	c.net.up("192.0.2.1", 80)
+	c.net.up("192.0.2.2", 80)
+	c.net.title("192.0.2.1", "Grafana 9")
+	c.scan("h1")
+	c.net.title("192.0.2.1", "Login")
+	c.net.title("192.0.2.2", "Grafana 10")
+	c.scan("h2")
+
+	sigFile := filepath.Join(c.dir, "grafana.yaml")
+	if err := os.WriteFile(sigFile, []byte("- id: grafana-body\n  name: Grafana\n  kind: technology\n  confidence: 80\n"+
+		"  match: {all: [{type: status, value: 200}, {type: body_regex, value: '<title>Grafana'}]}\n"+
+		"  version: {type: body_regex, value: '<title>Grafana ([0-9]+)', group: 1}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	pathFile := filepath.Join(c.dir, "health.yaml")
+	if err := os.WriteFile(pathFile, []byte("id: health\nname: Health\nkind: custom\nconfidence: 50\nrequest: {path: /health}\nmatch: {all: [{type: status, value: 200}]}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	tr := &failingTransport{}
+	nmapUsed := false
+	offline := &nmaptest.Runner{
+		DiscoverFunc: func(context.Context, []string, nmap.Options) ([]nmap.Host, error) {
+			nmapUsed = true
+			return nil, errors.New("nmap during a hunt")
+		},
+		ServicesFunc: func(context.Context, []string, []int, nmap.Options) ([]nmap.Host, error) {
+			nmapUsed = true
+			return nil, errors.New("nmap during a hunt")
+		},
+	}
+	hunt := func(args ...string) string {
+		t.Helper()
+		var stdout, stderr bytes.Buffer
+		code := runWith(context.Background(), scanDeps{runner: offline, transport: tr.For}, append([]string{"signature", "hunt"}, args...),
+			strings.NewReader(""), &stdout, &stderr, func(k string) string { return c.env[k] })
+		if code != 0 {
+			t.Fatalf("signature hunt %v: exit %d, stderr %q", args, code, stderr.String())
+		}
+		return stdout.String()
+	}
+
+	out := hunt("--file", sigFile)
+	for _, want := range []string{"signature=grafana-body observations=4 matched=2 not_evaluable=0 latest_run=h2",
+		"192.0.2.2 80/tcp first_run=h2 last_run=h2 latest=true version=10\n",
+		"192.0.2.1 80/tcp first_run=h1 last_run=h1 latest=false version=9\n"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("hunt output lacks %q:\n%s", want, out)
+		}
+	}
+
+	var doc struct {
+		Schema  string                 `json:"schema"`
+		Hunt    inventory.Hunt         `json:"hunt"`
+		Results []inventory.HuntResult `json:"results"`
+	}
+	if err := json.Unmarshal([]byte(hunt("--file", pathFile, "--format", "json", "--since", "30d")), &doc); err != nil {
+		t.Fatalf("hunt json: %v", err)
+	}
+	if doc.Schema != inventory.HuntSchema || doc.Hunt.NotEvaluable != 2 || len(doc.Results) != 2 || doc.Results[0].Evaluable {
+		t.Fatalf("hunt json = %+v", doc)
+	}
+	if len(tr.used) > 0 || nmapUsed {
+		t.Fatalf("hunt used the network: requests %v, nmap %t", tr.used, nmapUsed)
+	}
+
+	code, _, stderr := c.run("signature", "hunt", "--file", sigFile, "--since", "soon")
+	assertOneLineError(t, "bad since", code, stderr, "--since", "soon")
+	code, _, stderr = c.run("signature", "hunt")
+	if code != 2 {
+		t.Fatalf("hunt without --file: exit %d", code)
+	}
+	assertUsage(t, stderr)
+}
+
+var (
+	csrfField = regexp.MustCompile(`name="csrf_token" value="([^"]+)"`)
+	changeRow = regexp.MustCompile(`<tr data-type="([a-z_]+)"><td><span class="change [a-z]+">[^<]+</span></td><td><a class="addr" href="/hosts/([^/"]+)/timeline">[^<]+</a></td><td class="addr">([^<]*)</td>`)
+)
+
+func httpGet(t *testing.T, c *http.Client, u string) (int, []byte) {
+	t.Helper()
+	resp, err := c.Get(u)
+	if err != nil {
+		t.Fatalf("GET %s: %v", u, err)
+	}
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resp.StatusCode, b
+}
+
+// REQ-WEB-011 REQ-DIFF-007
+func TestDiffMatchesWebChanges(t *testing.T) {
+	ctx := context.Background()
+	c := newCLIEnv(t, "192.0.2.0/29", "192.0.2.0")
+	c.net.up("192.0.2.1", 80)
+	c.net.up("192.0.2.2", 80)
+	c.net.title("192.0.2.1", "Intranet v1")
+	c.scan("d1")
+	c.net.down("192.0.2.2")
+	c.net.up("192.0.2.3", 22, 80)
+	c.net.title("192.0.2.1", "Intranet v2")
+	c.scan("d2")
+
+	out := filepath.Join(c.dir, "diff.json")
+	c.mustRun("diff", "--from", "d1", "--to", "d2", "--format", "json", "--out", out)
+	cli, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	raw, err := base64.StdEncoding.DecodeString(testKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, err := store.NewKeyring(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := auth.NewService(c.st, auth.Config{})
+	if err := svc.CreateUser(ctx, auth.Actor{Username: "test", Addr: "local"}, "vera", "vera-password-123", auth.RoleViewer); err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	h, err := web.New(web.Deps{Store: c.st, Keyring: keys, Auth: svc})
+	if err != nil {
+		t.Fatalf("web.New: %v", err)
+	}
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+	jar, _ := cookiejar.New(nil)
+	hc := &http.Client{Jar: jar}
+	_, login := httpGet(t, hc, srv.URL+"/login")
+	m := csrfField.FindSubmatch(login)
+	if m == nil {
+		t.Fatal("login form has no CSRF token")
+	}
+	resp, err := hc.PostForm(srv.URL+"/login", url.Values{"username": {"vera"}, "password": {"vera-password-123"}, "csrf_token": {string(m[1])}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+
+	code, got := httpGet(t, hc, srv.URL+"/changes.json?from=d1&to=d2")
+	if code != http.StatusOK || string(got) != string(cli) {
+		t.Fatalf("/changes.json = %d\n%s\nasi diff wrote\n%s", code, got, cli)
+	}
+
+	d, err := diff.Between(ctx, c.inv, "d1", "d2", diff.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want []string
+	for _, ch := range d.Changes {
+		svc := ""
+		if ch.Port != nil {
+			svc = fmt.Sprintf("%d/%s", *ch.Port, ch.Protocol)
+		}
+		want = append(want, ch.Type+" "+ch.Address+" "+svc)
+	}
+	code, page := httpGet(t, hc, srv.URL+"/changes?from=d1&to=d2")
+	var rows []string
+	for _, r := range changeRow.FindAllStringSubmatch(string(page), -1) {
+		rows = append(rows, r[1]+" "+r[2]+" "+r[3])
+	}
+	if code != http.StatusOK || len(want) < 3 || strings.Join(rows, "\n") != strings.Join(want, "\n") ||
+		strings.Count(string(page), "<tr data-type=") != len(want) {
+		t.Fatalf("/changes rows (%d):\n%s\nwant:\n%s", code, strings.Join(rows, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+func TestInventoryRebuildSummary(t *testing.T) {
+	ctx := context.Background()
+	c := newCLIEnv(t, "192.0.2.0/29", "192.0.2.0")
+	c.net.up("192.0.2.1", 22, 80)
+	c.net.up("192.0.2.2", 22)
+	c.scan("rb1")
+	summary := func() string {
+		t.Helper()
+		var s string
+		if err := c.st.Pool.QueryRow(ctx, `SELECT COALESCE(string_agg(host(address) || ':' || array_to_string(ports, ','), ' ' ORDER BY address), '')
+			FROM host_summary`).Scan(&s); err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+	want := summary()
+	if want != "192.0.2.1:22,80 192.0.2.2:22" {
+		t.Fatalf("summary after scan = %q", want)
+	}
+	if _, err := c.st.Pool.Exec(ctx, `DELETE FROM host_summary`); err != nil {
+		t.Fatal(err)
+	}
+	for i := range 2 {
+		if out := c.mustRun("inventory", "rebuild-summary"); out != "host summary: rebuilt\n" {
+			t.Fatalf("run %d: stdout %q", i+1, out)
+		}
+		if got := summary(); got != want {
+			t.Fatalf("run %d: summary %q, want %q", i+1, got, want)
+		}
+	}
+	for _, args := range [][]string{{"inventory"}, {"inventory", "rebuild"}, {"inventory", "rebuild-summary", "x"}} {
+		if code, _, stderr := c.run(args...); code != 2 {
+			t.Fatalf("%v: exit %d, want 2", args, code)
+		} else {
+			assertUsage(t, stderr)
+		}
+	}
+}
+
+func TestServeBackfillsHostSummary(t *testing.T) {
+	ctx := context.Background()
+	c := newCLIEnv(t, "192.0.2.0/29", "192.0.2.0")
+	c.net.up("192.0.2.1", 80)
+	c.scan("sv1")
+	if _, err := c.st.Pool.Exec(ctx, `DELETE FROM host_summary`); err != nil {
+		t.Fatal(err)
+	}
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.env["ASI_LISTEN"] = ln.Addr().String()
+	ln.Close()
+	serveCtx, cancel := context.WithCancel(ctx)
+	done := make(chan int, 1)
+	go func() {
+		code, _, _ := c.runCtx(serveCtx, c.net.runner(), "serve")
+		done <- code
+	}()
+	var resp *http.Response
+	for range 50 {
+		if resp, err = http.Get("http://" + c.env["ASI_LISTEN"] + "/healthz"); err == nil {
+			resp.Body.Close()
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if err != nil {
+		t.Fatalf("GET /healthz: %v", err)
+	}
+	var rows int
+	if err := c.st.Pool.QueryRow(ctx, `SELECT count(*) FROM host_summary WHERE host(address) = '192.0.2.1'`).Scan(&rows); err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+	if code := <-done; code != 0 {
+		t.Fatalf("serve exited %d", code)
+	}
+	if rows != 1 {
+		t.Fatalf("host_summary rows for 192.0.2.1 after serve started = %d, want 1", rows)
+	}
 }

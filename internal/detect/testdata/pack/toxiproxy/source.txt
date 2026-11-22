@@ -1,0 +1,7 @@
+captured from the running lab-agh stack
+image: ghcr.io/shopify/toxiproxy:2.12.0 (sha256:9378ed52a28bc50edc1350f936f518f31fa95f0d15917d6eb40b8e376d1a214e)
+compose: lab-agh/docker-compose-modern-proxy.yml, service toxiproxy:8474
+capture date: 2026-11-21
+command: curl -sS -i -L --max-redirs 5 http://toxiproxy:8474<path> from a container on the stack network (host ports not published)
+paths: / (root.http), /version (version.http), /api/version (api__version.http)
+state: API with the wordpress proxy created by toxiproxy-init (env from lab-agh/.env.example)

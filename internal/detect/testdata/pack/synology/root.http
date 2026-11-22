@@ -1,0 +1,18 @@
+HTTP/1.1 200 OK
+Server: nginx
+Content-Type: text/html; charset="UTF-8"
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 1; mode=block
+X-Frame-Options: SAMEORIGIN
+
+<!DOCTYPE html>
+<html class="img-no-dragging">
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="description" content="DiskStation provides a full-featured network attached storage (NAS) solution to help you manage, backup and share data among Windows, Mac and Linux easily.">
+<title>nas01&nbsp;-&nbsp;Synology&nbsp;NAS</title>
+<script type="text/javascript" src="webman/synodefs.cgi?v=1700000000"></script>
+<script type="text/javascript">SYNO.SDS.Session = {"lang":"enu","isLogined":false};</script>
+</head>
+<body><noscript><div class='syno-no-script'>Your browser does not support JavaScript. Please turn on JavaScript.</div></noscript></body>
+</html>

@@ -1,0 +1,2 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Jenkins unauthenticated / (403 with X-Jenkins, X-Hudson headers), jenkins.io docs

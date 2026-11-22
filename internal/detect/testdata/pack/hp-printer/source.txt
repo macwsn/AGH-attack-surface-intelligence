@@ -1,0 +1,2 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: HP Embedded Web Server (/ -> /hp/device/start, Server HP HTTP Server; <model>), support.hp.com EWS docs

@@ -1,0 +1,208 @@
+# Built-in signatures for common applications, written from each product's documented markers.
+# Format: docs/contracts.md §4. Fixtures: internal/detect/testdata/pack/<product>/.
+- id: builtin-grafana
+  name: Grafana
+  kind: technology
+  category: monitoring
+  confidence: 95
+  match:
+    all:
+      - { type: body_regex, value: 'window\.grafanaBootData\s*=' }
+  version: { type: body_regex, value: '"buildInfo":\{[^}]*?"version":"([0-9]+(?:\.[0-9]+)+)', group: 1 }
+
+- id: builtin-grafana-login
+  name: Grafana
+  kind: admin-panel
+  category: monitoring
+  confidence: 90
+  match:
+    all:
+      - { type: body_regex, value: 'window\.grafanaBootData\s*=' }
+      - { type: body_regex, value: '"isSignedIn":false' }
+      - { type: body_regex, value: '"loginHint":"' }
+  version: { type: body_regex, value: '"buildInfo":\{[^}]*?"version":"([0-9]+(?:\.[0-9]+)+)', group: 1 }
+
+- id: builtin-jenkins
+  name: Jenkins
+  kind: technology
+  category: ci-cd
+  confidence: 95
+  match:
+    all:
+      - { type: header, name: X-Jenkins, value: '^[0-9]' }
+  version: { type: header, name: X-Jenkins, value: '^([0-9]+(?:\.[0-9]+)*)', group: 1 }
+
+- id: builtin-jenkins-admin
+  name: Jenkins
+  kind: admin-panel
+  category: ci-cd
+  confidence: 90
+  match:
+    all:
+      - { type: header, name: X-Jenkins, value: '^[0-9]' }
+
+- id: builtin-gitlab
+  name: GitLab
+  kind: technology
+  category: code-hosting
+  confidence: 90
+  match:
+    any:
+      - { type: cookie, name: '^_gitlab_session$' }
+      - { type: header, name: X-Gitlab-Meta, value: 'correlation_id' }
+      - { type: body_regex, value: '<meta content="GitLab" property="og:site_name"' }
+
+- id: builtin-tomcat
+  name: Apache Tomcat
+  kind: technology
+  category: application-server
+  confidence: 90
+  match:
+    any:
+      - { type: title_regex, value: '^Apache Tomcat(?:/[0-9][0-9.]*)?$' }
+      - { type: body_regex, value: '<h3>Apache Tomcat/[0-9]' }
+  version: { type: body_regex, value: 'Apache Tomcat/([0-9]+(?:\.[0-9]+)*)', group: 1 }
+
+- id: builtin-activemq
+  name: ActiveMQ
+  kind: technology
+  category: message-broker
+  confidence: 90
+  match:
+    any:
+      - { type: header, name: WWW-Authenticate, value: '(?i)\brealm="?ActiveMQRealm\b' }
+      - { type: body_regex, value: '<a href="admin/">Manage ActiveMQ broker</a>' }
+      - { type: title_regex, value: '\bActiveMQ Console$' }
+
+- id: builtin-activemq-console
+  name: ActiveMQ
+  kind: admin-panel
+  category: message-broker
+  confidence: 90
+  match:
+    any:
+      - { type: header, name: WWW-Authenticate, value: '(?i)\brealm="?ActiveMQRealm\b' }
+      - { type: body_regex, value: '<a href="admin/">Manage ActiveMQ broker</a>' }
+      - { type: title_regex, value: '\bActiveMQ Console$' }
+
+- id: builtin-elasticsearch
+  name: Elasticsearch
+  kind: technology
+  category: search-engine
+  confidence: 95
+  match:
+    all:
+      - { type: body_regex, value: '"tagline"\s*:\s*"You Know, for Search"' }
+  version: { type: body_regex, value: '"number"\s*:\s*"([0-9]+(?:\.[0-9]+)*)', group: 1 }
+
+- id: builtin-kibana
+  name: Kibana
+  kind: technology
+  category: monitoring
+  confidence: 95
+  match:
+    any:
+      - { type: header, name: kbn-name, value: '.' }
+      - { type: body_regex, value: '<kbn-injected-metadata ' }
+  version: { type: body_regex, value: '<kbn-injected-metadata data="\{&quot;version&quot;:&quot;([0-9]+(?:\.[0-9]+)+)&quot;', group: 1 }
+
+- id: builtin-portainer
+  name: Portainer
+  kind: technology
+  category: container-management
+  confidence: 90
+  match:
+    all:
+      - { type: title_regex, value: '^Portainer$' }
+      - { type: body_regex, value: 'ng-app="portainer"' }
+
+- id: builtin-portainer-admin
+  name: Portainer
+  kind: admin-panel
+  category: container-management
+  confidence: 90
+  match:
+    all:
+      - { type: title_regex, value: '^Portainer$' }
+      - { type: body_regex, value: 'ng-app="portainer"' }
+
+- id: builtin-minio
+  name: MinIO
+  kind: technology
+  category: object-storage
+  confidence: 90
+  match:
+    any:
+      - { type: title_regex, value: '^MinIO Console$' }
+      - { type: header, name: Server, value: '^MinIO$' }
+
+- id: builtin-prometheus
+  name: Prometheus
+  kind: technology
+  category: monitoring
+  confidence: 90
+  match:
+    all:
+      - { type: title_regex, value: '^Prometheus Time Series Collection and Processing Server$' }
+
+- id: builtin-keycloak
+  name: Keycloak
+  kind: technology
+  category: identity
+  confidence: 90
+  match:
+    any:
+      - { type: title_regex, value: '^Welcome to Keycloak$' }
+      - { type: body_regex, value: '/resources/[a-z0-9]+/[a-z]+/keycloak(?:\.v2)?/' }
+
+- id: builtin-joomla
+  name: Joomla
+  kind: technology
+  category: cms
+  confidence: 90
+  match:
+    any:
+      - { type: body_regex, value: '<meta name="generator" content="Joomla!' }
+      - { type: body_regex, value: '/media/(?:jui|system)/js/' }
+
+- id: builtin-drupal
+  name: Drupal
+  kind: technology
+  category: cms
+  confidence: 90
+  match:
+    any:
+      - { type: header, name: X-Generator, value: '^Drupal\b' }
+      - { type: header, name: X-Drupal-Cache, value: '.' }
+      - { type: header, name: X-Drupal-Dynamic-Cache, value: '.' }
+      - { type: body_regex, value: 'data-drupal-selector=|drupal-settings-json' }
+  version: { type: header, name: X-Generator, value: '^Drupal ([0-9]+(?:\.[0-9]+)*)', group: 1 }
+
+- id: builtin-roundcube
+  name: Roundcube
+  kind: technology
+  category: webmail
+  confidence: 90
+  match:
+    any:
+      - { type: cookie, name: '^roundcube_sessid$' }
+      - { type: body_regex, value: 'new rcube_webmail\(\)' }
+
+- id: builtin-zabbix
+  name: Zabbix
+  kind: technology
+  category: monitoring
+  confidence: 90
+  match:
+    any:
+      - { type: cookie, name: '^zbx_session(?:id)?$' }
+      - { type: body_regex, value: '>Zabbix SIA</a>' }
+
+- id: builtin-admin-login
+  name: Admin login page
+  kind: admin-panel
+  confidence: 70
+  match:
+    all:
+      - { type: title_regex, value: '(?i)\badmin(?:istrator|istration)?\b.*\b(?:log ?in|sign ?in)\b|\b(?:log ?in|sign ?in)\b.*\badmin(?:istrator|istration)?\b' }
+      - { type: body_regex, value: '(?i)<input[^>]+type=["'']?password' }

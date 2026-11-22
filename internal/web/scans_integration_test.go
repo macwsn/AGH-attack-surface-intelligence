@@ -11,6 +11,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -138,7 +140,7 @@ func TestScanPages(t *testing.T) {
 		return nil, nil
 	}}
 	inv := inventory.New(st, keys)
-	sched := &schedule.Scheduler{Store: schedule.NewStore(st), Scanner: &scan.Scanner{Store: inv, Runner: runner, Clock: clock}, Logf: t.Logf}
+	sched := &schedule.Scheduler{Store: schedule.NewStore(st, keys), Scanner: &scan.Scanner{Store: inv, Runner: runner, Clock: clock}, Logf: t.Logf}
 	sched.Start(ctx)
 	t.Cleanup(sched.Wait)
 	h, err := New(Deps{Store: st, Keyring: keys, Auth: svc, Scans: sched})
@@ -215,7 +217,7 @@ func TestScanPages(t *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	for _, want := range []string{"Scan started.", "Running", "Pause run", "64 / 253", "25%", "Groups finished", "<td class=\"num\">2 s</td>",
+	for _, want := range []string{"Scan started.", "Running", "Pause run", "64 / 253", "25%", `<span class="value">1 / 4</span><span class="label">Groups done</span>`, "<td class=\"num\">2 s</td>",
 		"Estimated time left", `<span class="value">6 s</span>`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("run page lacks %q:\n%s", want, body)
@@ -284,12 +286,182 @@ func TestScanPages(t *testing.T) {
 	}
 
 	victor := signIn(t, srv.URL, "victor", "victor-password-123")
-	for _, path := range []string{"/scans", scanPath, runURL} {
+	for _, path := range []string{"/scans", scanPath} {
 		if code, _ := victor.get(path); code != http.StatusForbidden {
 			t.Errorf("viewer GET %s = %d, want 403", path, code)
 		}
 	}
+	if code, _ := victor.get(runURL); code != http.StatusOK {
+		t.Errorf("viewer GET %s = %d, want 200", runURL, code)
+	}
 	if code, _, _ := victor.post(runURL+"/pause", nil); code != http.StatusForbidden {
 		t.Errorf("viewer pause = %d, want 403", code)
+	}
+	if code, _, _ := victor.post(runURL+"/resume", nil); code != http.StatusForbidden {
+		t.Errorf("viewer resume = %d, want 403", code)
+	}
+}
+
+// REQ-SCAN-011
+func TestScanFormPortRangesAndPresets(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	st, err := store.Open(ctx, storetest.DatabaseURL(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(st.Close)
+	if _, err := st.Migrate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	master := make([]byte, 32)
+	if _, err := rand.Read(master); err != nil {
+		t.Fatal(err)
+	}
+	keys, err := store.NewKeyring(master)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := auth.NewService(st, auth.Config{})
+	if err := svc.CreateUser(ctx, auth.Actor{Username: "test", Addr: "local"}, "petra", "petra-password-123", auth.RoleAdmin); err != nil {
+		t.Fatal(err)
+	}
+	defs := schedule.NewStore(st, keys)
+	sched := &schedule.Scheduler{Store: defs, Scanner: &scan.Scanner{Store: inventory.New(st, keys), Runner: &nmaptest.Runner{}}, Logf: t.Logf}
+	h, err := New(Deps{Store: st, Keyring: keys, Auth: svc, Scans: sched})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+	b := signIn(t, srv.URL, "petra", "petra-password-123")
+	b.get("/scans/new")
+	form := url.Values{
+		"name": {"lab-agh"}, "targets": {"localhost\nhost.docker.internal\n127.0.0.1"}, "excludes": {""},
+		"ports": {"8000-8100, 21,80,21000-21010,80"}, "max_rate": {"100"}, "workers": {"1"}, "inactive_after": {"3"},
+		"signatures_dir": {""}, "timezone": {"UTC"}, "windows": {""}, "frequency": {"daily"},
+	}
+	bad := url.Values{}
+	for k, v := range form {
+		bad[k] = v
+	}
+	bad.Set("ports", "80,9000-8000")
+	if code, _, body := b.post("/scans", bad); code != http.StatusUnprocessableEntity || !strings.Contains(body, `invalid port range &#34;9000-8000&#34;`) {
+		t.Fatalf("invalid range = %d:\n%s", code, body)
+	}
+	code, loc, body := b.post("/scans", form)
+	if code != http.StatusSeeOther {
+		t.Fatalf("create = %d:\n%s", code, body)
+	}
+	scanPath := strings.TrimSuffix(loc, "?msg=created")
+	if _, body := b.get(scanPath); !strings.Contains(body, "21, 80, 8000-8100, 21000-21010") || !strings.Contains(body, "localhost") {
+		t.Fatalf("scan page lacks the normalised ports:\n%s", body)
+	}
+	if _, body := b.get(scanPath + "/edit"); !strings.Contains(body, `value="21,80,8000-8100,21000-21010"`) {
+		t.Fatalf("edit form lacks the normalised ports:\n%s", body)
+	}
+	form.Set("ports", "top100")
+	if code, _, body := b.post(scanPath, form); code != http.StatusSeeOther {
+		t.Fatalf("update = %d:\n%s", code, body)
+	}
+	list, err := defs.Definitions(ctx)
+	if err != nil || len(list) != 1 {
+		t.Fatalf("definitions = %v, %v", list, err)
+	}
+	want, _ := scan.ParsePorts("top100")
+	if got := list[0].Settings.Ports; len(got) != 100 || !slices.Equal(got, want) {
+		t.Fatalf("stored ports = %v, want the 100 sorted ports of top100", got)
+	}
+}
+
+// REQ-WEB-047 AC3: a scan definition is deleted through a confirmation page by a user with scan.configure; its runs stay and the
+// run page says the definition was deleted.
+func TestDeleteScanDefinition(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	st, err := store.Open(ctx, storetest.DatabaseURL(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(st.Close)
+	if _, err := st.Migrate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	master := make([]byte, 32)
+	if _, err := rand.Read(master); err != nil {
+		t.Fatal(err)
+	}
+	keys, err := store.NewKeyring(master)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := auth.NewService(st, auth.Config{})
+	cli := auth.Actor{Username: "test", Addr: "local"}
+	for user, role := range map[string]string{"alice": auth.RoleAdmin, "eddie": auth.RoleEditor} {
+		if err := svc.CreateUser(ctx, cli, user, user+"-password-123", role); err != nil {
+			t.Fatal(err)
+		}
+	}
+	inv := inventory.New(st, keys)
+	sched := &schedule.Scheduler{Store: schedule.NewStore(st, keys), Scanner: &scan.Scanner{Store: inv, Runner: &nmaptest.Runner{}}, Logf: t.Logf}
+	d, err := sched.Store.CreateDefinition(ctx, cli, schedule.Definition{Name: "campus", InactiveAfter: 3,
+		Settings: inventory.RunSettings{Targets: []string{"10.0.0.5"}, Ports: []int{80}, MaxRate: 10, Workers: 1},
+		Schedule: schedule.Schedule{Timezone: "UTC", Frequency: schedule.Frequency{Kind: schedule.FrequencyDaily}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	run, err := sched.Store.StartRun(ctx, d.ID, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := New(Deps{Store: st, Keyring: keys, Auth: svc, Scans: sched})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+	scanPath, runPath := "/scans/"+strconv.FormatInt(d.ID, 10), "/runs/"+strconv.FormatInt(run.ID, 10)
+
+	eddie := signIn(t, srv.URL, "eddie", "eddie-password-123")
+	if code, body := eddie.get(scanPath); code != 200 || strings.Contains(body, scanPath+"/delete") {
+		t.Fatalf("scan page for an editor = %d, want no delete link:\n%s", code, body)
+	}
+	if code, _ := eddie.get(scanPath + "/delete"); code != http.StatusForbidden {
+		t.Fatalf("editor GET delete = %d, want 403", code)
+	}
+	if code, _, _ := eddie.post(scanPath+"/delete", nil); code != http.StatusForbidden {
+		t.Fatalf("editor POST delete = %d, want 403", code)
+	}
+
+	alice := signIn(t, srv.URL, "alice", "alice-password-123")
+	if _, body := alice.get(scanPath); !strings.Contains(body, `href="`+scanPath+`/delete"`) {
+		t.Fatalf("scan page has no delete link:\n%s", body)
+	}
+	code, body := alice.get(scanPath + "/delete")
+	if code != 200 || !strings.Contains(body, "Delete scan campus") || !strings.Contains(body, `action="`+scanPath+`/delete"`) {
+		t.Fatalf("confirmation page = %d:\n%s", code, body)
+	}
+	if code, _, body := alice.post(scanPath+"/delete", nil); code != http.StatusConflict || !strings.Contains(body, "has a run in progress or paused") {
+		t.Fatalf("delete with an open run = %d:\n%s", code, body)
+	}
+	if _, err := st.Pool.Exec(ctx, `UPDATE runs SET status = 'completed', finished_at = now() WHERE id = $1`, run.ID); err != nil {
+		t.Fatal(err)
+	}
+	if code, loc, _ := alice.post(scanPath+"/delete", nil); code != http.StatusSeeOther || loc != "/scans?msg=deleted" {
+		t.Fatalf("delete = %d %s", code, loc)
+	}
+	if code, body := alice.get("/scans?msg=deleted"); code != 200 || !strings.Contains(body, "Scan deleted.") || strings.Contains(body, "campus") {
+		t.Fatalf("list after delete = %d:\n%s", code, body)
+	}
+	if code, _ := alice.get(scanPath); code != http.StatusNotFound {
+		t.Fatalf("deleted scan page = %d, want 404", code)
+	}
+	if code, body := alice.get(runPath); code != 200 || !strings.Contains(body, "Definition deleted") {
+		t.Fatalf("run page after delete = %d:\n%s", code, body)
+	}
+	var audited int
+	if err := st.Pool.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE action = 'scan.delete' AND target = 'campus' AND actor = 'alice'`).
+		Scan(&audited); err != nil || audited != 1 {
+		t.Fatalf("audit = %d, %v", audited, err)
 	}
 }

@@ -1,0 +1,6 @@
+captured from a local container of the Vulhub image
+image: vulhub/metabase:0.40.4 (sha256:bce061b79d2340b4c7eab17d8155a43c4d0a46bfa7a04f45b652a95f37cce5eb)
+capture date: 2026-11-22
+command: curl -sS -i -L --max-redirs 5 http://<host>:3000<path> (host rewritten to fixture.test)
+paths: / (root.http), /version (version.http), /api/version (api__version.http), /favicon.ico
+state: first start of the image, no configuration

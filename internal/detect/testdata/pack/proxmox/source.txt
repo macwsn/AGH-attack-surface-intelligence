@@ -1,0 +1,2 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Proxmox VE web UI on :8006 (Server pve-api-daemon, /pve2/js/pvemanagerlib.js?ver=), pve.proxmox.com wiki

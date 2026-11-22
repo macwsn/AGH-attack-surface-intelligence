@@ -1,0 +1,199 @@
+# Built-in signatures for the products of the lab-agh stacks, written from the responses captured in
+# internal/detect/testdata/pack/<product>/. Format: docs/contracts.md §4. Extra paths: /version, /api/version.
+- id: builtin-wordpress
+  name: WordPress
+  kind: technology
+  category: cms
+  confidence: 95
+  match:
+    any:
+      - { type: body_regex, value: '<meta name="generator" content="WordPress [0-9]' }
+      - { type: header, name: Link, value: 'rel="https://api\.w\.org/"' }
+  version: { type: body_regex, value: '<meta name="generator" content="WordPress ([0-9]+(?:\.[0-9]+)*)"', group: 1 }
+
+- id: builtin-wordpress-install
+  name: WordPress
+  kind: technology
+  category: cms
+  confidence: 90
+  match:
+    all:
+      - { type: title_regex, value: '^WordPress\b' }
+      - { type: body_regex, value: '/wp-admin/css/install(?:\.min)?\.css' }
+  version: { type: body_regex, value: '/wp-admin/css/install(?:\.min)?\.css\?ver=([0-9]+(?:\.[0-9]+)*)', group: 1 }
+
+- id: builtin-phpmyadmin
+  name: phpMyAdmin
+  kind: technology
+  category: database-admin
+  confidence: 95
+  match:
+    all:
+      - { type: title_regex, value: 'phpMyAdmin' }
+    any:
+      - { type: cookie, name: '^phpMyAdmin$' }
+      - { type: cookie, name: '^pma_lang$' }
+      - { type: body_regex, value: 'name="pma_username"' }
+  version: { type: body_regex, value: '\.js\?v=([0-9]+\.[0-9]+(?:\.[0-9]+)*)', group: 1 }
+
+- id: builtin-phpmyadmin-login
+  name: phpMyAdmin login
+  kind: admin-panel
+  category: database-admin
+  confidence: 95
+  match:
+    all:
+      - { type: title_regex, value: 'phpMyAdmin' }
+      - { type: body_regex, value: 'name="pma_password"' }
+
+- id: builtin-phpmyadmin-open
+  name: phpMyAdmin
+  kind: admin-panel
+  category: database-admin
+  confidence: 95
+  match:
+    all:
+      - { type: title_regex, value: 'phpMyAdmin' }
+      - { type: body_regex, value: '<div id="pma_navigation"' }
+  version: { type: body_regex, value: '\.js\?v=([0-9]+\.[0-9]+(?:\.[0-9]+)*)', group: 1 }
+
+- id: builtin-adminer
+  name: Adminer
+  kind: technology
+  category: database-admin
+  confidence: 95
+  match:
+    all:
+      - { type: title_regex, value: '\bAdminer$' }
+    any:
+      - { type: cookie, name: '^adminer_(?:sid|key)$' }
+      - { type: body_regex, value: 'verifyVersion, ''[0-9]' }
+  version: { type: body_regex, value: 'verifyVersion, ''([0-9]+(?:\.[0-9]+)*)''', group: 1 }
+
+- id: builtin-adminer-login
+  name: Adminer login
+  kind: admin-panel
+  category: database-admin
+  confidence: 95
+  match:
+    all:
+      - { type: title_regex, value: '^Login - Adminer$' }
+      - { type: body_regex, value: 'name=["'']auth\[password\]["'']' }
+
+- id: builtin-dvwa
+  name: DVWA
+  kind: technology
+  category: web-application
+  confidence: 95
+  match:
+    all:
+      - { type: title_regex, value: 'Damn Vulnerable Web Application \(DVWA\)' }
+  version: { type: title_regex, value: '\(DVWA\) v([0-9]+(?:\.[0-9]+)*)', group: 1 }
+
+- id: builtin-gitea
+  name: Gitea
+  kind: technology
+  category: code-hosting
+  confidence: 95
+  match:
+    any:
+      - { type: cookie, name: '^i_like_gitea$' }
+      - { type: body_regex, value: '<meta name="author" content="Gitea - Git with a cup of tea"' }
+  version: { type: body_regex, value: '(?s)>Powered by Gitea</a>.{0,100}?Version:\s*([0-9]+(?:\.[0-9]+)*)', group: 1 }
+
+- id: builtin-rabbitmq-management
+  name: RabbitMQ
+  kind: technology
+  category: message-broker
+  confidence: 95
+  match:
+    all:
+      - { type: title_regex, value: '^RabbitMQ Management$' }
+      - { type: body_regex, value: 'js/sammy-[0-9.]+(?:\.min)?\.js' }
+
+- id: builtin-rabbitmq-management-ui
+  name: RabbitMQ management
+  kind: admin-panel
+  category: message-broker
+  confidence: 95
+  match:
+    all:
+      - { type: title_regex, value: '^RabbitMQ Management$' }
+      - { type: body_regex, value: 'js/sammy-[0-9.]+(?:\.min)?\.js' }
+
+- id: builtin-traefik-dashboard
+  name: Traefik
+  kind: technology
+  category: reverse-proxy
+  confidence: 90
+  match:
+    all:
+      - { type: title_regex, value: '^Traefik$' }
+      - { type: body_regex, value: '<meta name="?description"? content="Traefik UI"' }
+
+- id: builtin-traefik-dashboard-ui
+  name: Traefik dashboard
+  kind: admin-panel
+  category: reverse-proxy
+  confidence: 90
+  match:
+    all:
+      - { type: title_regex, value: '^Traefik$' }
+      - { type: body_regex, value: '<meta name="?description"? content="Traefik UI"' }
+
+- id: builtin-traefik-api
+  name: Traefik
+  kind: technology
+  category: reverse-proxy
+  confidence: 95
+  request: { method: GET, path: /api/version }
+  match:
+    all:
+      - { type: status, value: "200" }
+      - { type: body_regex, value: '^\{"Version":"[^"]+","Codename":"' }
+  version: { type: body_regex, value: '^\{"Version":"v?([0-9]+(?:\.[0-9]+)*)', group: 1 }
+
+- id: builtin-nginx-proxy-manager
+  name: Nginx Proxy Manager
+  kind: technology
+  category: reverse-proxy
+  confidence: 95
+  match:
+    all:
+      - { type: title_regex, value: '^Nginx Proxy Manager$' }
+      - { type: body_regex, value: 'Manage Nginx hosts with a simple, powerful interface' }
+
+- id: builtin-nginx-proxy-manager-ui
+  name: Nginx Proxy Manager admin
+  kind: admin-panel
+  category: reverse-proxy
+  confidence: 95
+  match:
+    all:
+      - { type: title_regex, value: '^Nginx Proxy Manager$' }
+      - { type: body_regex, value: 'Manage Nginx hosts with a simple, powerful interface' }
+
+- id: builtin-httpbin
+  name: httpbin
+  kind: technology
+  category: development-tool
+  confidence: 95
+  match:
+    all:
+      - { type: title_regex, value: '^httpbin\.org$' }
+      - { type: body_regex, value: 'A simple HTTP Request &amp; Response Service' }
+  version: { type: body_regex, value: '<pre class="version">([0-9]+(?:\.[0-9]+)*)</pre>', group: 1 }
+
+- id: builtin-toxiproxy
+  name: Toxiproxy
+  kind: technology
+  category: development-tool
+  confidence: 95
+  request: { method: GET, path: /version }
+  match:
+    all:
+      - { type: header, name: X-Toxiproxy-Request-Id, value: '.' }
+    any:
+      - { type: body_regex, value: '"version":\s*"[0-9]' }
+      - { type: body_regex, value: '^[0-9]+\.[0-9]+\.[0-9]+\s*$' }
+  version: { type: body_regex, value: '(?:"version":\s*"|^)([0-9]+\.[0-9]+(?:\.[0-9]+)*)', group: 1 }

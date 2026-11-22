@@ -1,0 +1,50 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="page-head">
+<div>
+<h1>Preview of {{$d.Definition.Name}}</h1>
+<p class="lede">What one run of this scan sends.{{if $d.Plan.Recheck}} Recheck: only the {{$d.Plan.Services}} known open services of run {{$d.Plan.Base}} are planned, other addresses and ports are not scanned.{{end}} Nothing was sent to make this preview.</p>
+</div>
+<div class="actions"><a class="btn" href="/scans/{{$d.Definition.ID}}">Back to scan</a></div>
+</div>
+<div class="figures">
+<div class="figure"><span class="value">{{$d.Addresses}}</span><span class="label">{{if $d.Plan.Recheck}}Hosts with known services{{else}}Addresses after excludes{{end}}</span></div>
+<div class="figure"><span class="value">{{len $d.Plan.Ports}}</span><span class="label">Ports</span></div>
+<div class="figure"><span class="value">{{$d.Plan.Groups}}</span><span class="label">Groups</span></div>
+<div class="figure"><span class="value">{{$d.Packets}}</span><span class="label">Packets at most</span></div>
+<div class="figure"><span class="value">{{$d.Requests}}</span><span class="label">HTTP requests at most</span></div>
+<div class="figure"><span class="value">{{$d.Estimate}}</span><span class="label">Estimated duration</span></div>
+</div>
+<div class="cols">
+<section class="panel">
+<header><h2>What is sent</h2></header>
+<div class="body">
+<dl class="kv">
+<dt>Mode</dt><dd>{{if $d.Plan.Recheck}}Recheck of {{$d.Plan.Services}} known services from run {{$d.Plan.Base}}{{else}}Full{{end}}</dd>
+<dt>Addresses</dt><dd class="num">{{$d.Addresses}}</dd>
+<dt>Ports</dt><dd class="addr">{{$d.Ports}}</dd>
+<dt>Groups</dt><dd class="num">{{$d.Plan.Groups}} of {{$d.Plan.GroupSize}} addresses</dd>
+<dt>nmap packets</dt><dd class="num">{{$d.Packets}} at most</dd>
+<dt>HTTP requests</dt><dd class="num">{{$d.Requests}} at most</dd>
+</dl>
+<p class="muted">{{if $d.Plan.Recheck}}The counts assume every known service still answers HTTP and HTTPS.{{else}}The counts assume every address is up and every port is open and answers HTTP and HTTPS.{{end}} Group size adapts during the run.</p>
+</div>
+</section>
+<section class="panel">
+<header><h2>How long it takes</h2></header>
+<div class="body">
+<dl class="kv">
+<dt>Max rate</dt><dd class="num">{{$d.Plan.MaxRate}} per second</dd>
+<dt>Adaptive rate</dt><dd>{{if $d.Plan.Adaptive}}On: slows down when targets answer slower or time out{{else}}Off{{end}}</dd>
+{{if $d.Plan.Adaptive}}<dt>Lowest rate</dt><dd class="num">{{$d.Plan.MinRate}} per second: nmap sends at least one packet per second per slot (nmap slots: {{$d.Plan.Slots}})</dd>{{end}}
+<dt>Estimate</dt><dd class="num">{{$d.Estimate}}</dd>
+<dt>Live addresses assumed</dt><dd class="num">{{$d.LiveShare}}</dd>
+<dt>At measured speed</dt><dd class="num">{{if $d.Earlier}}{{$d.AtMeasured}}{{else}}<span class="muted">-</span>{{end}}</dd>
+</dl>
+<p class="muted">The estimate charges every address the discovery probes and only the live share the service probes and HTTP requests.{{if $d.Earlier}} It uses the measured speed of the earlier run.{{end}}</p>
+{{if $d.Earlier}}<p class="muted">Measured speed {{printf "%.1f" $d.Plan.MeasuredRate}} addresses per second, from run <a class="addr" href="/runs/{{$d.Earlier.ID}}">{{$d.Earlier.Name}}</a>.</p>
+{{else}}<div class="empty"><p>No completed run of this scan yet. The measured estimate appears after the first run.</p></div>{{end}}
+</div>
+</section>
+</div>
+{{end}}

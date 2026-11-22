@@ -1,8 +1,9 @@
 # Evaluation plan
 
-Run by the supervisor on `main` once the backlog is merged. Builders do not write or edit the harness (`eval/**`,
-`lab/**`). Every claim in the report carries its evidence: a command with its output, a screenshot, or a test name.
-What fails goes back to the board as a task; the report is re-run after fixes and keeps both numbers.
+Run by the maintainers on `main` once the planned changes are merged. Feature changes do not write or edit the
+harness (`eval/**`, `lab/**`). Every claim in the report carries its evidence: a command with its output, a
+screenshot, or a test name. What fails is fixed in a further change; the report is re-run after fixes and keeps both
+numbers.
 
 Output: `docs/evaluation-report.md` plus raw data in `eval/results/`.
 
@@ -25,7 +26,7 @@ with their weights (30 / 20 / 15 / 15 / 10 / 10) and gives a self-score per crit
 | Unstable hosts | a host down 1, 2 and 3 runs with `--inactive-after 3`; a host up only in "office hours" over 8 runs | unstable, then inactive on the third; time-of-day pattern labelled |
 
 The organisers' lab is added under `lab-agh/` when it arrives, with its own expected file built from their reference
-results. Differences between their formats (import/export, signatures) and ours are listed and closed as tasks.
+results. Differences between their formats (import/export, signatures) and ours are listed and closed by changes.
 
 ## 3. Performance
 

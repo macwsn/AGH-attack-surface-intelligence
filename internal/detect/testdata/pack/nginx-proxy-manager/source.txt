@@ -1,0 +1,7 @@
+captured from the running lab-agh stack
+image: jc21/nginx-proxy-manager:latest (sha256:04a9d0835560b9719ab577275f84fe1f713298a1c1e2bdefa034b87f10e062e1)
+compose: lab-agh/docker-compose-modern.yml, service nginx-proxy-manager:81
+capture date: 2026-11-21
+command: curl -sS -i -L --max-redirs 5 http://nginx-proxy-manager:81<path> from a container on the stack network (host ports not published)
+paths: / (root.http), /version (version.http), /api/version (api__version.http)
+state: admin UI on port 81, first start

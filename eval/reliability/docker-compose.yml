@@ -1,0 +1,59 @@
+# Reliability (fault-injection) harness. One project, own subnet, no published ports.
+# The product image asi:rel is built from a git snapshot, see README.md.
+name: asi-rel
+networks:
+  rel:
+    ipam:
+      config:
+        - subnet: 172.29.0.0/24
+          gateway: 172.29.0.1
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment: { POSTGRES_USER: asi, POSTGRES_PASSWORD: asi-rel, POSTGRES_DB: asi }
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U asi"], interval: 2s, timeout: 3s, retries: 30 }
+    networks: { rel: { ipv4_address: 172.29.0.3 } }
+  asi:
+    image: asi:rel
+    entrypoint: ["sleep", "infinity"]
+    init: true   # reaps the children of killed commands, so `ps` shows only what is really running
+    environment:
+      ASI_DATABASE_URL: postgres://asi:asi-rel@172.29.0.3:5432/asi?sslmode=disable
+      ASI_MASTER_KEY: cmVsLW9ubHkta2V5LXJlbC1vbmx5LWtleS1yZWwtMDE=
+    cap_add: [NET_RAW, NET_ADMIN]
+    depends_on: { postgres: { condition: service_healthy } }
+    volumes: ["./:/rel:ro", "../results/reliability:/out"]
+    networks: { rel: { ipv4_address: 172.29.0.2 } }
+  # ~55 simulated hosts in 172.29.0.145-254 (the eval/bignet responder at /25 scale)
+  bignet:
+    build: ../bignet
+    image: asi-rel-bignet
+    cap_add: [NET_ADMIN]
+    environment: { BIGNET: 172.29.0.128/25, LIVE_SHARE: "0.5" }
+    volumes: ["../results/reliability/_lab/bignet:/out", "../../lab/services/admin/tls:/tls:ro"]
+    healthcheck: { test: ["CMD", "test", "-f", "/out/ready"], interval: 2s, timeout: 3s, retries: 60 }
+    networks: { rel: { ipv4_address: 172.29.0.4 } }
+  # misbehaving targets on 172.29.0.10-26 (+ .40, the off-target redirect destination)
+  hostile:
+    image: python:3.13-alpine
+    command: ["python3", "-u", "/rel/hostile.py", "serve"]
+    cap_add: [NET_ADMIN]
+    stop_grace_period: 1s
+    volumes: ["./:/rel:ro", "../results/reliability/_lab/hostile:/out"]
+    healthcheck: { test: ["CMD", "test", "-f", "/tmp/ready"], interval: 2s, timeout: 3s, retries: 30 }
+    networks: { rel: { ipv4_address: 172.29.0.9 } }
+  # answers discovery and nmap, then exits before the HTTP probe when armed (host-vanishes)
+  vanish:
+    image: python:3.13-alpine
+    command: ["python3", "-u", "/rel/hostile.py", "vanish"]
+    stop_grace_period: 1s
+    restart: "no"
+    volumes: ["./:/rel:ro", "../results/reliability/_lab/vanish:/out"]
+    networks: { rel: { ipv4_address: 172.29.0.50 } }
+  # port 80 closes and reopens on command while the host (and port 8080) stays up (port-flap)
+  toggle:
+    image: python:3.13-alpine
+    command: ["python3", "-u", "/rel/hostile.py", "toggle"]
+    stop_grace_period: 1s
+    volumes: ["./:/rel:ro"]
+    networks: { rel: { ipv4_address: 172.29.0.51 } }

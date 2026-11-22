@@ -1,0 +1,3 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Jenkins 2.441 unauthenticated / (vulhub jenkins/CVE-2024-23897: 403 with X-Jenkins 2.441), jenkins.io docs
+the eval/vulhub capture of this product is not readable from the builder sandbox; markers written to match it

@@ -55,6 +55,9 @@ func (s *Service) CreateRole(ctx context.Context, actor Actor, name string, perm
 		if tag.RowsAffected() == 0 {
 			return fmt.Errorf("%w: %q", ErrRoleExists, name)
 		}
+		if err := checkActorMayEditRole(ctx, tx, actor, name, perms); err != nil {
+			return err
+		}
 		if err := insertRolePermissions(ctx, tx, name, perms); err != nil {
 			return err
 		}
@@ -71,6 +74,9 @@ func (s *Service) UpdateRole(ctx context.Context, actor Actor, name string, perm
 		if err := lockCustomRole(ctx, tx, name); err != nil {
 			return err
 		}
+		if err := checkActorMayEditRole(ctx, tx, actor, name, perms); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, `DELETE FROM role_permissions WHERE role = $1`, name); err != nil {
 			return fmt.Errorf("update role %q: %w", name, err)
 		}
@@ -84,6 +90,9 @@ func (s *Service) UpdateRole(ctx context.Context, actor Actor, name string, perm
 func (s *Service) DeleteRole(ctx context.Context, actor Actor, name string) error {
 	return s.store.Tx(ctx, func(tx pgx.Tx) error {
 		if err := lockCustomRole(ctx, tx, name); err != nil {
+			return err
+		}
+		if err := checkActorMayEditRole(ctx, tx, actor, name, nil); err != nil {
 			return err
 		}
 		var inUse bool
@@ -130,6 +139,87 @@ func lockCustomRole(ctx context.Context, tx pgx.Tx, name string) error {
 		return fmt.Errorf("%w: %q", ErrBuiltinRole, name)
 	}
 	return nil
+}
+
+type actorRole struct {
+	name  string
+	perms []Permission
+}
+
+func lookupActorRole(ctx context.Context, tx pgx.Tx, actor Actor) (actorRole, bool, error) {
+	if actor.Addr == localAddr {
+		return actorRole{}, false, nil
+	}
+	p, signedIn := PrincipalFrom(ctx)
+	signedIn = signedIn && p.Username == actor.Username
+	var r actorRole
+	var session bool
+	err := tx.QueryRow(ctx, `SELECT u.role, EXISTS (SELECT 1 FROM sessions s WHERE s.user_id = u.id) FROM users u WHERE u.username = $1`,
+		actor.Username).Scan(&r.name, &session)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return actorRole{}, signedIn, nil
+	}
+	if err != nil {
+		return actorRole{}, false, fmt.Errorf("load role of %q: %w", actor.Username, err)
+	}
+	if !signedIn && !session {
+		return actorRole{}, false, nil
+	}
+	if r.perms, err = rolePermissions(ctx, tx, r.name); err != nil {
+		return actorRole{}, false, err
+	}
+	return r, true, nil
+}
+
+func rolePermissions(ctx context.Context, tx pgx.Tx, role string) ([]Permission, error) {
+	rows, err := tx.Query(ctx, `SELECT permission FROM role_permissions WHERE role = $1`, role)
+	if err != nil {
+		return nil, fmt.Errorf("load permissions of role %q: %w", role, err)
+	}
+	names, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, fmt.Errorf("load permissions of role %q: %w", role, err)
+	}
+	perms := make([]Permission, len(names))
+	for i, n := range names {
+		perms[i] = Permission(n)
+	}
+	return perms, nil
+}
+
+func (r actorRole) mustHold(perms []Permission) error {
+	for _, p := range perms {
+		if !slices.Contains(r.perms, p) {
+			return fmt.Errorf("%w: %s", ErrPermissionNotHeld, p)
+		}
+	}
+	return nil
+}
+
+func checkActorMayAssign(ctx context.Context, tx pgx.Tx, actor Actor, username, role string) error {
+	a, ok, err := lookupActorRole(ctx, tx, actor)
+	if err != nil || !ok {
+		return err
+	}
+	if username != "" && actor.Username == username {
+		return fmt.Errorf("%w: %q", ErrOwnRole, username)
+	}
+	perms, err := rolePermissions(ctx, tx, role)
+	if err != nil {
+		return err
+	}
+	return a.mustHold(perms)
+}
+
+func checkActorMayEditRole(ctx context.Context, tx pgx.Tx, actor Actor, name string, perms []Permission) error {
+	a, ok, err := lookupActorRole(ctx, tx, actor)
+	if err != nil || !ok {
+		return err
+	}
+	if a.name == name {
+		return fmt.Errorf("%w: %q", ErrOwnRole, name)
+	}
+	return a.mustHold(perms)
 }
 
 func insertRolePermissions(ctx context.Context, tx pgx.Tx, role string, perms []Permission) error {

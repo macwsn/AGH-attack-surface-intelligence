@@ -1,0 +1,20 @@
+HTTP/1.1 200 OK
+Server: Apache/2.4.58 (Debian)
+X-Powered-By: PHP/8.2.15
+Cache-Control: max-age=0, public
+X-Drupal-Dynamic-Cache: MISS
+X-Generator: Drupal 10 (https://www.drupal.org)
+X-Drupal-Cache: HIT
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta name="Generator" content="Drupal 10 (https://www.drupal.org)" />
+<title>Welcome! | Drupal site</title>
+</head>
+<body class="path-frontpage">
+<a href="#main-content" class="visually-hidden focusable skip-link">Skip to main content</a>
+<script type="application/json" data-drupal-selector="drupal-settings-json">{"path":{"baseUrl":"\/"}}</script>
+</body>
+</html>

@@ -1,0 +1,606 @@
+{
+ "product_commit": "7ff9e38bd4d90b0900fa4201a234e71a95353d39",
+ "scenarios": [
+  {
+   "scenario": "kill-resume",
+   "status": "PASS",
+   "reason": "resumed run equals the uninterrupted one; scan show said status=running after the kill; 2 orphan nmap",
+   "property": "after kill -9 and 'scan resume' the export equals the export of an uninterrupted run (same hosts, same services, no duplicates)",
+   "measured": {
+    "baseline_seconds": 97.9,
+    "killed_after_seconds": 42.2,
+    "groups_done_at_kill": 1,
+    "scan_exit_after_kill": "137",
+    "status_shown_after_kill": "running",
+    "orphan_nmap_after_kill": 2,
+    "nmap_left_before_resume": 0,
+    "resume_exit": "0",
+    "compare": {
+     "hosts_a": 54,
+     "hosts_b": 54,
+     "services_a": 70,
+     "services_b": 70,
+     "duplicates": [],
+     "differences": [],
+     "equal": true
+    }
+   },
+   "evidence": "eval/results/reliability/kill-resume/",
+   "product_commit": "7ff9e38bd4d90b0900fa4201a234e71a95353d39"
+  },
+  {
+   "scenario": "db-restart",
+   "status": "PASS",
+   "reason": "both variants ended equal to the uninterrupted run (restart: scan exit 0, outage: scan exit 1)",
+   "property": "a Postgres restart (and a 20 s outage) mid-scan: the scan completes correctly or ends in a clearly reported, resumable state; after resume the export equals the uninterrupted one; no panic",
+   "measured": {
+    "restart": {
+     "variant": "restart",
+     "verdict": "ok",
+     "why": "",
+     "scan_exit": "0",
+     "status_after_fault": "completed",
+     "needed_resume": "no",
+     "resume_exit": "none",
+     "scan_stderr": "",
+     "compare": {
+      "hosts_a": 54,
+      "hosts_b": 54,
+      "services_a": 70,
+      "services_b": 70,
+      "duplicates": [],
+      "differences": [],
+      "equal": true
+     }
+    },
+    "outage": {
+     "variant": "outage",
+     "verdict": "ok",
+     "why": "",
+     "scan_exit": "1",
+     "status_after_fault": "running",
+     "needed_resume": "yes",
+     "resume_exit": "0",
+     "scan_stderr": "asi scan: run \"db-outage\" failed: record group 0 of run 1: failed to connect to `user=asi database=rel_db_outage`: 172.29.0.3:5432 (172.29.0.3): dial error: dial tcp 172.29.0.3:5432: connect: no route to host run \"db-outage\": set status of run 1 to failed: failed to connect to `user=asi database=rel",
+     "compare": {
+      "hosts_a": 54,
+      "hosts_b": 54,
+      "services_a": 70,
+      "services_b": 70,
+      "duplicates": [],
+      "differences": [],
+      "equal": true
+     }
+    }
+   },
+   "evidence": "eval/results/reliability/db-restart/",
+   "product_commit": "7ff9e38bd4d90b0900fa4201a234e71a95353d39"
+  },
+  {
+   "scenario": "host-vanishes",
+   "status": "FAIL",
+   "reason": "the vanished host shows up as 2 service_changed entries (half-recorded service)",
+   "property": "a host that answers discovery and nmap but is gone before the HTTP probe: the run completes and the host produces no service_changed entry in the diffs around that run",
+   "measured": {
+    "window_hit": "yes",
+    "target_state_after_v1": "exited",
+    "v1_exit": "0",
+    "detail": {
+     "diff-v0-v1": [
+      {
+       "type": "service_changed",
+       "address": "172.29.0.50",
+       "port": 80,
+       "protocol": "tcp",
+       "fields": [
+        {
+         "field": "http.cookies",
+         "old": [],
+         "new": null
+        },
+        {
+         "field": "http.favicon_sha256",
+         "old": "d66442570864ac0860f00ee8b395c3de3df9f1474faef79352459fe8d13d8664",
+         "new": null
+        },
+        {
+         "field": "http.headers.content-type",
+         "old": "text/html; charset=utf-8",
+         "new": null
+        },
+        {
+         "field": "http.headers.server",
+         "old": "hostile",
+         "new": null
+        },
+        {
+         "field": "http.headers.x-powered-by",
+         "old": "PHP/7.4.3",
+         "new": null
+        },
+        {
+         "field": "http.redirect_chain",
+         "old": [],
+         "new": null
+        },
+        {
+         "field": "http.status_code",
+         "old": 200,
+         "new": null
+        },
+        {
+         "field": "http.title",
+         "old": "Vanishing host",
+         "new": null
+        },
+        {
+         "field": "technologies",
+         "old": [
+          "PHP 7.4.3"
+         ],
+         "new": []
+        }
+       ]
+      }
+     ],
+     "diff-v0-v1_other_hosts": 0,
+     "diff-v1-v2": [
+      {
+       "type": "service_changed",
+       "address": "172.29.0.50",
+       "port": 80,
+       "protocol": "tcp",
+       "fields": [
+        {
+         "field": "http.cookies",
+         "old": null,
+         "new": []
+        },
+        {
+         "field": "http.favicon_sha256",
+         "old": null,
+         "new": "d66442570864ac0860f00ee8b395c3de3df9f1474faef79352459fe8d13d8664"
+        },
+        {
+         "field": "http.headers.content-type",
+         "old": null,
+         "new": "text/html; charset=utf-8"
+        },
+        {
+         "field": "http.headers.server",
+         "old": null,
+         "new": "hostile"
+        },
+        {
+         "field": "http.headers.x-powered-by",
+         "old": null,
+         "new": "PHP/7.4.3"
+        },
+        {
+         "field": "http.redirect_chain",
+         "old": null,
+         "new": []
+        },
+        {
+         "field": "http.status_code",
+         "old": null,
+         "new": 200
+        },
+        {
+         "field": "http.title",
+         "old": null,
+         "new": "Vanishing host"
+        },
+        {
+         "field": "technologies",
+         "old": [],
+         "new": [
+          "PHP 7.4.3"
+         ]
+        }
+       ]
+      }
+     ],
+     "diff-v1-v2_other_hosts": 0,
+     "v1_record": [
+      {
+       "status": "active",
+       "services": [
+        {
+         "port": 80,
+         "state": "open",
+         "status": "active",
+         "service": "http",
+         "product": "",
+         "http": null
+        }
+       ]
+      }
+     ],
+     "service_changed": 2
+    }
+   },
+   "evidence": "eval/results/reliability/host-vanishes/",
+   "product_commit": "7ff9e38bd4d90b0900fa4201a234e71a95353d39"
+  },
+  {
+   "scenario": "hostile-http",
+   "status": "PASS",
+   "reason": "completed in 57.7s / 57.8s, all 17 recorded open, zero changes",
+   "property": "17 misbehaving HTTP targets: the run completes in bounded time, the export is valid UTF-8 JSON, bodies are capped, every hostile service is recorded as open, a second identical scan gives zero diff changes, an off-target redirect is recorded but not followed",
+   "measured": {
+    "scan1_seconds": 57.7,
+    "scan2_seconds": 57.8,
+    "scan1_exit": "0",
+    "scan2_exit": "0",
+    "requests_to_offsite_host": 0,
+    "db_bytes_after_two_scans": 9131699,
+    "export": {
+     "export_bytes": 50091,
+     "valid_utf8": true,
+     "valid_json": true,
+     "missing": [],
+     "not_open": [],
+     "no_http": [
+      "slowloris",
+      "silent",
+      "slowbody",
+      "badtls",
+      "garbage",
+      "crlfnul",
+      "chunked"
+     ],
+     "recorded": {
+      "bigbody": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "ten mebibytes",
+       "title_len": 13,
+       "headers": 3,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "loop": {
+       "service": "http",
+       "state": "open",
+       "status_code": 302,
+       "title": "",
+       "title_len": 0,
+       "headers": 4,
+       "redirects": 5,
+       "cookie_name_len": 0
+      },
+      "offsite": {
+       "service": "http",
+       "state": "open",
+       "status_code": 302,
+       "title": "",
+       "title_len": 0,
+       "headers": 4,
+       "redirects": 1,
+       "cookie_name_len": 0
+      },
+      "slowloris": {
+       "service": "http",
+       "state": "open",
+       "status_code": null,
+       "title": "",
+       "title_len": 0,
+       "headers": 0,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "silent": {
+       "service": "http",
+       "state": "open",
+       "status_code": null,
+       "title": "",
+       "title_len": 0,
+       "headers": 0,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "slowbody": {
+       "service": "http",
+       "state": "open",
+       "status_code": null,
+       "title": "",
+       "title_len": 0,
+       "headers": 0,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "badtls": {
+       "service": "https",
+       "state": "open",
+       "status_code": null,
+       "title": "",
+       "title_len": 0,
+       "headers": 0,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "garbage": {
+       "service": "http",
+       "state": "open",
+       "status_code": null,
+       "title": "",
+       "title_len": 0,
+       "headers": 0,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "xss": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "<script>alert(1)</script>",
+       "title_len": 25,
+       "headers": 3,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "longtitle": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+       "title_len": 5000,
+       "headers": 3,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "latin2": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "Za\u017c\u00f3\u0142\u0107 g\u0119\u015bl\u0105 ja\u017a\u0144",
+       "title_len": 17,
+       "headers": 3,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "brokenutf": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "broken \ufffd\ufffd \ufffd( \ufffd\ufffd\ufffd end",
+       "title_len": 20,
+       "headers": 3,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "manyheaders": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "many headers",
+       "title_len": 12,
+       "headers": 503,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "crlfnul": {
+       "service": "http",
+       "state": "open",
+       "status_code": null,
+       "title": "",
+       "title_len": 0,
+       "headers": 0,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "chunked": {
+       "service": "http",
+       "state": "open",
+       "status_code": null,
+       "title": "",
+       "title_len": 0,
+       "headers": 0,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "http10": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "http 1.0 no length",
+       "title_len": 18,
+       "headers": 3,
+       "redirects": 0,
+       "cookie_name_len": 0
+      },
+      "bigcookie": {
+       "service": "http",
+       "state": "open",
+       "status_code": 200,
+       "title": "big cookie",
+       "title_len": 10,
+       "headers": 3,
+       "redirects": 0,
+       "cookie_name_len": 4096
+      }
+     },
+     "longest_string": 5000,
+     "offsite_recorded": true,
+     "offsite_in_inventory": false
+    },
+    "diff": {
+     "changes": 0,
+     "sample": []
+    }
+   },
+   "evidence": "eval/results/reliability/hostile-http/",
+   "product_commit": "7ff9e38bd4d90b0900fa4201a234e71a95353d39"
+  },
+  {
+   "scenario": "concurrent-runs",
+   "status": "PASS",
+   "reason": "both cases clean; rejection: asi scan: inventory: run already exists: \"c-same\"",
+   "property": "two runs with different names at once give equal, duplicate-free results; two runs with the same name: one is rejected with a one-line error",
+   "measured": {
+    "different_names_exit": "0/0",
+    "different_names_compare": {
+     "hosts_a": 18,
+     "hosts_b": 18,
+     "services_a": 26,
+     "services_b": 26,
+     "duplicates": [],
+     "differences": [],
+     "equal": true
+    },
+    "diff_a_b": {
+     "changes": 0,
+     "sample": []
+    },
+    "same_name_exit": "0/1",
+    "same_name_loser_stderr": "asi scan: inventory: run already exists: \"c-same\"\n",
+    "same_name_compare": {
+     "hosts_a": 18,
+     "hosts_b": 18,
+     "services_a": 26,
+     "services_b": 26,
+     "duplicates": [],
+     "differences": [],
+     "equal": true
+    },
+    "same_name_again_after_completion_exit": "1"
+   },
+   "evidence": "eval/results/reliability/concurrent-runs/",
+   "product_commit": "7ff9e38bd4d90b0900fa4201a234e71a95353d39"
+  },
+  {
+   "scenario": "bad-input",
+   "status": "FAIL",
+   "reason": "1 of 18 cases: targets-slash8 -> not refused: still running after 45s (killed)",
+   "property": "every invalid input gives a one-line error on stderr, a non-zero exit and no panic; a /8 is refused or bounded",
+   "measured": {
+    "cases": 18,
+    "failed": [
+     {
+      "case": "targets-slash8",
+      "verdict": "not refused: still running after 45s (killed)",
+      "exit": "137",
+      "stderr": ""
+     }
+    ],
+    "ok": [
+     "targets-garbage",
+     "targets-empty",
+     "targets-comments-only",
+     "targets-missing-file",
+     "ports-0",
+     "ports-70000",
+     "ports-empty",
+     "ports-word",
+     "diff-unknown",
+     "export-unknown",
+     "resume-unknown",
+     "show-unknown",
+     "key-16-bytes",
+     "key-not-base64",
+     "key-empty",
+     "db-wrong-password",
+     "db-wrong-password-scan"
+    ]
+   },
+   "evidence": "eval/results/reliability/bad-input/",
+   "product_commit": "7ff9e38bd4d90b0900fa4201a234e71a95353d39"
+  },
+  {
+   "scenario": "repeat-stability",
+   "status": "PASS",
+   "reason": "9 empty diffs, linear growth, no leftover nmap",
+   "property": "10 scans of an unchanged target set: 9 diffs with zero changes, row counts and database size grow at most linearly, no nmap process left after any run",
+   "measured": {
+    "scans_failed": 0,
+    "seconds": [
+     17.2,
+     17.3,
+     17.2,
+     17.2,
+     17.1,
+     17.3,
+     17.3,
+     17.3,
+     17.3,
+     17.2
+    ],
+    "total_rows": [
+     205,
+     321,
+     437,
+     553,
+     669,
+     785,
+     901,
+     1017,
+     1133,
+     1249
+    ],
+    "row_delta_per_run": [
+     116,
+     116,
+     116,
+     116,
+     116,
+     116,
+     116,
+     116,
+     116
+    ],
+    "db_bytes": [
+     9074355,
+     9090739,
+     9139891,
+     9172659,
+     9230003,
+     9279155,
+     9287347,
+     9393843,
+     9418419,
+     9442995
+    ],
+    "db_bytes_per_run": [
+     16384,
+     49152,
+     32768,
+     57344,
+     49152,
+     8192,
+     106496,
+     24576,
+     24576
+    ],
+    "diffs_with_changes": 0,
+    "runs_with_nmap_left": 0,
+    "linear": true
+   },
+   "evidence": "eval/results/reliability/repeat-stability/",
+   "product_commit": "7ff9e38bd4d90b0900fa4201a234e71a95353d39"
+  },
+  {
+   "scenario": "key-rotation-and-wrong-key",
+   "status": "PASS",
+   "reason": "fails closed: asi export: export: read inventory as of run \"\": service 80/tcp: http headers: decrypt sensitive field: field encryption: unknown key id",
+   "property": "asi export with a different valid ASI_MASTER_KEY fails closed: non-zero exit, a clear one-line error, no output file with data, no garbage or partial plaintext",
+   "measured": {
+    "export_good_exit": "0",
+    "export_wrong_key_exit": "1",
+    "stderr": "asi export: export: read inventory as of run \"\": service 80/tcp: http headers: decrypt sensitive field: field encryption: unknown key id\n",
+    "stderr_lines": 1,
+    "output_file_written": "no",
+    "plaintext_of_encrypted_fields_in_output": "no",
+    "control_bytes_in_output": 0,
+    "csv_wrong_key_exit": "1",
+    "diff_wrong_key_exit": "1",
+    "rescan_with_new_key_exit": "1",
+    "export_after_rescan_with_new_key_exit": "0",
+    "key_rotation_command": "none in the CLI of this snapshot"
+   },
+   "evidence": "eval/results/reliability/key-rotation-and-wrong-key/",
+   "product_commit": "7ff9e38bd4d90b0900fa4201a234e71a95353d39"
+  }
+ ]
+}

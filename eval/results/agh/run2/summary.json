@@ -1,0 +1,1053 @@
+{
+ "schema": "asi.agh-eval/v1",
+ "product_commit": "49e0f4229ac9d354573461d63edc4ab46d2a62a3",
+ "connection_mode": "host ports via host.docker.internal",
+ "port_remaps": {
+  "custom-network": {},
+  "modern": {},
+  "modern-proxy": {},
+  "vulnerable": {}
+ },
+ "scenarios": {
+  "A": "PASS",
+  "B": "PARTIAL",
+  "C": "PARTIAL",
+  "D": "PARTIAL",
+  "E": "PARTIAL"
+ },
+ "score": {
+  "products_recognised": [
+   14,
+   19
+  ],
+  "service_names_right": [
+   18,
+   20
+  ],
+  "versions_right": [
+   8,
+   13
+  ],
+  "admin_panels_flagged": [
+   4,
+   5
+  ],
+  "outdated_flagged": [
+   2,
+   2
+  ]
+ },
+ "checks": [
+  {
+   "scenario": "A",
+   "id": "A1",
+   "expectation": "scan 1 finds 2223, 3001, 5673, 8787, 15673 open",
+   "status": "PASS",
+   "observed": "open: [2223, 3001, 5673, 8787, 15673] (48 s)",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 2223,3001,5673,8787,15673 --name a1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "A",
+   "id": "A2",
+   "expectation": "diff a1->a2: exactly one change, service_missing on 8787",
+   "status": "PASS",
+   "observed": "service_missing 8787",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi diff --from a1 --to a2 --format json --out FILE",
+   "evidence": "[{\"type\": \"service_missing\", \"address\": \"192.168.65.254\", \"port\": 8787, \"protocol\": \"tcp\"}]"
+  },
+  {
+   "scenario": "A",
+   "id": "A3",
+   "expectation": "diff a2->a3: exactly one change, service_returned on 8787",
+   "status": "PASS",
+   "observed": "service_returned 8787",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi diff --from a2 --to a3 --format json --out FILE",
+   "evidence": "[{\"type\": \"service_returned\", \"address\": \"192.168.65.254\", \"port\": 8787, \"protocol\": \"tcp\"}]"
+  },
+  {
+   "scenario": "B",
+   "id": "B1",
+   "expectation": "all 7 ports found open",
+   "status": "PASS",
+   "observed": "open: [2223, 3001, 5673, 8787, 8888, 15432, 15673] (48 s)",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 2223,3001,5673,8787,8888,15432,15673 --name b1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "B",
+   "id": "B2a",
+   "expectation": "service name right on every port",
+   "status": "PARTIAL",
+   "observed": "5/7; wrong: 8888=tcpwrapped, 15432=none",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 2223,3001,5673,8787,8888,15432,15673 --name b1 --max-rate 300  --wait",
+   "evidence": "{\"port\": 8888, \"service\": \"tcpwrapped\", \"product\": \"\", \"http\": null}; {\"port\": 15432, \"service\": \"\", \"product\": \"\", \"http\": null}"
+  },
+  {
+   "scenario": "B",
+   "id": "B2b",
+   "expectation": "product/application recognised on every port",
+   "status": "PARTIAL",
+   "observed": "4/7; not recognised: 8888 (httpbin; got ''), 15432 (PostgreSQL 16; got ''), 5673 (RabbitMQ 3.x AMQP; got 'Advanced Message Queue Protocol')",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 2223,3001,5673,8787,8888,15432,15673 --name b1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "B",
+   "id": "B2c",
+   "expectation": "admin interfaces flagged (finding kind admin-panel): 15673",
+   "status": "PASS",
+   "observed": "flagged 1/1; missing: -",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 2223,3001,5673,8787,8888,15432,15673 --name b1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "B",
+   "id": "B3",
+   "expectation": "CSV export: one row per service with the contract columns",
+   "status": "PASS",
+   "observed": "7 rows, missing columns: none",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi export --format csv --run b1 --out FILE",
+   "evidence": ""
+  },
+  {
+   "scenario": "C",
+   "id": "C1",
+   "expectation": "ports 80, 81, 443, 6379, 8080, 8081 found open",
+   "status": "PASS",
+   "observed": "open: [80, 81, 443, 6379, 8080, 8081] (9 s)",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 80,81,443,6379,8080,8081 --name c1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "C",
+   "id": "C2a",
+   "expectation": "service name right on every port",
+   "status": "PASS",
+   "observed": "6/6; wrong: -",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 80,81,443,6379,8080,8081 --name c1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "C",
+   "id": "C2b",
+   "expectation": "product/application recognised on every port",
+   "status": "PASS",
+   "observed": "5/5; not recognised: -",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 80,81,443,6379,8080,8081 --name c1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "C",
+   "id": "C2c",
+   "expectation": "admin interfaces flagged (finding kind admin-panel): 8081, 81",
+   "status": "PASS",
+   "observed": "flagged 2/2; missing: -",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 80,81,443,6379,8080,8081 --name c1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "C",
+   "id": "C3",
+   "expectation": "8080: redirect to the WordPress installer is followed and recorded",
+   "status": "PASS",
+   "observed": "status 200, title 'WordPress \u203a Installation', redirect_chain ['http://host.docker.internal:8080/wp-admin/install.php']",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 80,81,443,6379,8080,8081 --name c1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "C",
+   "id": "C4",
+   "expectation": "443 speaks TLS but rejects the handshake without a configured host (no certificate obtainable): recorded as an open TLS service",
+   "status": "PASS",
+   "observed": "service=https product='' http=null (contract: `service` stays `http`, `http.scheme` = https)",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 80,81,443,6379,8080,8081 --name c1 --max-rate 300  --wait",
+   "evidence": "$ curl -ksv https://127.0.0.1:443/ | * ALPN: curl offers h2,http/1.1 | * (304) (OUT), TLS handshake, Client hello (1): | exit=35"
+  },
+  {
+   "scenario": "C",
+   "id": "C5",
+   "expectation": "cookies and notable headers collected (phpMyAdmin cookie, X-Powered-By on PHP apps)",
+   "status": "PASS",
+   "observed": "cookies {\"80\": [], \"81\": [], \"8080\": [], \"8081\": [\"phpMyAdmin\", \"phpMyAdmin\", \"pma_lang\", \"phpMyAdmin\"]}; headers {\"80\": {\"server\": \"openresty\"}, \"81\": {\"server\": \"openresty\"}, \"8080\": {\"server\": \"Apache/2.4.71 (Debian)\", \"x-powered-by\": \"PHP/8.3.37\"}, \"8081\": {\"content-security-policy\": \"default-src 'self' ;script-src 'self' 'unsafe-inline' 'unsafe-eval' ;style-src 'self' 'unsafe-inline' ;img-src 'self' data:  *.tile.openstreetmap.org;object-src 'none';\", \"server\": \"Apache/2.4.71 (Debian)\", \"x-frame-options\": \"DENY\", \"x-powered-by\": \"PHP/8.3.37\"}}",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 80,81,443,6379,8080,8081 --name c1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "C",
+   "id": "C6",
+   "expectation": "notable headers/cookies are flagged as findings (kind interesting-header / interesting-cookie), e.g. X-Powered-By PHP, phpMyAdmin cookie",
+   "status": "FAIL",
+   "observed": "0 such findings on 6 services",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 80,81,443,6379,8080,8081 --name c1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "D",
+   "id": "D1",
+   "expectation": "export has a response time field for 8085",
+   "status": "PASS",
+   "observed": "no latency: {'ttfb_ms': 15, 'response_time_ms': 810}",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 8085,8086,8474 --name d1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "D",
+   "id": "D2",
+   "expectation": "with 500 ms latency the recorded response time is >= 500 ms",
+   "status": "PASS",
+   "observed": "latency run: {'ttfb_ms': 513, 'response_time_ms': 1829} (baseline {'ttfb_ms': 15, 'response_time_ms': 810}); scan 18 s vs 15 s",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 8085,8086,8474 --name d2 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "D",
+   "id": "D3",
+   "expectation": "diff no-latency -> latency reports no change (only slower)",
+   "status": "FAIL",
+   "observed": "service_changed 8086 [http.tls.sha256]",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi diff --from d1 --to d2 --format json --out FILE",
+   "evidence": "[{\"type\": \"service_changed\", \"address\": \"192.168.65.254\", \"port\": 8086, \"protocol\": \"tcp\", \"fields\": [{\"field\": \"http.tls.sha256\", \"old\": \"f8b8cd8401c295fba25a2914a36edde27dfcf13eb541f2c5974d4817d12af02d\", \"new\": \"4d03b085c20c8381984c56b987ed51a95843ffa8cbe7e079c5c73efac0e39f37\"}]}]"
+  },
+  {
+   "scenario": "D",
+   "id": "D8",
+   "expectation": "plain-HTTP ports 8085/8086/8474 are fetched over http in every run (8086 = 301 to /dashboard/, title 'Traefik')",
+   "status": "FAIL",
+   "observed": "scheme per run: {\"d1\": {\"8085\": \"http\", \"8086\": \"https\", \"8474\": \"http\"}, \"d2\": {\"8085\": \"http\", \"8086\": \"https\", \"8474\": \"http\"}}; 8086 in d1: https://host.docker.internal:8086/ status 404 title '' tls.subject_cn 'TRAEFIK DEFAULT CERT'",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 8085,8086,8474 --name d1 --max-rate 300  --wait",
+   "evidence": "$ curl -si http://127.0.0.1:8086/ | head -2 HTTP/1.1 301 Moved Permanently Location: http://127.0.0.1:8086/dashboard/ $ curl -s http://127.0.0.1:8086/dashboard/ | grep -o '<title>.*</title>' <title>Traefik</title> $ curl -ski https://127.0.0.1:8086/ | head -1 HTTP/2 404  $ curl -s http://127.0.0.1:8086/api/version {\"Version\":\"3.1.7\",\"Codename\":\"comte\",\"startDate\":\"2026-11-21T19:59:39.673758673Z\"} $ curl -s http://127"
+  },
+  {
+   "scenario": "D",
+   "id": "D7a",
+   "expectation": "service name right on every port",
+   "status": "PASS",
+   "observed": "3/3; wrong: -",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 8085,8086,8474 --name d1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "D",
+   "id": "D7b",
+   "expectation": "product/application recognised on every port",
+   "status": "PARTIAL",
+   "observed": "2/3; not recognised: 8086 (Traefik 3.1 dashboard; got 'Golang net/http server')",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 8085,8086,8474 --name d1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "D",
+   "id": "D7c",
+   "expectation": "admin interfaces flagged (finding kind admin-panel): 8086",
+   "status": "FAIL",
+   "observed": "flagged 0/1; missing: 8086 findings=[]",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 8085,8086,8474 --name d1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "E",
+   "id": "E1",
+   "expectation": "21, 8088, 8089, 8090 found open (passive range 21000-21010 has no listener until a transfer)",
+   "status": "PASS",
+   "observed": "open: [21, 8088, 8089, 8090, 21000, 21001, 21002, 21003, 21004, 21005, 21006, 21007, 21008, 21009, 21010] (22 s)",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 21,8088,8089,8090,21000-21010 --name e1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "E",
+   "id": "E2a",
+   "expectation": "service name right on every port",
+   "status": "PASS",
+   "observed": "4/4; wrong: -",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 21,8088,8089,8090,21000-21010 --name e1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "E",
+   "id": "E2b",
+   "expectation": "product/application recognised on every port",
+   "status": "PARTIAL",
+   "observed": "3/4; not recognised: 21 (FTP vsftpd; got '')",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 21,8088,8089,8090,21000-21010 --name e1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "E",
+   "id": "E2c",
+   "expectation": "admin interfaces flagged (finding kind admin-panel): 8089",
+   "status": "PASS",
+   "observed": "flagged 1/1; missing: -",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 21,8088,8089,8090,21000-21010 --name e1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "E",
+   "id": "E3",
+   "expectation": "8088: WordPress version 4.7.x detected",
+   "status": "PASS",
+   "observed": "http Apache httpd 2.4.10; HTTP 200 'WordPress \u203a Installation' server=Apache/2.4.10 (Debian); tech: WordPress 4.7.5, Apache 2.4.10, PHP 5.6.30; findings: builtin-wordpress-install[technology], outdated-wordpress[outdated], outdated-apache[outdated], outdated-php[outdated]",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 21,8088,8089,8090,21000-21010 --name e1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "E",
+   "id": "E4",
+   "expectation": "outdated finding for WordPress 4.7 on 8088",
+   "status": "PASS",
+   "observed": "outdated findings: {\"8088\": [\"Outdated WordPress 4.7.5 (WordPress 4.7.5 is older than the minimum supported 6.0 (latest 6.9))\", \"Outdated Apache 2.4.10 (Apache 2.4.10 is older than the minimum supported 2.4.52 (latest 2.4.71))\", \"Outdated PHP 5.6.30 (PHP 5.6.30 is older than the minimum supported 8.1 (latest 8.5.0))\"], \"8090\": [\"Outdated Apache 2.4.25 (Apache 2.4.25 is older than the minimum supported 2.4.52 (latest 2.4.71))\"]}",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 21,8088,8089,8090,21000-21010 --name e1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "E",
+   "id": "E5",
+   "expectation": "outdated finding for the old PHP on 8088",
+   "status": "PASS",
+   "observed": "x-powered-by on 8088: 'PHP/5.6.30'; outdated findings on 8088: ['Outdated WordPress 4.7.5 (WordPress 4.7.5 is older than the minimum supported 6.0 (latest 6.9))', 'Outdated Apache 2.4.10 (Apache 2.4.10 is older than the minimum supported 2.4.52 (latest 2.4.71))', 'Outdated PHP 5.6.30 (PHP 5.6.30 is older than the minimum supported 8.1 (latest 8.5.0))']",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 21,8088,8089,8090,21000-21010 --name e1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "E",
+   "id": "E7",
+   "expectation": "strictly non-intrusive: web access logs show only GET/HEAD from the scanner",
+   "status": "FAIL",
+   "observed": "methods ['GET', 'OPTIONS']; adminer: 8 requests, paths ['/', '/?CAVIT', '/api/version', '/favicon.ico', '/nice%20ports%2C/Tri%6Eity.txt%2ebak', '/version']; dvwa: 6 requests, paths ['/', '/api/version', '/favicon.ico', '/login.php', '/version']; wordpress: 8 requests, paths ['/', '/api/version', '/favicon.ico', '/version', '/wp-admin/install.php']",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 21,8088,8089,8090,21000-21010 --name e1 --max-rate 300  --wait",
+   "evidence": "[Sat Nov 21 19:56:02 2026] [::ffff:172.21.0.1]:59902 [200]: OPTIONS /"
+  }
+ ],
+ "defects": [
+  {
+   "scenario": "B",
+   "id": "B2a",
+   "expectation": "service name right on every port",
+   "status": "PARTIAL",
+   "observed": "5/7; wrong: 8888=tcpwrapped, 15432=none",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 2223,3001,5673,8787,8888,15432,15673 --name b1 --max-rate 300  --wait",
+   "evidence": "{\"port\": 8888, \"service\": \"tcpwrapped\", \"product\": \"\", \"http\": null}; {\"port\": 15432, \"service\": \"\", \"product\": \"\", \"http\": null}"
+  },
+  {
+   "scenario": "B",
+   "id": "B2b",
+   "expectation": "product/application recognised on every port",
+   "status": "PARTIAL",
+   "observed": "4/7; not recognised: 8888 (httpbin; got ''), 15432 (PostgreSQL 16; got ''), 5673 (RabbitMQ 3.x AMQP; got 'Advanced Message Queue Protocol')",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 2223,3001,5673,8787,8888,15432,15673 --name b1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "C",
+   "id": "C6",
+   "expectation": "notable headers/cookies are flagged as findings (kind interesting-header / interesting-cookie), e.g. X-Powered-By PHP, phpMyAdmin cookie",
+   "status": "FAIL",
+   "observed": "0 such findings on 6 services",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 80,81,443,6379,8080,8081 --name c1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "D",
+   "id": "D3",
+   "expectation": "diff no-latency -> latency reports no change (only slower)",
+   "status": "FAIL",
+   "observed": "service_changed 8086 [http.tls.sha256]",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi diff --from d1 --to d2 --format json --out FILE",
+   "evidence": "[{\"type\": \"service_changed\", \"address\": \"192.168.65.254\", \"port\": 8086, \"protocol\": \"tcp\", \"fields\": [{\"field\": \"http.tls.sha256\", \"old\": \"f8b8cd8401c295fba25a2914a36edde27dfcf13eb541f2c5974d4817d12af02d\", \"new\": \"4d03b085c20c8381984c56b987ed51a95843ffa8cbe7e079c5c73efac0e39f37\"}]}]"
+  },
+  {
+   "scenario": "D",
+   "id": "D8",
+   "expectation": "plain-HTTP ports 8085/8086/8474 are fetched over http in every run (8086 = 301 to /dashboard/, title 'Traefik')",
+   "status": "FAIL",
+   "observed": "scheme per run: {\"d1\": {\"8085\": \"http\", \"8086\": \"https\", \"8474\": \"http\"}, \"d2\": {\"8085\": \"http\", \"8086\": \"https\", \"8474\": \"http\"}}; 8086 in d1: https://host.docker.internal:8086/ status 404 title '' tls.subject_cn 'TRAEFIK DEFAULT CERT'",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 8085,8086,8474 --name d1 --max-rate 300  --wait",
+   "evidence": "$ curl -si http://127.0.0.1:8086/ | head -2 HTTP/1.1 301 Moved Permanently Location: http://127.0.0.1:8086/dashboard/ $ curl -s http://127.0.0.1:8086/dashboard/ | grep -o '<title>.*</title>' <title>Traefik</title> $ curl -ski https://127.0.0.1:8086/ | head -1 HTTP/2 404  $ curl -s http://127.0.0.1:8086/api/version {\"Version\":\"3.1.7\",\"Codename\":\"comte\",\"startDate\":\"2026-11-21T19:59:39.673758673Z\"} $ curl -s http://127"
+  },
+  {
+   "scenario": "D",
+   "id": "D7b",
+   "expectation": "product/application recognised on every port",
+   "status": "PARTIAL",
+   "observed": "2/3; not recognised: 8086 (Traefik 3.1 dashboard; got 'Golang net/http server')",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 8085,8086,8474 --name d1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "D",
+   "id": "D7c",
+   "expectation": "admin interfaces flagged (finding kind admin-panel): 8086",
+   "status": "FAIL",
+   "observed": "flagged 0/1; missing: 8086 findings=[]",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 8085,8086,8474 --name d1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "E",
+   "id": "E2b",
+   "expectation": "product/application recognised on every port",
+   "status": "PARTIAL",
+   "observed": "3/4; not recognised: 21 (FTP vsftpd; got '')",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 21,8088,8089,8090,21000-21010 --name e1 --max-rate 300  --wait",
+   "evidence": ""
+  },
+  {
+   "scenario": "E",
+   "id": "E7",
+   "expectation": "strictly non-intrusive: web access logs show only GET/HEAD from the scanner",
+   "status": "FAIL",
+   "observed": "methods ['GET', 'OPTIONS']; adminer: 8 requests, paths ['/', '/?CAVIT', '/api/version', '/favicon.ico', '/nice%20ports%2C/Tri%6Eity.txt%2ebak', '/version']; dvwa: 6 requests, paths ['/', '/api/version', '/favicon.ico', '/login.php', '/version']; wordpress: 8 requests, paths ['/', '/api/version', '/favicon.ico', '/version', '/wp-admin/install.php']",
+   "command": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 21,8088,8089,8090,21000-21010 --name e1 --max-rate 300  --wait",
+   "evidence": "[Sat Nov 21 19:56:02 2026] [::ffff:172.21.0.1]:59902 [200]: OPTIONS /"
+  }
+ ],
+ "recognition": [
+  {
+   "stack": "custom-network",
+   "port": 8888,
+   "truth": "httpbin (HTTP, gunicorn 19.9)",
+   "reported": true,
+   "service": "tcpwrapped",
+   "service_ok": false,
+   "product": "",
+   "version": "",
+   "http": null,
+   "server": "",
+   "technologies": [],
+   "findings": [],
+   "product_recognised": false,
+   "version_right": false,
+   "admin_flagged": null,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "custom-network",
+   "port": 15432,
+   "truth": "PostgreSQL 16",
+   "reported": true,
+   "service": "",
+   "service_ok": false,
+   "product": "",
+   "version": "",
+   "http": null,
+   "server": "",
+   "technologies": [],
+   "findings": [],
+   "product_recognised": false,
+   "version_right": false,
+   "admin_flagged": null,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "custom-network",
+   "port": 5673,
+   "truth": "RabbitMQ 3.x AMQP",
+   "reported": true,
+   "service": "amqp",
+   "service_ok": true,
+   "product": "Advanced Message Queue Protocol",
+   "version": "",
+   "http": null,
+   "server": "",
+   "technologies": [],
+   "findings": [],
+   "product_recognised": false,
+   "version_right": false,
+   "admin_flagged": null,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "custom-network",
+   "port": 15673,
+   "truth": "RabbitMQ management UI (admin)",
+   "reported": true,
+   "service": "http",
+   "service_ok": true,
+   "product": "Cowboy httpd",
+   "version": "",
+   "http": {
+    "status_code": 200,
+    "title": "RabbitMQ Management"
+   },
+   "server": "Cowboy",
+   "technologies": [
+    "RabbitMQ "
+   ],
+   "findings": [
+    "builtin-rabbitmq-management[technology]",
+    "builtin-rabbitmq-management-ui[admin-panel]"
+   ],
+   "product_recognised": true,
+   "version_right": null,
+   "admin_flagged": true,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "custom-network",
+   "port": 3001,
+   "truth": "Gitea (web)",
+   "reported": true,
+   "service": "http",
+   "service_ok": true,
+   "product": "Golang net/http server",
+   "version": "",
+   "http": {
+    "status_code": 200,
+    "title": "Installation - Gitea: Git with a cup of tea"
+   },
+   "server": "",
+   "technologies": [
+    "Gitea 28.4.0"
+   ],
+   "findings": [
+    "builtin-gitea[technology]"
+   ],
+   "product_recognised": true,
+   "version_right": null,
+   "admin_flagged": null,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "custom-network",
+   "port": 2223,
+   "truth": "Gitea SSH (OpenSSH)",
+   "reported": true,
+   "service": "ssh",
+   "service_ok": true,
+   "product": "OpenSSH",
+   "version": "10.3",
+   "http": null,
+   "server": "",
+   "technologies": [
+    "OpenSSH 10.3"
+   ],
+   "findings": [],
+   "product_recognised": true,
+   "version_right": true,
+   "admin_flagged": null,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "custom-network",
+   "port": 8787,
+   "truth": "nginx",
+   "reported": true,
+   "service": "http",
+   "service_ok": true,
+   "product": "nginx",
+   "version": "1.31.9",
+   "http": {
+    "status_code": 200,
+    "title": "Welcome to nginx!"
+   },
+   "server": "nginx/1.31.9",
+   "technologies": [
+    "nginx 1.31.9"
+   ],
+   "findings": [],
+   "product_recognised": true,
+   "version_right": true,
+   "admin_flagged": null,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "modern",
+   "port": 8080,
+   "truth": "WordPress (fresh, installer redirect)",
+   "reported": true,
+   "service": "http",
+   "service_ok": true,
+   "product": "Apache httpd",
+   "version": "2.4.71",
+   "http": {
+    "status_code": 200,
+    "title": "WordPress \u203a Installation"
+   },
+   "server": "Apache/2.4.71 (Debian)",
+   "technologies": [
+    "WordPress 7.1.5",
+    "Apache 2.4.71",
+    "PHP 8.3.37"
+   ],
+   "findings": [
+    "builtin-wordpress-install[technology]"
+   ],
+   "product_recognised": true,
+   "version_right": true,
+   "admin_flagged": null,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "modern",
+   "port": 8081,
+   "truth": "phpMyAdmin (admin)",
+   "reported": true,
+   "service": "http",
+   "service_ok": true,
+   "product": "Apache httpd",
+   "version": "2.4.71",
+   "http": {
+    "status_code": 200,
+    "title": "phpMyAdmin"
+   },
+   "server": "Apache/2.4.71 (Debian)",
+   "technologies": [
+    "phpMyAdmin 5.2.3",
+    "Apache 2.4.71",
+    "PHP 8.3.37"
+   ],
+   "findings": [
+    "builtin-phpmyadmin[technology]",
+    "builtin-phpmyadmin-login[admin-panel]"
+   ],
+   "product_recognised": true,
+   "version_right": true,
+   "admin_flagged": true,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "modern",
+   "port": 6379,
+   "truth": "Redis 7",
+   "reported": true,
+   "service": "redis",
+   "service_ok": true,
+   "product": "Redis key-value store",
+   "version": "7.4.12",
+   "http": null,
+   "server": "",
+   "technologies": [
+    "Redis 7.4.12"
+   ],
+   "findings": [],
+   "product_recognised": true,
+   "version_right": true,
+   "admin_flagged": null,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "modern",
+   "port": 80,
+   "truth": "Nginx Proxy Manager default site (openresty)",
+   "reported": true,
+   "service": "http",
+   "service_ok": true,
+   "product": "OpenResty web app server",
+   "version": "",
+   "http": {
+    "status_code": 200,
+    "title": "Default Site"
+   },
+   "server": "openresty",
+   "technologies": [],
+   "findings": [],
+   "product_recognised": true,
+   "version_right": null,
+   "admin_flagged": null,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "modern",
+   "port": 81,
+   "truth": "Nginx Proxy Manager admin UI (admin)",
+   "reported": true,
+   "service": "http",
+   "service_ok": true,
+   "product": "OpenResty web app server",
+   "version": "",
+   "http": {
+    "status_code": 200,
+    "title": "Nginx Proxy Manager"
+   },
+   "server": "openresty",
+   "technologies": [
+    "Nginx Proxy Manager "
+   ],
+   "findings": [
+    "builtin-nginx-proxy-manager[technology]",
+    "builtin-nginx-proxy-manager-ui[admin-panel]"
+   ],
+   "product_recognised": true,
+   "version_right": null,
+   "admin_flagged": true,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "modern",
+   "port": 443,
+   "truth": "Nginx Proxy Manager TLS (rejects handshake w/o known SNI)",
+   "reported": true,
+   "service": "https",
+   "service_ok": true,
+   "product": "",
+   "version": "",
+   "http": null,
+   "server": "",
+   "technologies": [],
+   "findings": [],
+   "product_recognised": null,
+   "version_right": null,
+   "admin_flagged": null,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "modern-proxy",
+   "port": 8085,
+   "truth": "WordPress behind Traefik+Toxiproxy",
+   "reported": true,
+   "service": "http",
+   "service_ok": true,
+   "product": "Apache httpd",
+   "version": "2.4.71",
+   "http": {
+    "status_code": 200,
+    "title": "WordPress \u203a Installation"
+   },
+   "server": "Apache/2.4.71 (Debian)",
+   "technologies": [
+    "WordPress 7.1.5",
+    "Apache 2.4.71",
+    "PHP 8.3.37"
+   ],
+   "findings": [
+    "builtin-wordpress-install[technology]"
+   ],
+   "product_recognised": true,
+   "version_right": null,
+   "admin_flagged": null,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "modern-proxy",
+   "port": 8086,
+   "truth": "Traefik 3.1 dashboard (admin)",
+   "reported": true,
+   "service": "http",
+   "service_ok": true,
+   "product": "Golang net/http server",
+   "version": "",
+   "http": {
+    "status_code": 404,
+    "title": ""
+   },
+   "server": "",
+   "technologies": [],
+   "findings": [],
+   "product_recognised": false,
+   "version_right": false,
+   "admin_flagged": false,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "modern-proxy",
+   "port": 8474,
+   "truth": "Toxiproxy 2.12 API",
+   "reported": true,
+   "service": "http",
+   "service_ok": true,
+   "product": "Golang net/http server",
+   "version": "",
+   "http": {
+    "status_code": 404,
+    "title": ""
+   },
+   "server": "",
+   "technologies": [
+    "Toxiproxy 2.12.0"
+   ],
+   "findings": [
+    "builtin-toxiproxy[technology]"
+   ],
+   "product_recognised": true,
+   "version_right": true,
+   "admin_flagged": null,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "vulnerable",
+   "port": 21,
+   "truth": "FTP vsftpd",
+   "reported": true,
+   "service": "ftp",
+   "service_ok": true,
+   "product": "",
+   "version": "",
+   "http": null,
+   "server": "",
+   "technologies": [],
+   "findings": [],
+   "product_recognised": false,
+   "version_right": false,
+   "admin_flagged": null,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "vulnerable",
+   "port": 8088,
+   "truth": "WordPress 4.7 on old PHP (outdated)",
+   "reported": true,
+   "service": "http",
+   "service_ok": true,
+   "product": "Apache httpd",
+   "version": "2.4.10",
+   "http": {
+    "status_code": 200,
+    "title": "WordPress \u203a Installation"
+   },
+   "server": "Apache/2.4.10 (Debian)",
+   "technologies": [
+    "WordPress 4.7.5",
+    "Apache 2.4.10",
+    "PHP 5.6.30"
+   ],
+   "findings": [
+    "builtin-wordpress-install[technology]",
+    "outdated-wordpress[outdated]",
+    "outdated-apache[outdated]",
+    "outdated-php[outdated]"
+   ],
+   "product_recognised": true,
+   "version_right": true,
+   "admin_flagged": null,
+   "outdated_flagged": {
+    "wordpress": true,
+    "php": true
+   }
+  },
+  {
+   "stack": "vulnerable",
+   "port": 8089,
+   "truth": "Adminer (admin)",
+   "reported": true,
+   "service": "http",
+   "service_ok": true,
+   "product": "",
+   "version": "",
+   "http": {
+    "status_code": 200,
+    "title": "Login - Adminer"
+   },
+   "server": "",
+   "technologies": [
+    "Adminer 6.3.0",
+    "PHP 8.4.28"
+   ],
+   "findings": [
+    "builtin-adminer[technology]",
+    "builtin-adminer-login[admin-panel]"
+   ],
+   "product_recognised": true,
+   "version_right": true,
+   "admin_flagged": true,
+   "outdated_flagged": {}
+  },
+  {
+   "stack": "vulnerable",
+   "port": 8090,
+   "truth": "DVWA",
+   "reported": true,
+   "service": "http",
+   "service_ok": true,
+   "product": "Apache httpd",
+   "version": "2.4.25",
+   "http": {
+    "status_code": 200,
+    "title": "Login :: Damn Vulnerable Web Application (DVWA) v1.10 *Development*"
+   },
+   "server": "Apache/2.4.25 (Debian)",
+   "technologies": [
+    "DVWA 1.10",
+    "Apache 2.4.25",
+    "PHP "
+   ],
+   "findings": [
+    "builtin-dvwa[technology]",
+    "outdated-apache[outdated]"
+   ],
+   "product_recognised": true,
+   "version_right": null,
+   "admin_flagged": null,
+   "outdated_flagged": {}
+  }
+ ],
+ "runs": {
+  "A": {
+   "a1": {
+    "seconds": 48,
+    "exit": 0,
+    "ports": "2223,3001,5673,8787,15673",
+    "cmd": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 2223,3001,5673,8787,15673 --name a1 --max-rate 300  --wait",
+    "requests": {
+     "total": 5,
+     "per_service": {
+      "flask-app": 5
+     },
+     "methods": [
+      "GET"
+     ]
+    }
+   },
+   "a2": {
+    "seconds": 48,
+    "exit": 0,
+    "ports": "2223,3001,5673,8787,15673",
+    "cmd": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 2223,3001,5673,8787,15673 --name a2 --max-rate 300  --wait",
+    "requests": {
+     "total": 0,
+     "per_service": {},
+     "methods": []
+    }
+   },
+   "a3": {
+    "seconds": 48,
+    "exit": 0,
+    "ports": "2223,3001,5673,8787,15673",
+    "cmd": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 2223,3001,5673,8787,15673 --name a3 --max-rate 300  --wait",
+    "requests": {
+     "total": 5,
+     "per_service": {
+      "flask-app": 5
+     },
+     "methods": [
+      "GET"
+     ]
+    }
+   }
+  },
+  "B": {
+   "b1": {
+    "seconds": 48,
+    "exit": 0,
+    "ports": "2223,3001,5673,8787,8888,15432,15673",
+    "cmd": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 2223,3001,5673,8787,8888,15432,15673 --name b1 --max-rate 300  --wait",
+    "requests": {
+     "total": 5,
+     "per_service": {
+      "flask-app": 5
+     },
+     "methods": [
+      "GET"
+     ]
+    }
+   }
+  },
+  "C": {
+   "c1": {
+    "seconds": 9,
+    "exit": 0,
+    "ports": "80,81,443,6379,8080,8081",
+    "cmd": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 80,81,443,6379,8080,8081 --name c1 --max-rate 300  --wait",
+    "requests": {
+     "total": 13,
+     "per_service": {
+      "phpmyadmin": 5,
+      "wordpress": 8
+     },
+     "methods": [
+      "GET"
+     ]
+    }
+   }
+  },
+  "D": {
+   "d1": {
+    "seconds": 15,
+    "exit": 0,
+    "ports": "8085,8086,8474",
+    "cmd": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 8085,8086,8474 --name d1 --max-rate 300  --wait",
+    "requests": {
+     "total": 7,
+     "per_service": {
+      "wordpress": 7
+     },
+     "methods": [
+      "GET"
+     ]
+    }
+   },
+   "d2": {
+    "seconds": 18,
+    "exit": 0,
+    "ports": "8085,8086,8474",
+    "cmd": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 8085,8086,8474 --name d2 --max-rate 300  --wait",
+    "requests": {
+     "total": 9,
+     "per_service": {
+      "wordpress": 9
+     },
+     "methods": [
+      "GET"
+     ]
+    }
+   }
+  },
+  "E": {
+   "e1": {
+    "seconds": 22,
+    "exit": 0,
+    "ports": "21,8088,8089,8090,21000-21010",
+    "cmd": "docker compose -p asi-agh-prod exec -T asi asi scan run --targets-file /work/targets.txt --ports 21,8088,8089,8090,21000-21010 --name e1 --max-rate 300  --wait",
+    "requests": {
+     "total": 22,
+     "per_service": {
+      "adminer": 8,
+      "dvwa": 6,
+      "wordpress": 8
+     },
+     "methods": [
+      "GET",
+      "OPTIONS"
+     ]
+    }
+   }
+  }
+ },
+ "extra": {
+  "C_notable_findings": {
+   "80": [],
+   "81": [],
+   "443": [],
+   "6379": [],
+   "8080": [],
+   "8081": []
+  },
+  "D_response_times": {
+   "d1": {
+    "ttfb_ms": 15,
+    "response_time_ms": 810
+   },
+   "d2": {
+    "ttfb_ms": 513,
+    "response_time_ms": 1829
+   },
+   "d3": {
+    "ttfb_ms": null,
+    "response_time_ms": null
+   }
+  },
+  "E_paths": {
+   "adminer": [
+    "/",
+    "/?CAVIT",
+    "/api/version",
+    "/favicon.ico",
+    "/nice%20ports%2C/Tri%6Eity.txt%2ebak",
+    "/version"
+   ],
+   "dvwa": [
+    "/",
+    "/api/version",
+    "/favicon.ico",
+    "/login.php",
+    "/version"
+   ],
+   "wordpress": [
+    "/",
+    "/api/version",
+    "/favicon.ico",
+    "/version",
+    "/wp-admin/install.php"
+   ]
+  }
+ }
+}

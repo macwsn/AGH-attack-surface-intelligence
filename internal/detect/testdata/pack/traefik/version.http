@@ -1,0 +1,8 @@
+HTTP/1.1 404 Not Found
+Content-Security-Policy: frame-src 'self' https://traefik.io https://*.traefik.io;
+Content-Type: text/plain; charset=utf-8
+X-Content-Type-Options: nosniff
+Date: Sat, 21 Nov 2026 17:30:40 GMT
+Content-Length: 19
+
+404 page not found

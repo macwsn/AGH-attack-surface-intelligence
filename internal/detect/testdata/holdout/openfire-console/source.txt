@@ -1,0 +1,6 @@
+captured from a local container of the Vulhub image
+image: vulhub/openfire:4.7.4 (sha256:2ce5736166ff8fa8248a64b2d24702a37036cff17e515f0321978e9dba0bd69f)
+capture date: 2026-11-22
+command: curl -sS -i -L --max-redirs 5 http://<host>:9090<path> (host rewritten to fixture.test)
+paths: /index.jsp (root.http: the page GET / sends the browser to with <meta http-equiv="refresh" content="0;URL=index.jsp">, which 302s to /login.jsp), /version (version.http), /api/version (api__version.http), /favicon.ico
+state: first start of the image, no configuration

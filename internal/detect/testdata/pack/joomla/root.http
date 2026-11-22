@@ -1,0 +1,16 @@
+HTTP/1.1 200 OK
+Server: Apache/2.4.58 (Debian)
+X-Powered-By: PHP/8.1.27
+Content-Type: text/html; charset=utf-8
+Set-Cookie: 3f2c5e8a9b1d4c6e7f8a9b0c1d2e3f4a=k9l8m7n6o5p4; path=/; HttpOnly
+
+<!DOCTYPE html>
+<html lang="en-gb" dir="ltr">
+<head>
+	<meta name="generator" content="Joomla! - Open Source Content Management" />
+	<title>Home</title>
+	<script src="/media/jui/js/jquery.min.js?a1b2c3"></script>
+	<script src="/media/system/js/caption.js?a1b2c3"></script>
+</head>
+<body class="site com_content view-featured"><div class="container"><h1>Home</h1></div></body>
+</html>

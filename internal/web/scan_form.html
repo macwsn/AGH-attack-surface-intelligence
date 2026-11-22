@@ -1,40 +1,88 @@
 {{define "content"}}
 {{$f := .Data}}
 <div class="page-head"><div><h1>{{if $f.ID}}Edit scan {{$f.Name}}{{else}}New scan{{end}}</h1>
-<p class="lede">What to scan and when. Only the listed ports are scanned, always at the max rate or below.</p></div></div>
+<p class="lede">What to scan and when. Only the chosen ports are scanned, never faster than the pace, and nothing is sent before the scan starts.</p></div></div>
+{{if not $f.ID}}<p>Start from a template: <a href="/scans/new?template=single-host">Single host, all ports</a> or <a href="/scans/new?template=large-network">Large network: weekly full scan, hourly recheck at night</a>.</p>{{end}}
 {{if $f.RunOpen}}<div class="notice">A run of this scan is in progress or paused. It keeps its settings; your changes apply from the next run.</div>{{end}}
 {{if $f.Problems}}<div class="notice error" role="alert">The scan was not saved. Correct the fields marked below.</div>{{end}}
-<form method="post" action="{{if $f.ID}}/scans/{{$f.ID}}{{else}}/scans{{end}}">
+<form method="post" action="{{if $f.ID}}/scans/{{$f.ID}}{{else}}/scans{{end}}" enctype="multipart/form-data" hx-post="{{if $f.ID}}/scans/{{$f.ID}}{{else}}/scans{{end}}" hx-encoding="multipart/form-data" hx-target="main" hx-select="main" hx-swap="outerHTML">
 {{.CSRFField}}
-<div class="cols">
-<section class="panel">
-<header><h2>Targets and limits</h2></header>
+<details class="panel" open>
+<summary>Basic</summary>
 <div class="body">
-<label class="field"><span>Name</span><input type="text" name="name" value="{{$f.Name}}" required{{with index $f.Problems "name"}} aria-invalid="true"{{end}}>{{with index $f.Problems "name"}}<span class="problem">{{.}}</span>{{end}}</label>
-<label class="field"><span>Targets</span><textarea name="targets"{{with index $f.Problems "targets"}} aria-invalid="true"{{end}}>{{$f.Targets}}</textarea><span class="hint">One address, CIDR, range or domain per line.</span>{{with index $f.Problems "targets"}}<span class="problem">{{.}}</span>{{end}}</label>
-<label class="field"><span>Excludes</span><textarea name="excludes"{{with index $f.Problems "excludes"}} aria-invalid="true"{{end}}>{{$f.Excludes}}</textarea><span class="hint">Never scanned. Same format as targets.</span>{{with index $f.Problems "excludes"}}<span class="problem">{{.}}</span>{{end}}</label>
-<label class="field"><span>Ports</span><input type="text" name="ports" value="{{$f.Ports}}"{{with index $f.Problems "ports"}} aria-invalid="true"{{end}}><span class="hint">Separated by commas, for example 80,443,8080.</span>{{with index $f.Problems "ports"}}<span class="problem">{{.}}</span>{{end}}</label>
-<label class="field"><span>Max rate</span><input type="number" name="max_rate" min="1" value="{{$f.MaxRate}}"{{with index $f.Problems "max rate"}} aria-invalid="true"{{end}}><span class="hint">Packets and requests per second for the whole run.</span>{{with index $f.Problems "max rate"}}<span class="problem">{{.}}</span>{{end}}</label>
-<label class="field"><span>Workers</span><input type="number" name="workers" min="1" value="{{$f.Workers}}"{{with index $f.Problems "workers"}} aria-invalid="true"{{end}}><span class="hint">Groups scanned at the same time.</span>{{with index $f.Problems "workers"}}<span class="problem">{{.}}</span>{{end}}</label>
-<label class="field"><span>Inactive after</span><input type="number" name="inactive_after" min="1" value="{{$f.InactiveAfter}}"{{with index $f.Problems "inactive after"}} aria-invalid="true"{{end}}><span class="hint">Missed runs before a host counts as inactive.</span>{{with index $f.Problems "inactive after"}}<span class="problem">{{.}}</span>{{end}}</label>
-<label class="field"><span>Signatures directory</span><input type="text" name="signatures_dir" value="{{$f.SignaturesDir}}"{{with index $f.Problems "signatures"}} aria-invalid="true"{{end}}><span class="hint">Path on the server. Leave empty for built-in detection only.</span>{{with index $f.Problems "signatures"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Name</span><input type="text" name="name" value="{{$f.Name}}" required{{with index $f.Problems "name"}} aria-invalid="true"{{end}}><span class="hint">Shown in the scan list and in the names of its runs.</span>{{with index $f.Problems "name"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Targets</span><textarea name="targets" placeholder="10.0.0.0/24&#10;10.0.1.1-20&#10;192.0.2.7&#10;www.example.edu.pl"{{with index $f.Problems "targets"}} aria-invalid="true"{{end}}>{{$f.Targets}}</textarea><span class="hint">One target per line: a CIDR, a range, a single address or a host name. Text after # is a comment.</span>{{with index $f.Problems "targets"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Targets from a file</span><input type="file" name="targets_file" accept=".txt,.csv,text/plain,text/csv"><span class="hint">Optional. A text file with one target per line, or a CSV file with the targets in the first column; a header row "target" or "address" is skipped. Added after the targets typed above.</span></label>
+<label class="field"><span>Excludes</span><textarea name="excludes" placeholder="10.0.0.1&#10;10.0.0.128/25"{{with index $f.Problems "excludes"}} aria-invalid="true"{{end}}>{{$f.Excludes}}</textarea><span class="hint">Never scanned, even when inside a target. Same format as targets.</span>{{with index $f.Problems "excludes"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Excludes from a file</span><input type="file" name="excludes_file" accept=".txt,.csv,text/plain,text/csv"><span class="hint">Optional. Same file formats as for targets. Added after the excludes typed above.</span></label>
+<label class="field"><span>Ports</span><select name="port_preset" hx-post="/scans/custom-ports{{if $f.ID}}?scan={{$f.ID}}{{end}}" hx-target="#custom-ports" hx-select="unset" hx-swap="outerHTML" hx-trigger="change"{{with index $f.Problems "ports"}} aria-invalid="true"{{end}}>
+{{range $f.PresetChoices}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}: {{.Note}}</option>
+{{end}}</select><span class="hint">Only these ports are scanned on every address. For Custom, enter the ports under Custom ports.</span>{{with index $f.Problems "ports"}}<span class="problem">{{.}}</span>{{end}}</label>
+{{template "custom-ports" $f}}
+<div class="field"><span>Pace</span><div>
+{{range $f.PaceChoices}}<label class="check"><input type="radio" name="pace" value="{{.Value}}"{{if .Selected}} checked{{end}}> {{.Label}}. {{.Note}}</label>
+{{end}}</div><span class="hint">{{$f.AdaptiveSentence}}</span>{{with index $f.Problems "pace"}}<span class="problem">{{.}}</span>{{end}}</div>
+<div class="field"><span>What one run sends</span>
+<div id="scan-plan" aria-live="polite" hx-post="/scans/plan{{if $f.ID}}?scan={{$f.ID}}{{end}}" hx-target="this" hx-select="unset" hx-swap="innerHTML" hx-trigger="change from:[name=targets], keyup changed delay:600ms from:[name=targets], change from:[name=excludes], keyup changed delay:600ms from:[name=excludes], change from:[name=targets_file], change from:[name=excludes_file], change from:[name=port_preset], change from:[name=ports], change from:[name=pace], change from:[name=max_rate]">{{template "scan-plan" $f.Plan}}</div>
+<span class="hint">An estimate from the targets, excludes, ports and pace. Nothing is sent to the network to make it.</span></div>
 </div>
-</section>
-<section class="panel">
-<header><h2>Schedule</h2></header>
+</details>
+<details class="panel"{{if $f.ScheduleOpen}} open{{end}}>
+<summary>Schedule</summary>
 <div class="body">
-<label class="field"><span>Windows</span><textarea name="windows"{{with index $f.Problems "windows"}} aria-invalid="true"{{end}}>{{$f.Windows}}</textarea><span class="hint">One window per line: weekdays and times, for example "mon-fri 22:00-06:00" or "sat,sun 00:00-00:00". A window that ends at or before its start ends the next day. Leave empty to allow any time.</span>{{with index $f.Problems "windows"}}<span class="problem">{{.}}</span>{{end}}</label>
-<label class="field"><span>Timezone</span><input type="text" name="timezone" value="{{$f.Timezone}}"{{with index $f.Problems "timezone"}} aria-invalid="true"{{end}}><span class="hint">For example Europe/Warsaw. Windows follow daylight saving time.</span>{{with index $f.Problems "timezone"}}<span class="problem">{{.}}</span>{{end}}</label>
-<label class="field"><span>Frequency</span><select name="frequency"{{with index $f.Problems "frequency"}} aria-invalid="true"{{end}}>
+<div id="schedule-summary" class="notice" aria-live="polite" hx-post="/scans/schedule-summary{{if $f.ID}}?scan={{$f.ID}}{{end}}" hx-target="this" hx-select="unset" hx-swap="innerHTML" hx-trigger="change from:[name=scheduled], change from:[name=days], change from:[name=window_start], change from:[name=window_end], change from:[name=timezone], change from:[name=frequency], change from:[name=every], change from:[name=recheck_every], change from:[name=windows]">{{template "schedule-summary" $f.Summary}}</div>
+<div class="field"><span>When it runs</span><div>
+<label class="check"><input type="radio" name="scheduled" value="off"{{if not $f.Scheduled}} checked{{end}}> Run only when started by hand</label>
+<label class="check"><input type="radio" name="scheduled" value="on"{{if $f.Scheduled}} checked{{end}}> Run on a schedule: the scheduler starts it in the window below</label>
+</div></div>
+<div class="field"><span>Days</span><div class="marks">
+{{range $f.DayChoices}}<label class="check"><input type="checkbox" name="days" value="{{.Value}}"{{if .Selected}} checked{{end}}> {{.Label}}</label>
+{{end}}</div><span class="hint">Days on which the window starts.</span>{{with index $f.Problems "days"}}<span class="problem">{{.}}</span>{{end}}</div>
+<label class="field"><span>Window starts</span><input type="time" name="window_start" value="{{$f.WindowStart}}"{{with index $f.Problems "window"}} aria-invalid="true"{{end}}></label>
+<label class="field"><span>Window ends</span><input type="time" name="window_end" value="{{$f.WindowEnd}}"{{with index $f.Problems "window"}} aria-invalid="true"{{end}}><span class="hint">A window that ends at or before its start ends the next day. A run still going when its window ends is paused and continues in the next window.</span>{{with index $f.Problems "window"}}<span class="problem">{{.}}</span>{{end}}</label>
+{{if and $f.ID $f.Scheduled (not $f.Days) (not $f.Windows)}}<p class="muted">No weekday is chosen and no window is set: the scheduler may start this scan at any time.</p>{{end}}
+{{if $f.Windows}}<p class="muted">The windows under Advanced are in effect; the days and times above are not used while that field is filled.</p>{{end}}
+<label class="field"><span>Timezone</span><select name="timezone"{{with index $f.Problems "timezone"}} aria-invalid="true"{{end}}>
+{{range $f.TimezoneChoices}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>
+{{end}}</select><span class="hint">The window times are in this timezone and follow daylight saving time.</span>{{with index $f.Problems "timezone"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Full scan</span><select name="frequency"{{with index $f.Problems "frequency"}} aria-invalid="true"{{end}}>
 <option value="daily"{{if eq $f.Frequency "daily"}} selected{{end}}>Once a day</option>
 <option value="weekly"{{if eq $f.Frequency "weekly"}} selected{{end}}>Once a week</option>
 <option value="interval"{{if eq $f.Frequency "interval"}} selected{{end}}>At an interval</option>
 </select>{{with index $f.Problems "frequency"}}<span class="problem">{{.}}</span>{{end}}</label>
-<label class="field"><span>Interval</span><input type="text" name="every" value="{{$f.Every}}"><span class="hint">Only for "At an interval": time between run starts, for example 6h or 90m.</span></label>
-<p class="muted">A run still going when its window ends is paused and continues in the next window.</p>
+<label class="field"><span>Interval</span><input type="text" name="every" value="{{$f.Every}}"><span class="hint">Only for "At an interval": time between full scan starts, for example 6h or 90m.</span></label>
+<label class="field"><span>Recheck every</span><input type="text" name="recheck_every" value="{{$f.RecheckEvery}}"{{with index $f.Problems "recheck"}} aria-invalid="true"{{end}}><span class="hint">Between full scans, revisit only the open services found before, for example 1h or 30m. Shorter than the full scan frequency. Leave empty for no rechecks.</span>{{with index $f.Problems "recheck"}}<span class="problem">{{.}}</span>{{end}}</label>
 </div>
-</section>
+</details>
+<details class="panel"{{if $f.AdvancedOpen}} open{{end}}>
+<summary>Advanced</summary>
+<div class="body">
+<label class="field"><span>Workers</span><input type="number" name="workers" min="1" value="{{$f.Workers}}"{{with index $f.Problems "workers"}} aria-invalid="true"{{end}}><span class="hint">Groups scanned at the same time. Raise it only when a large scan stays below its pace; lower it for a few slow hosts.</span>{{with index $f.Problems "workers"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Inactive after</span><input type="number" name="inactive_after" min="1" value="{{$f.InactiveAfter}}"{{with index $f.Problems "inactive after"}} aria-invalid="true"{{end}}><span class="hint">Missed runs before a host counts as inactive. Raise it for networks where hosts are often switched off.</span>{{with index $f.Problems "inactive after"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Service detection</span><select name="service_detection"{{with index $f.Problems "service detection"}} aria-invalid="true"{{end}}>
+<option value="light"{{if eq $f.ServiceDetection "light"}} selected{{end}}>Light</option>
+<option value="standard"{{if eq $f.ServiceDetection "standard"}} selected{{end}}>Standard</option>
+</select><span class="hint">Choose Light for fragile devices or when open ports are enough; Standard names more services but sends more probes.</span>{{with index $f.Problems "service detection"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Mode</span><select name="mode"{{with index $f.Problems "mode"}} aria-invalid="true"{{end}}>
+<option value="full"{{if eq $f.Mode "full"}} selected{{end}}>Full</option>
+<option value="recheck"{{if eq $f.Mode "recheck"}} selected{{end}}>Recheck</option>
+</select><span class="hint">Keep Full unless every run of this scan should only revisit the services found by earlier runs.</span>{{with index $f.Problems "mode"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Signatures directory</span><input type="text" name="signatures_dir" value="{{$f.SignaturesDir}}"{{with index $f.Problems "signatures"}} aria-invalid="true"{{end}}><span class="hint">Path on the server. Leave empty unless you have your own signatures to add to the built-in ones.</span>{{with index $f.Problems "signatures"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Volatile headers</span><input type="text" name="volatile_headers" value="{{$f.VolatileHeaders}}"><span class="hint">Response headers that change on every request, separated by commas, for example x-trace-id. They never count as a change. Date, ETag and similar headers are always ignored.</span></label>
+<label class="field"><span>Exact rate</span><input type="number" name="max_rate" min="2" value="{{$f.MaxRate}}"{{with index $f.Problems "max rate"}} aria-invalid="true"{{end}}><span class="hint">Packets and requests per second for the whole run, at least 2. Leave empty to use the pace; enter a number only when none of the three paces fits.</span>{{with index $f.Problems "max rate"}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Windows as text</span><textarea name="windows"{{with index $f.Problems "windows"}} aria-invalid="true"{{end}}>{{$f.Windows}}</textarea><span class="hint">Use it only when one window is not enough: one window per line, for example "mon-fri 22:00-06:00" or "sat,sun 00:00-00:00". When filled, it replaces the days and times under Schedule.</span>{{with index $f.Problems "windows"}}<span class="problem">{{.}}</span>{{end}}</label>
 </div>
+</details>
 <div class="form-actions"><button class="primary" type="submit">{{if $f.ID}}Save changes{{else}}Create scan{{end}}</button><a class="btn" href="{{if $f.ID}}/scans/{{$f.ID}}{{else}}/scans{{end}}">Cancel</a></div>
 </form>
 {{end}}
+{{define "scan-plan"}}{{if .Prompt}}<p class="muted">{{.Prompt}}</p>{{else if .Problem}}<div class="notice error">{{.Problem}}</div>{{else}}<p>{{.Sentence}}</p><p class="muted">Network and broadcast addresses of a range are not scanned and not counted.</p>{{range .Warnings}}<div class="notice warn">{{.}}</div>{{end}}{{end}}{{end}}
+{{define "schedule-summary"}}{{if .Problem}}{{.Problem}}{{else}}{{.Text}}{{end}}{{end}}
+{{define "custom-ports"}}<div id="custom-ports">
+<details class="panel"{{if eq .PortPreset "custom"}} open{{end}}>
+<summary>Custom ports</summary>
+<div class="body">
+<label class="field"><span>Ports for Custom</span><input type="text" name="ports" value="{{.Ports}}" hx-post="/scans/plan{{if .ID}}?scan={{.ID}}{{end}}" hx-target="#scan-plan" hx-select="unset" hx-swap="innerHTML" hx-trigger="change, keyup changed delay:600ms"{{if and (eq .PortPreset "custom") (index .Problems "ports")}} aria-invalid="true"{{end}}><span class="hint">Used only when Ports is Custom. Ports, ranges or a preset separated by commas, for example 80,443,8000-8100.</span></label>
+</div>
+</details>
+</div>{{end}}

@@ -1,0 +1,394 @@
+{
+ "lab": "asi-vulhub-holdout2",
+ "network": "172.28.34.0/24",
+ "excluded": [
+  "172.28.34.1",
+  "172.28.34.2",
+  "172.28.34.3"
+ ],
+ "ports_verified": "listening sockets read from /proc/net/tcp{,6} in every container, then confirmed with nmap -sT (connect only, no -sV) from a helper on the network",
+ "fixtures": "none captured on purpose, so the responses stay unseen until the final run",
+ "generic_technologies": [
+  "Apache HTTP Server",
+  "Apache httpd",
+  "Apache",
+  "httpd",
+  "nginx",
+  "Jetty",
+  "Apache-Coyote",
+  "Apache Tomcat/Coyote JSP engine",
+  "Golang net/http server",
+  "PHP",
+  "Java",
+  "OpenJDK",
+  "Go",
+  "Golang",
+  "Python",
+  "Perl",
+  "Ruby",
+  "Node.js",
+  "Debian",
+  "Ubuntu",
+  "UNIX",
+  "Linux",
+  "Alpine Linux",
+  "OpenSSH",
+  "SSH",
+  "HTTP",
+  "Basic",
+  "MySQL",
+  "MariaDB",
+  "Jetty",
+  "Erlang",
+  "Erlang OTP",
+  "Servlet",
+  "JSP",
+  "Java Servlet",
+  "Apache Tomcat",
+  "Tomcat",
+  "Spring",
+  "Spring Boot",
+  "HTTP server",
+  "HSTS",
+  "XMPP",
+  "SMTP",
+  "Node.js",
+  "Express",
+  "Gunicorn",
+  "Flask",
+  "Vue.js",
+  "React",
+  "Ember.js",
+  "SMTP",
+  "DNS",
+  "gRPC"
+ ],
+ "benign_libraries": [
+  "jQuery",
+  "jQuery UI",
+  "jQuery Migrate",
+  "Underscore.js",
+  "Backbone.js",
+  "Bootstrap",
+  "Semantic UI",
+  "Vue.js",
+  "Clipboard.js",
+  "YUI",
+  "AngularJS",
+  "React",
+  "Font Awesome",
+  "CodeMirror",
+  "Moment.js",
+  "Lodash",
+  "RequireJS",
+  "Prototype",
+  "Twig",
+  "Symfony",
+  "D3",
+  "Chosen",
+  "Highlight.js",
+  "timeago",
+  "Socket.IO",
+  "Ember.js",
+  "Vue.js",
+  "React",
+  "Material UI",
+  "Ace"
+ ],
+ "services": [
+  {
+   "name": "uptime-kuma",
+   "address": "172.28.34.10",
+   "product": "Uptime Kuma",
+   "aliases": [
+    "Uptime Kuma",
+    "Uptime-Kuma"
+   ],
+   "version": "1.23.13",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "monitoring",
+   "ports": [
+    3001
+   ],
+   "http_ports": [
+    3001
+   ],
+   "https_ports": [],
+   "admin_panel": true,
+   "login_path": "/dashboard",
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "Fresh instance: / redirects to /dashboard (single-page app, shows the setup/login screen)."
+  },
+  {
+   "name": "vault",
+   "address": "172.28.34.11",
+   "product": "HashiCorp Vault",
+   "aliases": [
+    "HashiCorp Vault",
+    "Vault"
+   ],
+   "version": "1.15.6",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "secrets-manager",
+   "ports": [
+    8200,
+    8201
+   ],
+   "http_ports": [
+    8200
+   ],
+   "https_ports": [],
+   "admin_panel": true,
+   "login_path": "/ui/",
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "Dev mode. / redirects to /ui/ (token login). 8201 = cluster port."
+  },
+  {
+   "name": "consul",
+   "address": "172.28.34.12",
+   "product": "HashiCorp Consul",
+   "aliases": [
+    "HashiCorp Consul",
+    "Consul"
+   ],
+   "version": "1.17.3",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "service-registry",
+   "ports": [
+    8500,
+    8502,
+    8503,
+    8600
+   ],
+   "http_ports": [
+    8500
+   ],
+   "https_ports": [],
+   "admin_panel": true,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "Dev agent. / redirects to /ui/, the unauthenticated web UI. 8502/8503 gRPC, 8600 DNS over TCP."
+  },
+  {
+   "name": "pgadmin",
+   "address": "172.28.34.13",
+   "product": "pgAdmin",
+   "aliases": [
+    "pgAdmin",
+    "pgAdmin 4",
+    "pgAdmin4"
+   ],
+   "version": "8.4",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "admin-tool",
+   "ports": [
+    25,
+    80
+   ],
+   "http_ports": [
+    80
+   ],
+   "https_ports": [],
+   "admin_panel": true,
+   "login_path": "/login",
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "/ redirects to /login?next=/. 25 = the image's bundled Postfix."
+  },
+  {
+   "name": "matomo",
+   "address": "172.28.34.14",
+   "product": "Matomo",
+   "aliases": [
+    "Matomo",
+    "Piwik"
+   ],
+   "version": "5.0.3",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "analytics",
+   "ports": [
+    80
+   ],
+   "http_ports": [
+    80
+   ],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "NOT installed: / is the installation wizard (title carries the version)."
+  },
+  {
+   "name": "gotify",
+   "address": "172.28.34.15",
+   "product": "Gotify",
+   "aliases": [
+    "Gotify",
+    "Gotify Server"
+   ],
+   "version": "2.4.0",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "notification-server",
+   "ports": [
+    80
+   ],
+   "http_ports": [
+    80
+   ],
+   "https_ports": [],
+   "admin_panel": true,
+   "login_path": "/",
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "/ is the single-page UI that opens on the login form."
+  },
+  {
+   "name": "node-red",
+   "address": "172.28.34.16",
+   "product": "Node-RED",
+   "aliases": [
+    "Node-RED",
+    "Node RED",
+    "NodeRED"
+   ],
+   "version": "3.1.9",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "automation",
+   "ports": [
+    1880
+   ],
+   "http_ports": [
+    1880
+   ],
+   "https_ports": [],
+   "admin_panel": true,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "/ is the flow editor, unauthenticated."
+  },
+  {
+   "name": "mailpit",
+   "address": "172.28.34.17",
+   "product": "Mailpit",
+   "aliases": [
+    "Mailpit"
+   ],
+   "version": "1.15.1",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "mail",
+   "ports": [
+    1025,
+    8025
+   ],
+   "http_ports": [
+    8025
+   ],
+   "https_ports": [],
+   "admin_panel": true,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "8025 = unauthenticated web UI at /, 1025 = SMTP."
+  },
+  {
+   "name": "nats",
+   "address": "172.28.34.18",
+   "product": "NATS",
+   "aliases": [
+    "NATS",
+    "NATS Server",
+    "nats-server"
+   ],
+   "version": "2.10.12",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "message-queue",
+   "ports": [
+    4222,
+    6222,
+    8222
+   ],
+   "http_ports": [
+    8222
+   ],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "4222 client protocol (INFO banner carries the version), 6222 cluster routes, 8222 HTTP monitoring page."
+  },
+  {
+   "name": "zookeeper",
+   "address": "172.28.34.19",
+   "product": "Apache ZooKeeper",
+   "aliases": [
+    "Apache ZooKeeper",
+    "ZooKeeper"
+   ],
+   "version": "3.9.2",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "coordination",
+   "ports": [
+    2181,
+    8080
+   ],
+   "http_ports": [
+    8080
+   ],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "2181 client port; 8080 = Jetty AdminServer (/ answers 404, /commands lists commands). One random JMX port per start is not in truth."
+  },
+  {
+   "name": "memcached",
+   "address": "172.28.34.20",
+   "product": "Memcached",
+   "aliases": [
+    "Memcached"
+   ],
+   "version": "1.6.24",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "cache",
+   "ports": [
+    11211
+   ],
+   "http_ports": [],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "Non-HTTP."
+  },
+  {
+   "name": "mongodb",
+   "address": "172.28.34.21",
+   "product": "MongoDB",
+   "aliases": [
+    "MongoDB",
+    "Mongo"
+   ],
+   "version": "6.0.14",
+   "version_source": "image tag (pinned upstream image)",
+   "category": "database",
+   "ports": [
+    27017
+   ],
+   "http_ports": [],
+   "https_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": null,
+   "notes": "Non-HTTP, no auth."
+  }
+ ]
+}

@@ -1,0 +1,3 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Elasticsearch 1.4.2 REST root on 9200 (vulhub elasticsearch/CVE-2015-1427: JSON with version.number and the tagline), elastic.co docs
+the eval/vulhub capture of this product is not readable from the builder sandbox; markers written to match it

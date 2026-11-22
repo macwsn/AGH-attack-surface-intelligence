@@ -1,0 +1,7 @@
+captured from the running lab-agh stack
+image: wordpress:latest (sha256:344ca7cf3566d266d5dacdd71e3dd4fe9781b0063097fbb9972fe823412ae9e0)
+compose: lab-agh/docker-compose-modern.yml, service wordpress
+capture date: 2026-11-21
+command: curl -sS -i -L --max-redirs 5 http://wordpress<path> from a container on the stack network (host ports not published)
+paths: / (root.http), /version (version.http), /api/version (api__version.http)
+state: installer completed (site title Lab), default theme home page; bodies cut after </head> and inline style lines longer than 500 characters removed

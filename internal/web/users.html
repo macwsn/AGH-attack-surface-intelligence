@@ -1,0 +1,56 @@
+{{define "content"}}
+<div class="page-head"><div><h1>Users</h1>
+<p class="lede">{{.Data.Count}}, {{.Data.Disabled}} disabled.</p>
+<p class="muted">You can manage only users whose role you fully hold: every permission of their role must also be in yours.</p></div></div>
+{{with .Data.Message}}<div class="notice ok" role="status">{{.}}</div>{{end}}
+{{with .Data.Problem}}<div class="notice warn" role="alert">{{.}}</div>{{end}}
+{{with .Data.Confirm}}
+<section class="panel">
+<header><h2>Delete user {{.Username}}</h2></header>
+<div class="body">
+<div class="notice warn">Delete {{.Username}} ({{.Role}})? Their sessions end and they can no longer sign in. This cannot be undone.</div>
+<form method="post" action="{{.Path}}/delete">{{$.CSRFField}}
+<div class="form-actions"><button class="danger" type="submit">Delete user {{.Username}}</button><a class="btn" href="/users/">Cancel</a></div>
+</form>
+</div>
+</section>
+{{end}}
+<div class="table-wrap">
+<table class="data">
+<thead><tr><th>Username</th><th>Role</th><th>Status</th><th>Created</th><th>Reset password</th><th>Actions</th></tr></thead>
+<tbody>
+{{range .Data.Users}}{{$u := .}}
+<tr{{if .Disabled}} class="is-off"{{end}}>
+<td><strong>{{.Username}}</strong></td>
+<td>{{if not .Manage}}{{.Role}}{{else}}<form class="marks" method="post" action="{{.Path}}/role">{{$.CSRFField}}
+<select name="role" aria-label="Role of {{.Username}}">{{range $.Data.Roles}}<option value="{{.Name}}"{{if eq .Name $u.Role}} selected{{end}}>{{.Name}}</option>{{end}}</select>
+<button class="small" type="submit">Change role</button></form>{{end}}</td>
+<td>{{if .Disabled}}<span class="status inactive">Disabled</span>{{else}}<span class="status active">Enabled</span>{{end}}</td>
+<td><span class="num">{{zoned .CreatedAt}}</span></td>
+{{if .Manage}}<td><form class="marks" method="post" action="{{.Path}}/password">{{$.CSRFField}}
+<input type="password" name="password" minlength="12" required autocomplete="new-password" aria-label="New password for {{.Username}}">
+<button class="small" type="submit">Reset password</button></form></td>
+<td><div class="marks">
+{{if .Disabled}}<form method="post" action="{{.Path}}/enable">{{$.CSRFField}}<button class="small" type="submit">Enable</button></form>
+{{else}}<form method="post" action="{{.Path}}/disable">{{$.CSRFField}}<button class="small" type="submit">Disable user {{.Username}}</button></form>{{end}}
+<a class="btn small danger" href="{{.Path}}/delete">Delete user {{.Username}}</a>
+</div></td>{{else}}<td class="muted">{{if eq .Username $.User.Username}}<a href="/account">Change it on the Account page</a>{{else}}Not allowed{{end}}</td>
+<td class="muted">{{if eq .Username $.User.Username}}This is you{{else}}Role {{.Role}} has permissions yours does not have{{end}}</td>{{end}}
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+<section class="panel">
+<header><h2>Create user</h2></header>
+<div class="body">
+<form method="post" action="/users/create">
+{{.CSRFField}}
+<label class="field"><span>Username</span><input type="text" name="username" value="{{.Data.Create.Username}}" required autocomplete="off"{{if .Data.Create.UsernameProblem}} aria-invalid="true"{{end}}>{{with .Data.Create.UsernameProblem}}<span class="problem">{{.}}</span>{{end}}</label>
+<label class="field"><span>Role</span><select name="role">{{range .Data.Roles}}<option value="{{.Name}}"{{if eq .Name $.Data.Create.Role}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+<label class="field"><span>Initial password</span><input type="password" name="password" minlength="12" required autocomplete="new-password"{{if .Data.Create.PasswordProblem}} aria-invalid="true"{{end}}>{{with .Data.Create.PasswordProblem}}<span class="problem">{{.}}</span>{{end}}<span class="hint">At least 12 characters. Give it to the user over a separate channel.</span></label>
+<div class="form-actions"><button class="primary" type="submit">Create user</button></div>
+</form>
+</div>
+</section>
+{{end}}

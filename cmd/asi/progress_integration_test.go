@@ -63,3 +63,48 @@ func TestScanShowProgress(t *testing.T) {
 		t.Fatalf("completed run first line %q (%d groups)", first, len(groups))
 	}
 }
+
+// REQ-SCAN-018, REQ-SCAN-020, REQ-SCAN-021
+func TestScanPlanAndRate(t *testing.T) {
+	ctx := context.Background()
+	c := newCLIEnv(t, "192.0.2.0/28", "192.0.2.5")
+	c.net.up("192.0.2.1", 80)
+	planArgs := []string{"scan", "plan", "--targets-file", c.targets, "--exclude-file", c.excludes, "--ports", "22,80", "--max-rate", "40"}
+	r := c.net.runner()
+	code, stdout, stderr := c.runCtx(ctx, r, planArgs...)
+	if code != 0 {
+		t.Fatalf("scan plan: exit %d, stderr %q", code, stderr)
+	}
+	if want := "plan addresses=13 ports=22,80 groups=1 group_size=64 packets=338 requests=2236 max_rate=40 adaptive=true duration_at_max_rate=1m52s measured_run=- measured_rate=- duration_measured=-\n"; !strings.HasPrefix(stdout, want) {
+		t.Fatalf("scan plan before any run:\n%s\nwant prefix %q", stdout, want)
+	}
+	if calls := r.Calls(); len(calls) != 0 || countRuns(t, c.st) != 0 {
+		t.Fatalf("scan plan sent nmap calls %v or created runs (%d)", calls, countRuns(t, c.st))
+	}
+
+	c.scan("polite", "--max-rate", "40")
+	c.scan("fixed", "--max-rate", "40", "--no-adaptive")
+	run, err := c.inv.RunByName(ctx, "fixed")
+	if err != nil || !run.Settings.NoAdaptive {
+		t.Fatalf("--no-adaptive run settings = %+v, %v", run.Settings, err)
+	}
+	if run, err := c.inv.RunByName(ctx, "polite"); err != nil || run.Settings.NoAdaptive {
+		t.Fatalf("default run settings = %+v, %v; want adaptive on", run.Settings, err)
+	}
+	out := c.mustRun(planArgs...)
+	m := regexp.MustCompile(` measured_run=fixed measured_rate=(\d+\.\d)/s duration_measured=(\S+)\n`).FindStringSubmatch(out)
+	if m == nil || m[1] == "0.0" {
+		t.Fatalf("scan plan after runs:\n%s", out)
+	}
+	for name, adaptive := range map[string]string{"polite": "true", "fixed": "false"} {
+		first, _ := showRun(t, c, name)
+		re := regexp.MustCompile(` max_rate=40 adaptive=` + adaptive + ` actual_peak=(\d+\.\d)/s actual_avg=(\d+\.\d)/s actual_chart=(\S+) limit_chart=(\S+) groups=`)
+		m := re.FindStringSubmatch(first)
+		if m == nil || m[3] == "-" || m[4] == "-" {
+			t.Fatalf("%s first line %q", name, first)
+		}
+		if peak, _ := strconv.ParseFloat(m[1], 64); peak > 40 {
+			t.Fatalf("%s peak %s/s exceeds max rate 40", name, m[1])
+		}
+	}
+}

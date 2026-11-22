@@ -9,6 +9,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"asi/internal/detect"
+	"asi/internal/probe"
 )
 
 func TestCreateRunStoresSettingsAndStatus(t *testing.T) {
@@ -226,5 +229,101 @@ func TestMigrationsKeepExistingRunsCompleted(t *testing.T) {
 	}
 	if _, err := s.Pool.Exec(ctx, `INSERT INTO runs (name, inactive_after, status) VALUES ('bad', 3, 'done')`); err == nil {
 		t.Fatal("runs accepted status 'done'")
+	}
+}
+
+// REQ-INVENTORY-019
+func TestCreateRunStoresSource(t *testing.T) {
+	inv, _ := openInventory(t)
+	ctx := context.Background()
+	for name, want := range map[string]RunSource{"": SourceScan, "import": SourceImport, "manual": SourceManual} {
+		created, err := inv.CreateRun(ctx, RunSpec{Name: "r-" + name, Source: RunSource(name)})
+		if err != nil {
+			t.Fatalf("CreateRun source %q: %v", name, err)
+		}
+		got, err := inv.RunByName(ctx, "r-"+name)
+		if err != nil || created.Source != want || got.Source != want {
+			t.Fatalf("source %q: created %q, read %q (%v), want %q", name, created.Source, got.Source, err, want)
+		}
+	}
+	if _, err := inv.CreateRun(ctx, RunSpec{Name: "bad", Source: "upload"}); err == nil {
+		t.Fatal("CreateRun with source upload succeeded")
+	}
+	if _, err := inv.RunByName(ctx, "bad"); !errors.Is(err, ErrUnknownRun) {
+		t.Fatalf("bad run was created: %v", err)
+	}
+}
+
+// REQ-INVENTORY-010
+func TestListRunsNewestFirst(t *testing.T) {
+	inv, _ := openInventory(t)
+	ctx := context.Background()
+	if runs, err := inv.ListRuns(ctx); err != nil || len(runs) != 0 {
+		t.Fatalf("ListRuns on empty inventory = %v, %v; want none", runs, err)
+	}
+	a := mustRun(t, inv, "a", 0)
+	mustRun(t, inv, "b", 0)
+	if err := inv.SetRunStatus(ctx, a.ID, RunCompleted); err != nil {
+		t.Fatal(err)
+	}
+	runs, err := inv.ListRuns(ctx)
+	if err != nil {
+		t.Fatalf("ListRuns: %v", err)
+	}
+	if len(runs) != 2 || runs[0].Name != "b" || runs[1].Name != "a" || runs[0].Status != RunRunning || runs[1].Status != RunCompleted {
+		t.Fatalf("ListRuns = %+v, want b (running) then a (completed)", runs)
+	}
+}
+
+// REQ-SCAN-020
+func TestRateSamplesAccumulatePerMinute(t *testing.T) {
+	inv, _ := openInventory(t)
+	ctx := context.Background()
+	run, err := inv.CreateRun(ctx, RunSpec{Name: "r", Settings: RunSettings{MaxRate: 100, NoAdaptive: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := inv.RunByName(ctx, "r"); err != nil || !got.Settings.NoAdaptive {
+		t.Fatalf("no_adaptive not stored: %+v, %v", got.Settings, err)
+	}
+	m0 := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
+	for _, batch := range [][]RateSample{
+		{{Minute: m0, Configured: 100, Effective: 100, Sent: 40}},
+		{{Minute: m0.Add(20 * time.Second), Configured: 100, Effective: 50, Sent: 20}, {Minute: m0.Add(time.Minute), Configured: 100, Effective: 25, Sent: 7}},
+	} {
+		if err := inv.RecordRateSamples(ctx, run.ID, batch); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := inv.RateSamples(ctx, run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []RateSample{{Minute: m0, Configured: 100, Effective: 100, Sent: 60}, {Minute: m0.Add(time.Minute), Configured: 100, Effective: 25, Sent: 7}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("samples = %+v, want %+v", got, want)
+	}
+	if err := inv.RecordRateSamples(ctx, run.ID+1000, want); !errors.Is(err, ErrUnknownRun) {
+		t.Fatalf("unknown run: %v", err)
+	}
+}
+
+func TestLatestHTTPReturnsTheStoredBody(t *testing.T) {
+	inv, _ := openInventory(t)
+	ctx := context.Background()
+	r1 := mustRun(t, inv, "b1", 0)
+	mustRecord(t, inv, r1, GroupResult{Addresses: []string{"10.0.0.1"}, Hosts: []HostResult{{Address: "10.0.0.1",
+		Services: []ServiceResult{{Port: 80, Protocol: "tcp", State: "open", Service: "http",
+			HTTP: &probe.HTTP{Scheme: "http", StatusCode: 200, Title: "Jenkins"}, Body: []byte("<p>Jenkins ver. 2.401</p>")}}}}})
+	h, body, run, err := inv.LatestHTTP(ctx, "10.0.0.1", 80, "tcp")
+	if err != nil || h == nil || h.Title != "Jenkins" || run != "b1" || string(body) != "<p>Jenkins ver. 2.401</p>" {
+		t.Fatalf("LatestHTTP = %+v, %q, %q, %v; want the Jenkins response with its body from run b1", h, body, run, err)
+	}
+	sig, err := detect.ParseOne([]byte("id: j\nname: Jenkins\nkind: technology\nconfidence: 90\nmatch: {all: [{type: body_regex, value: 'Jenkins ver'}]}\nversion: {type: body_regex, value: 'ver\\. ([0-9.]+)', group: 1}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e, ok := sig.EvaluateHistory(h, body); !ok || !e.Matched || e.Version != "2.401" {
+		t.Fatalf("body signature on the latest observation = %+v, %t; want a match with version 2.401", e, ok)
 	}
 }

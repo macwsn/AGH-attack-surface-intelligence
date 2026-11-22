@@ -9,6 +9,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"asi/internal/inventory"
@@ -220,37 +221,40 @@ func TestGroupSizeAdaptsDuringRun(t *testing.T) {
 
 // REQ-SCAN-007
 func TestSlowStoreBlocksWorkers(t *testing.T) {
-	release := make(chan struct{})
-	var blocked, discovers atomic.Int32
-	st := &scantest.Store{OnRecordGroup: func(inventory.GroupResult) error {
-		blocked.Add(1)
-		<-release
-		return nil
-	}}
-	r := &nmaptest.Runner{DiscoverFunc: func(_ context.Context, addrs []string, _ nmap.Options) ([]nmap.Host, error) {
-		discovers.Add(1)
-		return []nmap.Host{{Address: addrs[0], Up: true}}, nil
-	}, ServicesFunc: openPorts(22)}
-	settings := inventory.RunSettings{Targets: []string{"10.9.0.0/24"}, Ports: []int{22}, MaxRate: 100, Workers: 4, GroupSize: 4}
-	done := make(chan error, 1)
-	go func() {
-		done <- (&scan.Scanner{Store: st, Runner: r}).Run(context.Background(), testRun(settings))
-	}()
-	waitFor(t, "4 workers blocked in RecordGroup", func() bool { return blocked.Load() == 4 })
-	time.Sleep(100 * time.Millisecond)
-	if n := discovers.Load(); n != 4 {
-		t.Fatalf("%d groups scanned while the store blocked 4 workers, want 4", n)
-	}
-	if n := blocked.Load(); n != 4 {
-		t.Fatalf("%d RecordGroup calls while the store is stalled, want 4", n)
-	}
-	close(release)
-	if err := <-done; err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	if n := len(st.Groups()); n != 64 {
-		t.Fatalf("recorded %d groups, want 64", n)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		release := make(chan struct{})
+		var blocked, discovers atomic.Int32
+		st := &scantest.Store{OnRecordGroup: func(inventory.GroupResult) error {
+			blocked.Add(1)
+			<-release
+			return nil
+		}}
+		r := &nmaptest.Runner{DiscoverFunc: func(_ context.Context, addrs []string, _ nmap.Options) ([]nmap.Host, error) {
+			discovers.Add(1)
+			return []nmap.Host{{Address: addrs[0], Up: true}}, nil
+		}, ServicesFunc: openPorts(22)}
+		clock := scantest.NewClock(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+		tr := &scantest.Transport{Clock: clock}
+		settings := inventory.RunSettings{Targets: []string{"10.9.0.0/24"}, Ports: []int{22}, MaxRate: 100, Workers: 4, GroupSize: 4}
+		done := make(chan error, 1)
+		go func() {
+			done <- (&scan.Scanner{Store: st, Runner: r, Clock: clock, Transport: tr.For}).Run(context.Background(), testRun(settings))
+		}()
+		synctest.Wait()
+		if n := blocked.Load(); n != 4 {
+			t.Fatalf("%d RecordGroup calls while the store is stalled, want 4", n)
+		}
+		if n := discovers.Load(); n != 4 {
+			t.Fatalf("%d groups scanned while the store blocked 4 workers, want 4", n)
+		}
+		close(release)
+		if err := <-done; err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if n := len(st.Groups()); n != 64 {
+			t.Fatalf("recorded %d groups, want 64", n)
+		}
+	})
 }
 
 func timeoutRunner(timesOut func(addrs []string) bool) *nmaptest.Runner {

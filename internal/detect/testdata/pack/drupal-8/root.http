@@ -1,0 +1,30 @@
+HTTP/1.1 200 OK
+Server: Apache/2.4.25 (Debian)
+X-Powered-By: PHP/7.2.3
+Cache-Control: must-revalidate, no-cache, private
+X-Drupal-Dynamic-Cache: MISS
+X-UA-Compatible: IE=edge
+Content-language: en
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+X-Generator: Drupal 8 (https://www.drupal.org)
+X-Drupal-Cache: MISS
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="Generator" content="Drupal 8 (https://www.drupal.org)" />
+    <title>Welcome to My Drupal | My Drupal</title>
+    <script src="/core/assets/vendor/modernizr/modernizr.min.js?v=3.3.1"></script>
+  </head>
+  <body class="path-frontpage">
+    <a href="#main-content" class="visually-hidden focusable skip-link">Skip to main content</a>
+    <script type="application/json" data-drupal-selector="drupal-settings-json">{"path":{"baseUrl":"\/","scriptPath":null,"currentPath":"node"}}</script>
+    <script src="/core/assets/vendor/jquery/jquery.min.js?v=3.2.1"></script>
+    <script src="/core/misc/drupalSettingsLoader.js?v=8.5.0"></script>
+    <script src="/core/misc/drupal.js?v=8.5.0"></script>
+    <script src="/core/misc/drupal.init.js?v=8.5.0"></script>
+  </body>
+</html>

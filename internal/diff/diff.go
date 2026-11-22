@@ -2,12 +2,11 @@ package diff
 
 import (
 	"net/netip"
-	"reflect"
+	"slices"
 	"sort"
 	"strings"
 
 	"asi/internal/inventory"
-	"asi/internal/probe"
 )
 
 const Schema = "asi.diff/v1"
@@ -24,9 +23,7 @@ const (
 	ServiceChanged  = "service_changed"
 )
 
-var DefaultVolatileHeaders = []string{
-	"date", "expires", "last-modified", "etag", "age", "set-cookie", "content-length", "x-request-id", "cf-ray",
-}
+var DefaultVolatileHeaders = inventory.DefaultVolatileHeaders
 
 type Options struct {
 	VolatileHeaders []string
@@ -45,6 +42,7 @@ type Change struct {
 	Port     *int          `json:"port,omitempty"`
 	Protocol string        `json:"protocol,omitempty"`
 	Fields   []FieldChange `json:"fields,omitempty"`
+	Note     string        `json:"note,omitempty"`
 }
 
 type FieldChange struct {
@@ -62,12 +60,14 @@ var (
 	serviceTypes = statusTypes{ServiceNew, ServiceMissing, ServiceReturned, ServiceInactive}
 )
 
+const ExpectedUpNote = "expected up at this hour"
+
 func Compute(from, to inventory.Export, opts Options) Diff {
 	volatile := map[string]bool{}
 	for _, h := range DefaultVolatileHeaders {
 		volatile[h] = true
 	}
-	for _, h := range opts.VolatileHeaders {
+	for _, h := range slices.Concat(opts.VolatileHeaders, from.VolatileHeaders, to.VolatileHeaders) {
 		volatile[strings.ToLower(strings.TrimSpace(h))] = true
 	}
 
@@ -78,13 +78,20 @@ func Compute(from, to inventory.Export, opts Options) Diff {
 
 	changes := []Change{}
 	for _, th := range to.Hosts {
+		if to.Source == inventory.SourceScan && !th.ScanCovered {
+			continue
+		}
 		fh, ok := fromHosts[th.Address]
 		var fromStatus inventory.Status
 		if ok {
 			fromStatus = fh.Status
 		}
 		if t := transition(ok, fromStatus, th.Status, hostTypes); t != "" {
-			changes = append(changes, Change{Type: t, Address: th.Address})
+			c := Change{Type: t, Address: th.Address}
+			if t == HostMissing && th.Availability != nil && th.Availability.Expected == "up" {
+				c.Note = ExpectedUpNote
+			}
+			changes = append(changes, c)
 			continue
 		}
 		changes = append(changes, serviceChanges(th.Address, fh.Services, th.Services, volatile)...)
@@ -145,102 +152,21 @@ func serviceChanges(address string, from, to []inventory.ExportService, volatile
 }
 
 func changedFields(from, to inventory.ExportService, volatile map[string]bool) []FieldChange {
-	old := fieldValues(from, volatile)
-	cur := fieldValues(to, volatile)
-	names := map[string]bool{}
-	for k := range old {
-		names[k] = true
-	}
-	for k := range cur {
-		names[k] = true
+	probed := !inventory.ProbeFailed(from) && !inventory.ProbeFailed(to)
+	old, oldShown := inventory.ServiceFields(from, volatile)
+	cur, curShown := inventory.ServiceFields(to, volatile)
+	learned := map[string]bool{}
+	for _, f := range to.Volatile {
+		learned[f.Field] = true
 	}
 	var fields []FieldChange
-	for name := range names {
-		o, n := old[name], cur[name]
-		if reflect.DeepEqual(o, n) {
+	for _, name := range inventory.ChangedFields(old, cur, probed) {
+		if learned[name] {
 			continue
 		}
-		fields = append(fields, FieldChange{Field: name, Old: o, New: n})
+		fields = append(fields, FieldChange{Field: name, Old: oldShown[name], New: curShown[name]})
 	}
-	sort.Slice(fields, func(i, j int) bool { return fields[i].Field < fields[j].Field })
 	return fields
-}
-
-func fieldValues(s inventory.ExportService, volatile map[string]bool) map[string]any {
-	v := map[string]any{
-		"service":             s.Service,
-		"product":             s.Product,
-		"version":             s.Version,
-		"technologies":        technologySet(s.Technologies),
-		"findings":            findingSet(s.Findings),
-		"http.status_code":    nil,
-		"http.title":          nil,
-		"http.cookies":        nil,
-		"http.redirect_chain": nil,
-		"http.tls.sha256":     nil,
-		"http.favicon_sha256": nil,
-	}
-	if s.HTTP == nil {
-		return v
-	}
-	v["http.status_code"] = s.HTTP.StatusCode
-	v["http.title"] = s.HTTP.Title
-	v["http.cookies"] = cookieSet(s.HTTP.Cookies)
-	chain := []string{}
-	chain = append(chain, s.HTTP.RedirectChain...)
-	v["http.redirect_chain"] = chain
-	if s.HTTP.TLS != nil {
-		v["http.tls.sha256"] = s.HTTP.TLS.SHA256
-	}
-	v["http.favicon_sha256"] = s.HTTP.FaviconSHA256
-	for name, value := range s.HTTP.Headers {
-		name = strings.ToLower(name)
-		if volatile[name] {
-			continue
-		}
-		v["http.headers."+name] = value
-	}
-	return v
-}
-
-func cookieSet(cookies []probe.Cookie) []string {
-	names := make([]string, 0, len(cookies))
-	for _, c := range cookies {
-		names = append(names, c.Name)
-	}
-	return set(names)
-}
-
-func technologySet(techs []inventory.Technology) []string {
-	items := make([]string, 0, len(techs))
-	for _, t := range techs {
-		item := t.Name
-		if t.Version != "" {
-			item += " " + t.Version
-		}
-		items = append(items, item)
-	}
-	return set(items)
-}
-
-func findingSet(findings []inventory.Finding) []string {
-	ids := make([]string, 0, len(findings))
-	for _, f := range findings {
-		ids = append(ids, f.SignatureID)
-	}
-	return set(ids)
-}
-
-func set(items []string) []string {
-	sort.Strings(items)
-	out := []string{}
-	for i, s := range items {
-		if i > 0 && items[i-1] == s {
-			continue
-		}
-		out = append(out, s)
-	}
-	return out
 }
 
 func less(a, b Change) bool {

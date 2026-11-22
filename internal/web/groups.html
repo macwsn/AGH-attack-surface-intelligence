@@ -1,0 +1,19 @@
+{{define "content"}}
+{{with .Data}}
+<div class="page-head"><div><h1>Groups</h1>
+<p class="lede">Services with the same technologies, title and favicon{{with .Run}} as of run <strong class="addr">{{.}}</strong>{{end}}; open a group to see its hosts.</p></div></div>
+{{if .Groups}}
+<div class="result-line"><span>{{len .Groups}} groups, largest first</span></div>
+<div class="table-wrap">
+<table class="data">
+<thead><tr><th class="num">Services</th><th>Technologies</th><th>Title</th><th>Favicon SHA-256</th><th>Members</th></tr></thead>
+<tbody>
+{{range .Groups}}<tr data-count="{{.Count}}"><td class="num">{{.Count}}</td><td>{{with .Technologies}}{{.}}{{else}}<span class="muted">None detected</span>{{end}}</td><td>{{with .Title}}{{.}}{{else}}<span class="muted">No title</span>{{end}}</td><td class="addr">{{with .Favicon}}{{.}}{{else}}<span class="muted">No favicon</span>{{end}}</td><td><div class="marks">{{range .Members}}<a class="addr" href="{{.Timeline}}">{{.Label}}</a>{{end}}{{with .More}}<span class="muted">and {{.}} more</span>{{end}}</div></td></tr>
+{{end}}</tbody>
+</table>
+</div>
+{{else}}
+<div class="empty"><p>Groups appear here once a scan run has found web services.</p></div>
+{{end}}
+{{end}}
+{{end}}

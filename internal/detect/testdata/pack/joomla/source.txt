@@ -1,0 +1,2 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Joomla 3 site home page (meta generator Joomla! - Open Source Content Management, /media/jui/js/), docs.joomla.org

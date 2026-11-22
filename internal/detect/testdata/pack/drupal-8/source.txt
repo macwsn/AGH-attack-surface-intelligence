@@ -1,0 +1,3 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Drupal 8.5.0 home page (vulhub drupal/CVE-2018-7600: X-Generator Drupal 8, core assets with ?v=8.5.0), drupal.org docs
+the eval/vulhub capture of this product is not readable from the builder sandbox; markers written to match it

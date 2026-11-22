@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/netip"
 	"reflect"
 	"slices"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"asi/internal/diff"
 	"asi/internal/inventory"
 	"asi/internal/scan"
 	"asi/internal/scan/nmap"
@@ -152,7 +154,7 @@ func mustScan(t *testing.T, inv *inventory.Inventory, n *network, name string, i
 	return r
 }
 
-func exportOf(t *testing.T, inv *inventory.Inventory, run string) inventory.Export {
+func exportAsOf(t *testing.T, inv *inventory.Inventory, run string) inventory.Export {
 	t.Helper()
 	e, err := inv.Export(context.Background(), run)
 	if err != nil {
@@ -223,7 +225,7 @@ func TestRunRecordsGroups(t *testing.T) {
 		t.Fatalf("groups %d cover %d addresses, want %d in %d groups", len(groups), addresses, want, (want+6)/7)
 	}
 	seen := 0
-	for _, h := range exportOf(t, inv, "g1").Hosts {
+	for _, h := range exportAsOf(t, inv, "g1").Hosts {
 		if h.MissedRuns == 0 && h.Status == inventory.StatusActive {
 			seen++
 		}
@@ -302,7 +304,7 @@ func TestResume(t *testing.T) {
 		n := newNetwork(second, late)
 		if !interrupt {
 			mustScan(t, inv, n, "r", 2, settingsFor(include, exclude, 6))
-			return inv, comparable(t, exportOf(t, inv, "r"))
+			return inv, comparable(t, exportAsOf(t, inv, "r"))
 		}
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -354,7 +356,7 @@ func TestResume(t *testing.T) {
 		if err != nil || completed.Status != inventory.RunCompleted {
 			t.Fatalf("after resume: %+v, %v", completed, err)
 		}
-		return inv, comparable(t, exportOf(t, inv, "r"))
+		return inv, comparable(t, exportAsOf(t, inv, "r"))
 	}
 
 	_, want := scanBoth(t, false)
@@ -379,7 +381,7 @@ func TestResume(t *testing.T) {
 	groupsAfter, _ := inv.RunGroups(context.Background(), run.ID)
 	after, _ := inv.RunByName(context.Background(), "r")
 	if len(r.Calls()) != 0 || !reflect.DeepEqual(groupsBefore, groupsAfter) || after.Status != inventory.RunCompleted ||
-		comparable(t, exportOf(t, inv, "r")) != got {
+		comparable(t, exportAsOf(t, inv, "r")) != got {
 		t.Fatal("resume of a completed run changed something")
 	}
 }
@@ -411,7 +413,7 @@ func TestReprobeMissing(t *testing.T) {
 	if asked[a] != 2 || asked[b] != 2 || asked[c] != 1 {
 		t.Fatalf("discover counts = %v, want a and b twice, c once", asked)
 	}
-	e := exportOf(t, inv, "m2")
+	e := exportAsOf(t, inv, "m2")
 	ha := hostOf(t, e, a)
 	if ha.Status != inventory.StatusActive || ha.MissedRuns != 0 || len(ha.Services) != 2 || ha.Services[1].HTTP == nil ||
 		ha.Services[1].Status != inventory.StatusActive {
@@ -422,7 +424,7 @@ func TestReprobeMissing(t *testing.T) {
 	}
 
 	r = mustScan(t, inv, newNetwork([]string{a, c}, nil), "m3", 2, settingsFor(include, nil, 4))
-	if hb := hostOf(t, exportOf(t, inv, "m3"), b); hb.Status != inventory.StatusInactive || hb.MissedRuns != 2 {
+	if hb := hostOf(t, exportAsOf(t, inv, "m3"), b); hb.Status != inventory.StatusInactive || hb.MissedRuns != 2 {
 		t.Fatalf("host missed twice = %s missed %d, want inactive 2", hb.Status, hb.MissedRuns)
 	}
 	last := r.Calls()[len(r.Calls())-1]
@@ -438,7 +440,7 @@ func TestReprobeBoundaries(t *testing.T) {
 	const gone, stays, excluded, never = "10.11.0.4", "10.11.0.5", "10.11.0.6", "10.11.0.7"
 	mustScan(t, inv, newNetwork([]string{gone, stays, excluded}, nil), "b1", 1, settingsFor(include, nil, 4))
 	mustScan(t, inv, newNetwork([]string{stays, excluded}, nil), "b2", 1, settingsFor(include, nil, 4))
-	if h := hostOf(t, exportOf(t, inv, "b2"), gone); h.Status != inventory.StatusInactive {
+	if h := hostOf(t, exportAsOf(t, inv, "b2"), gone); h.Status != inventory.StatusInactive {
 		t.Fatalf("%s after b2 = %s, want inactive", gone, h.Status)
 	}
 
@@ -464,5 +466,140 @@ func TestReprobeBoundaries(t *testing.T) {
 	if discovers != groups || services != 1 {
 		t.Fatalf("b3 made %d Discover and %d Services calls, want %d and 1 (no re-probe of %s, %s, %s)",
 			discovers, services, groups, gone, excluded, never)
+	}
+}
+
+// REQ-DIFF-003
+func TestServiceGoneAndBackOnHostThatStaysUp(t *testing.T) {
+	inv := openInventory(t)
+	ctx := context.Background()
+	var (
+		mu   sync.Mutex
+		down bool
+	)
+	r := &nmaptest.Runner{
+		DiscoverFunc: func(_ context.Context, addrs []string, _ nmap.Options) ([]nmap.Host, error) {
+			return []nmap.Host{{Address: addrs[0], Up: true}}, nil
+		},
+		ServicesFunc: func(_ context.Context, addrs []string, _ []int, _ nmap.Options) ([]nmap.Host, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			state := "open"
+			if down {
+				state = "closed"
+			}
+			return []nmap.Host{{Address: addrs[0], Up: true, Ports: []nmap.Port{
+				{Number: 3001, Protocol: "tcp", State: "open", Service: "ssh", Product: "OpenSSH"},
+				{Number: 8787, Protocol: "tcp", State: state, Service: "ssh", Product: "OpenSSH"},
+			}}}, nil
+		},
+	}
+	settings := inventory.RunSettings{Targets: []string{"localhost"}, Ports: []int{3001, 8787}, MaxRate: 100, Workers: 1}
+	steps := []struct {
+		down bool
+		want string
+	}{{false, ""}, {true, diff.ServiceMissing}, {true, diff.ServiceInactive}, {true, ""}, {false, diff.ServiceReturned}}
+	var prev inventory.Export
+	for i, step := range steps {
+		mu.Lock()
+		down = step.down
+		mu.Unlock()
+		name := fmt.Sprintf("svc-%d", i)
+		run, err := inv.CreateRun(ctx, inventory.RunSpec{Name: name, InactiveAfter: 2, Settings: settings})
+		if err != nil {
+			t.Fatal(err)
+		}
+		sc := &scan.Scanner{Store: inv, Runner: r, Resolver: resolverFunc(func(string) string { return "127.0.0.1" }), Transport: (&scantest.Transport{}).For}
+		if err := sc.Run(ctx, run); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		cur := exportAsOf(t, inv, name)
+		h := hostOf(t, cur, "127.0.0.1")
+		if h.Status != inventory.StatusActive || !slices.Equal(h.Hostnames, []string{"localhost"}) {
+			t.Fatalf("%s: host status %s hostnames %v, want active [localhost]", name, h.Status, h.Hostnames)
+		}
+		if i == 0 {
+			prev = cur
+			continue
+		}
+		d := diff.Compute(prev, cur, diff.Options{})
+		var got []string
+		for _, c := range d.Changes {
+			if c.Port == nil {
+				t.Fatalf("%s: host-level change %+v", name, c)
+			}
+			got = append(got, fmt.Sprintf("%s %d", c.Type, *c.Port))
+		}
+		var want []string
+		if step.want != "" {
+			want = []string{step.want + " 8787"}
+		}
+		if !slices.Equal(got, want) {
+			t.Fatalf("diff %s -> %s = %v, want %v", prev.Run, name, got, want)
+		}
+		prev = cur
+	}
+}
+
+type resolverFunc func(host string) string
+
+func (f resolverFunc) LookupNetIP(_ context.Context, _, host string) ([]netip.Addr, error) {
+	return []netip.Addr{netip.MustParseAddr(f(host))}, nil
+}
+
+// REQ-DIFF-014, REQ-DIFF-016, REQ-SCAN-031
+func TestPerRequestNoiseIsNoChangeOverFiveScans(t *testing.T) {
+	inv := openInventory(t)
+	include := []string{"10.12.0.1"}
+	n := newNetwork(include, nil)
+	var mu sync.Mutex
+	counter := 0
+	next := func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		counter++
+		return counter
+	}
+	n.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			nonce := make([]byte, 16)
+			rand.Read(nonce)
+			w.Header().Set("Content-Security-Policy", fmt.Sprintf("script-src 'self' 'unsafe-inline' 'nonce-%x' 'strict-dynamic'; object-src 'none'", nonce))
+			w.Header().Set("Server", "lab")
+			fmt.Fprint(w, "<title>Adminer</title>")
+		case "/favicon.ico":
+			fmt.Fprintf(w, "icon-%d", next())
+		default:
+			http.NotFound(w, r)
+		}
+	})
+	settings := settingsFor(include, nil, 0)
+	var runs []string
+	for i := range 5 {
+		name := fmt.Sprintf("noise%d", i)
+		mustScan(t, inv, n, name, 3, settings)
+		runs = append(runs, name)
+	}
+	for i := 1; i < len(runs); i++ {
+		d, err := diff.Between(context.Background(), inv, runs[i-1], runs[i], diff.Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(d.Changes) != 0 {
+			t.Errorf("%s -> %s: changes = %+v, want none", runs[i-1], runs[i], d.Changes)
+		}
+	}
+	h := hostOf(t, exportAsOf(t, inv, runs[len(runs)-1]), include[0])
+	for _, s := range h.Services {
+		if s.Port != 80 {
+			continue
+		}
+		if s.HTTP == nil || !strings.Contains(s.HTTP.Headers["content-security-policy"], "'nonce-") || strings.Contains(s.HTTP.Headers["content-security-policy"], "<volatile>") {
+			t.Errorf("stored http = %+v, want the raw CSP header", s.HTTP)
+		}
+		if s.HTTP != nil && !s.HTTP.FaviconUnstable {
+			t.Errorf("favicon %q not recorded as unstable", s.HTTP.FaviconSHA256)
+		}
 	}
 }

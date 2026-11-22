@@ -1,0 +1,22 @@
+HTTP/1.1 302 Found
+Location: /login
+Cache-Control: no-store
+Content-Type: text/html; charset=utf-8
+
+HTTP/1.1 200 OK
+Cache-Control: no-store
+Content-Type: text/html; charset=UTF-8
+X-Content-Type-Options: nosniff
+X-Frame-Options: deny
+X-Xss-Protection: 1; mode=block
+
+<!DOCTYPE html>
+<html lang="en-US">
+<head><meta charset="utf-8"><title>Grafana</title><base href="/" /></head>
+<body class="theme-dark app-grafana">
+<div id="reactRoot"></div>
+<script nonce="">
+  window.grafanaBootData = {"user":{"isSignedIn":false},"settings":{"appSubUrl":"","buildInfo":{"hideVersion":false,"version":"10.4.2","versionString":"Grafana v10.4.2 (701c851be7)","commit":"701c851be7","edition":"Open Source"}}};
+</script>
+</body>
+</html>

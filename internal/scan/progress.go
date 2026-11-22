@@ -62,6 +62,9 @@ func RunProgress(run inventory.Run, groups []inventory.GroupInfo, failed []inven
 		p.Remaining = time.Duration(float64(left) / p.AddressesPerSecond * float64(time.Second))
 		p.RemainingKnown = true
 	}
+	if run.Status == inventory.RunRunning && run.InFlight > 0 && p.AddressesTotal > p.AddressesDone {
+		p.AddressesDone = min(p.AddressesDone+run.InFlight, p.AddressesTotal)
+	}
 	return p
 }
 

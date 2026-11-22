@@ -1,0 +1,10 @@
+HTTP/1.1 404 Object Not Found
+X-CouchDB-Body-Time: 0
+X-Couch-Request-ID: e36dc043e5
+Server: CouchDB/2.1.0 (Erlang OTP/17)
+Date: Sat, 21 Nov 2026 23:41:18 GMT
+Content-Type: application/json
+Content-Length: 58
+Cache-Control: must-revalidate
+
+{"error":"not_found","reason":"Database does not exist."}

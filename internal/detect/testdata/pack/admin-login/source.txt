@@ -1,0 +1,2 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: generic administration login page: title naming an admin login and a password field (pattern of lab/services/admin)

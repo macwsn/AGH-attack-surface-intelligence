@@ -1,0 +1,23 @@
+HTTP/1.1 200 OK
+Server: nginx
+Content-Type: text/html; charset=utf-8
+X-Frame-Options: SAMEORIGIN
+Set-Cookie: PHPSESSID=0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d; path=/; secure; HttpOnly; SameSite=Strict
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="/vendor/font-awesome/css/all.min.css?v=1700000000">
+	<link rel="stylesheet" href="/css/pfSense.css?v=1700000000">
+	<title>pfSense - Login</title>
+</head>
+<body id="login">
+<div id="total"><form method="post" action="/index.php" class="login">
+<p class="text-center"><h4>Login to pfSense</h4></p>
+<input type="text" id="usernamefld" name="usernamefld" class="form-control" required placeholder="Enter your username" autocorrect="off" autocapitalize="none" spellcheck="false">
+<input type="password" id="passwordfld" name="passwordfld" class="form-control" required placeholder="Enter your password">
+<button type="submit" name="login" class="btn btn-primary float-right">Sign In</button>
+</form></div>
+</body>
+</html>

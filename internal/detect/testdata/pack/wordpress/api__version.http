@@ -1,0 +1,111 @@
+HTTP/1.1 404 Not Found
+Date: Sat, 21 Nov 2026 17:29:52 GMT
+Server: Apache/2.4.71 (Debian)
+X-Powered-By: PHP/8.3.37
+Expires: Wed, 11 Jan 1984 05:00:00 GMT
+Cache-Control: no-cache, must-revalidate, max-age=0, no-store, private
+Link: <http://wordpress/wp-json/>; rel="https://api.w.org/"
+Transfer-Encoding: chunked
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name='robots' content='noindex, nofollow' />
+<title>Page not found &#8211; Lab</title>
+<link rel="alternate" type="application/rss+xml" title="Lab &raquo; Feed" href="http://wordpress/feed/" />
+<link rel="alternate" type="application/rss+xml" title="Lab &raquo; Comments Feed" href="http://wordpress/comments/feed/" />
+<style id="wp-img-auto-sizes-contain-inline-css">
+img:is([sizes=auto i],[sizes^="auto," i]){contain-intrinsic-size:3000px 1500px}
+/*# sourceURL=wp-img-auto-sizes-contain-inline-css */
+</style>
+<style id="wp-block-site-title-inline-css">
+.wp-block-site-title{box-sizing:border-box}.wp-block-site-title :where(a){color:inherit;font-family:inherit;font-size:inherit;font-style:inherit;font-weight:inherit;letter-spacing:inherit;line-height:inherit;text-decoration:inherit}
+/*# sourceURL=http://wordpress/wp-includes/blocks/site-title/style.min.css */
+</style>
+<style id="wp-block-page-list-inline-css">
+.wp-block-navigation .wp-block-page-list{align-items:var(--navigation-layout-align,initial);background-color:inherit;display:flex;flex-direction:var(--navigation-layout-direction,initial);flex-wrap:var(--navigation-layout-wrap,wrap);justify-content:var(--navigation-layout-justify,initial)}.wp-block-navigation .wp-block-navigation-item{background-color:inherit}.wp-block-page-list{box-sizing:border-box}
+/*# sourceURL=http://wordpress/wp-includes/blocks/page-list/style.min.css */
+</style>
+<link rel='stylesheet' id='wp-block-navigation-css' href='http://wordpress/wp-includes/blocks/navigation/style.min.css?ver=7.1.5' media='all' />
+<style id="wp-block-group-inline-css">
+.wp-block-group{box-sizing:border-box}:where(.wp-block-group.wp-block-group-is-layout-constrained){position:relative}
+/*# sourceURL=http://wordpress/wp-includes/blocks/group/style.min.css */
+</style>
+<style id="wp-block-image-inline-css">
+/*# sourceURL=http://wordpress/wp-includes/blocks/image/style.min.css */
+</style>
+<style id="wp-block-heading-inline-css">
+/*# sourceURL=http://wordpress/wp-includes/blocks/heading/style.min.css */
+</style>
+<style id="wp-block-paragraph-inline-css">
+/*# sourceURL=http://wordpress/wp-includes/blocks/paragraph/style.min.css */
+</style>
+<style id="wp-block-search-inline-css">
+/*# sourceURL=http://wordpress/wp-includes/blocks/search/style.min.css */
+</style>
+<style id="wp-block-columns-inline-css">
+/*# sourceURL=http://wordpress/wp-includes/blocks/columns/style.min.css */
+</style>
+<style id="wp-block-spacer-inline-css">
+.wp-block-spacer{clear:both}
+/*# sourceURL=http://wordpress/wp-includes/blocks/spacer/style.min.css */
+</style>
+<style id="wp-block-navigation-link-inline-css">
+.wp-block-navigation .wp-block-navigation-item__label{overflow-wrap:break-word}.wp-block-navigation .wp-block-navigation-item__description{display:none}.link-ui-tools{outline:1px solid #f0f0f0;padding:8px}.link-ui-block-inserter{padding-top:8px}.link-ui-block-inserter__back{margin-left:8px;text-transform:uppercase}
+/*# sourceURL=http://wordpress/wp-includes/blocks/navigation-link/style.min.css */
+</style>
+<style id="wp-emoji-styles-inline-css">
+
+	img.wp-smiley, img.emoji {
+		display: inline !important;
+		border: none !important;
+		box-shadow: none !important;
+		height: 1em !important;
+		width: 1em !important;
+		margin: 0 0.07em !important;
+		vertical-align: -0.1em !important;
+		background: none !important;
+		padding: 0 !important;
+	}
+/*# sourceURL=wp-emoji-styles-inline-css */
+</style>
+<style id="wp-block-library-inline-css">
+/*# sourceURL=/wp-includes/css/dist/block-library/common.min.css */
+</style>
+<style id="global-styles-inline-css">
+:root :where(.wp-block-search){font-size: var(--wp--preset--font-size--medium);line-height: 1.6;}:root :where(.wp-block-search .wp-block-search__input){border-radius:3.125rem;padding-left:1.5625rem;padding-right:1.5625rem;border-color:var(--wp--preset--color--accent-6);}
+:root :where(.wp-block-search .wp-element-button, .wp-block-search .wp-block-button__link){border-radius: 3.125rem;margin-left: 1.125rem;}
+:root :where(.wp-block-search .wp-element-button:hover, .wp-block-search .wp-block-button__link:hover){border-color: transparent;}
+:root :where(.wp-block-site-title){font-weight: 700;letter-spacing: -.5px;}
+:root :where(.wp-block-site-title a:where(:not(.wp-element-button))){text-decoration: none;}
+:root :where(.wp-block-site-title a:where(:not(.wp-element-button)):hover){text-decoration: underline;}
+:root :where(.wp-block-navigation){font-size: var(--wp--preset--font-size--medium);}
+:root :where(.wp-block-navigation a:where(:not(.wp-element-button))){text-decoration: none;}
+:root :where(.wp-block-navigation a:where(:not(.wp-element-button)):hover){text-decoration: underline;}
+/*# sourceURL=global-styles-inline-css */
+</style>
+<style id="core-block-supports-inline-css">
+/*# sourceURL=core-block-supports-inline-css */
+</style>
+<style id="wp-block-template-skip-link-inline-css">
+/*! This file is auto-generated */
+.skip-link.screen-reader-text{border:0;clip-path:inset(50%);height:1px;margin:-1px;overflow:hidden;padding:0;position:absolute!important;width:1px;word-wrap:normal!important;word-break:normal!important}.skip-link.screen-reader-text:focus{background-color:#eee;clip-path:none;color:#444;display:block;font-size:1em;height:auto;left:5px;line-height:normal;padding:15px 23px 14px;text-decoration:none;top:5px;width:auto;z-index:100000}
+/*# sourceURL=/wp-includes/css/wp-block-template-skip-link.min.css */
+</style>
+<style id="twentytwentyfive-style-inline-css">
+/*# sourceURL=http://wordpress/wp-content/themes/twentytwentyfive/style.min.css */
+</style>
+<link rel="https://api.w.org/" href="http://wordpress/wp-json/" /><link rel="EditURI" type="application/rsd+xml" title="RSD" href="http://wordpress/xmlrpc.php?rsd" />
+<meta name="generator" content="WordPress 7.1.5" />
+<script id="wp-importmap" type="importmap">
+{"imports":{"@wordpress/interactivity":"http://wordpress/wp-includes/js/dist/script-modules/interactivity/index.min.js?ver=6a43cba92ed701f32cd9"}}
+</script>
+<link rel="modulepreload" href="http://wordpress/wp-includes/js/dist/script-modules/interactivity/index.min.js?ver=6a43cba92ed701f32cd9" id="@wordpress/interactivity-js-modulepreload" fetchpriority="low">
+<style class="wp-fonts-local">
+@font-face{font-family:Manrope;font-style:normal;font-weight:200 800;font-display:fallback;src:url('http://wordpress/wp-content/themes/twentytwentyfive/assets/fonts/manrope/Manrope-VariableFont_wght.woff2') format('woff2');}
+@font-face{font-family:"Fira Code";font-style:normal;font-weight:300 700;font-display:fallback;src:url('http://wordpress/wp-content/themes/twentytwentyfive/assets/fonts/fira-code/FiraCode-VariableFont_wght.woff2') format('woff2');}
+</style>
+</head>

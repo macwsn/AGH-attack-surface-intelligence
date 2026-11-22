@@ -1,0 +1,2 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Zabbix 6 frontend login page (zbx_session cookie, footer Zabbix SIA), zabbix.com docs

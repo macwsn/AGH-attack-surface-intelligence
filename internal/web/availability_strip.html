@@ -1,0 +1,1 @@
+{{define "availability-strip"}}{{if .Samples}}<span class="presence">{{range .Cells}}<i{{with .Class}} class="{{.}}"{{end}} title="{{.Title}}"></i>{{end}}</span> {{end}}<span class="muted">{{.Words}}</span>{{end}}

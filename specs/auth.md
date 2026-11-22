@@ -111,18 +111,32 @@ The system SHALL fail a wrong password for an existing user and any password for
 - THEN the error equals the wrong-password error and the call takes comparable time
 
 ### REQ-AUTH-014: Audit log
-The system SHALL add exactly one audit_log row (at set by the server, actor, action, target, address) for: successful login ("login"), failed or rate-limited login ("login_failed", actor = submitted username), logout ("logout"), user changes ("user.create", "user.update", "user.delete") and role changes ("role.create", "role.update", "role.delete") with the acting user and address and the affected name as target; rejected operations add no user./role. row, and no row contains a password or session token.
+The system SHALL add exactly one audit_log row (at set by the server, actor, action, target, address) for: successful login ("login"), failed or rate-limited login ("login_failed", actor = submitted username), logout ("logout"), user changes ("user.create", "user.update", "user.delete", "user.password", "user.disable", "user.enable") and role changes ("role.create", "role.update", "role.delete") with the acting user and address and the affected name as target; rejected operations add no user./role. row, and no row contains a password or session token.
 
 #### Scenario: failed login
 - WHEN a login fails for username "mallory" from 10.0.0.9
 - THEN one row with action "login_failed", actor "mallory" and address "10.0.0.9" is added
 
 ### REQ-AUTH-015: Last admin protection
-The system SHALL refuse to delete or demote the last user with role admin with `ErrLastAdmin`, checking within the same transaction under a lock so that concurrent demotions leave at least one admin; unknown users fail with `ErrUnknownUser`.
+The system SHALL refuse to delete, demote or disable the last enabled user whose role holds every permission (the
+built-in admin role or any custom role with all permissions) with `ErrLastAdmin` ("the last enabled admin cannot be
+deleted, demoted or disabled"), counting only enabled users whose role holds every permission and checking within the
+same transaction under the same advisory lock for `SetUserRole`, `DeleteUser` and `SetUserDisabled`, so that
+concurrent changes leave at least one enabled user holding every permission; moving such a user to another role that
+holds every permission is not a demotion; a disabled admin may be demoted or deleted freely; unknown users fail with
+`ErrUnknownUser`.
 
 #### Scenario: two concurrent demotions
 - WHEN the last two admins are demoted concurrently
 - THEN at least one admin remains
+
+#### Scenario: disabled second admin
+- WHEN root and root2 are admins and root2 is disabled
+- THEN disabling, demoting or deleting root fails with `ErrLastAdmin`, and demoting or deleting root2 succeeds
+
+#### Scenario: custom all-permission role
+- WHEN the only user is "su" with a custom role holding every permission
+- THEN disabling, deleting or demoting su to a role missing any permission fails with `ErrLastAdmin`
 
 ### REQ-AUTH-016: `asi user create`
 `asi user create --username U --role R --password-stdin` SHALL read one line from stdin, strip one trailing "\n" or "\r\n" and nothing else, create the user through `Service.CreateUser` with audit actor "cli" and address "local", print one line naming the user and exit 0; errors (user exists, password shorter than 12 characters, unknown role) SHALL print one line on stderr and exit 1, missing --username or --role SHALL print the usage to stderr and exit 2, and without --password-stdin it SHALL exit 1 with a one-line error telling to use --password-stdin, never prompting. Decision: the CLI audit actor is "cli" and the address "local".
@@ -134,3 +148,192 @@ The system SHALL refuse to delete or demote the last user with role admin with `
 #### Scenario: duplicate user
 - WHEN the same command runs again
 - THEN it exits 1 with a one-line stderr error that the user exists
+
+### REQ-AUTH-017: List users
+`Service.ListUsers` SHALL return every user with username, role, `Disabled` flag and creation time, ordered by
+username; `User` and `Service.GetUser` SHALL carry the `Disabled` flag (`users.disabled`, migration
+`0017_user_disabled.sql`, default false).
+
+#### Scenario: list with a disabled user
+- WHEN users root (admin), alice (editor) and bob (viewer, disabled) exist
+- THEN `ListUsers` returns alice, bob, root in that order with bob marked disabled
+
+### REQ-AUTH-018: Reset password
+`Service.ResetPassword(actor, username, password)` SHALL replace the user's argon2id hash, enforce the same minimum
+length as `HashPassword` (`ErrPasswordTooShort`), fail with `ErrUnknownUser` for an unknown user, delete all of the
+user's sessions and add one audit row "user.password" with the user as target, all in one transaction; the password is
+never written to the audit log; signed-in actors are limited by REQ-AUTH-026 and cannot reset their own password.
+`Service.ResetPasswordKeepSession(actor, username, password, session)` SHALL do the same but, when an exempt actor
+resets the password of the user it is named after, keep the session whose token is `session`; the Users page uses it
+with the request's session cookie.
+
+#### Scenario: reset
+- WHEN an admin resets alice's password
+- THEN alice can log in with the new password only, and one "user.password" row targeting alice is added
+
+#### Scenario: reset ends sessions
+- WHEN an admin resets the password of a viewer who is signed in
+- THEN the viewer's next request with the old session cookie is redirected to `/login`, and other users stay signed in
+
+#### Scenario: own password through the Users page
+- WHEN a signed-in admin posts a new password to their own `/users/<name>/password`
+- THEN the answer is 403 pointing to the Account page, the password and all sessions are unchanged and no audit row
+  is added
+
+### REQ-AUTH-019: Disable and enable users
+`Service.SetUserDisabled(actor, username, disabled)` SHALL set the user's disabled flag and add one audit row
+"user.disable" or "user.enable"; disabling SHALL delete all of the user's sessions. A disabled user's login SHALL fail
+with `ErrInvalidCredentials` (audited as "login_failed", password still verified so the timing is unchanged), and
+`LookupSession` SHALL return `ErrNoSession` for a session whose user is disabled. Unknown users fail with
+`ErrUnknownUser`.
+
+#### Scenario: disable a logged-in user
+- WHEN alice has a session and an admin disables alice
+- THEN the session no longer works and alice cannot log in until she is enabled again
+
+### REQ-AUTH-020: Audit query
+`Service.ListAudit(filter, offset, limit)` SHALL return audit entries (id, at, actor, action, target, address)
+matching all set fields of `AuditFilter` (`Actor`, `Action`, `Target` exact match; `Since` inclusive, `Until`
+exclusive), newest first (ties by id, newest first), skipping `offset` and returning at most `limit` entries, plus the
+total number of matching entries; a negative offset or a limit below 1 is an error.
+
+#### Scenario: second page
+- WHEN 7 entries exist and `ListAudit({}, 3, 3)` is called
+- THEN the 4th to 6th newest entries are returned with total 7
+
+### REQ-AUTH-021: `asi user list|set-role|delete` and `asi role list`
+`asi user list` SHALL print a header and one line per user (username, role, enabled/disabled, creation time in
+RFC 3339 UTC); `asi user set-role --username U --role R` and `asi user delete --username U` SHALL call
+`Service.SetUserRole` / `Service.DeleteUser` with audit actor "cli" and address "local" and print one line naming the
+user; `asi role list` SHALL print a header and one line per role (name, built-in true/false, comma-separated
+permissions). Errors (unknown user, unknown role, `ErrLastAdmin`) SHALL print one line on stderr and exit 1; missing
+or extra arguments SHALL print the usage to stderr and exit 2. The usage text lists these commands. None of them runs
+on `asi serve` startup.
+
+#### Scenario: demote the last admin from the CLI
+- WHEN `asi user set-role --username root --role viewer` runs and root is the only enabled admin
+- THEN it exits 1, stderr is `asi user: the last enabled admin cannot be deleted, demoted or disabled`, and no audit
+  row is added
+
+### REQ-AUTH-023: Change own password
+`Service.ChangePassword(actor, current, password, session)` SHALL let the actor change their own password: it SHALL
+reject a new password under 12 characters (`ErrPasswordTooShort`), count the check of `current` as a login attempt of
+the actor's username and address in the failed-login throttle (`ErrRateLimited` when the limit is reached, a
+"login_failed" audit row and `ErrInvalidCredentials` when `current` is wrong), reject a new password equal to the
+current one (`ErrSamePassword`), and otherwise, in one transaction, store the new argon2id hash, delete every session
+of the user except the one whose token is `session`, and add one audit row "user.password" with the user as actor and
+target; no password material is written to the audit log. The admin reset (REQ-AUTH-018) is unchanged.
+
+#### Scenario: other sessions end
+- WHEN a viewer signed in twice changes their password from one session
+- THEN that session stays signed in, the other is redirected to `/login`, and only the new password works
+
+#### Scenario: wrong current password is throttled
+- WHEN a user submits a wrong current password as often as the account limit allows
+- THEN their next login with the right password fails with `ErrRateLimited` and the password is unchanged
+
+### REQ-AUTH-022: CSRF token stored hashed
+The CSRF token of a session SHALL be derived from the session token (HMAC-SHA-256) and the sessions table SHALL store
+only its SHA-256 (`sessions.csrf_hash`); `Service.LookupSession` SHALL derive the token again and return it in the
+`Principal` only when it matches the stored hash. Migration `0020` SHALL end all existing sessions, whose CSRF tokens
+were stored in plain text.
+
+#### Scenario: no plain CSRF token in the database
+- WHEN a user logs in
+- THEN the sessions row contains neither the CSRF token nor its hex form, but its SHA-256
+- AND `LookupSession` returns the same CSRF token as `Login`
+
+### REQ-AUTH-024: Role assignment needs the assigned permissions
+When the actor is a signed-in user, `Service.SetUserRole` and `Service.CreateUser` SHALL fail with
+`ErrPermissionNotHeld` unless the actor's own role holds every permission of the role being assigned (so only a role
+holding every permission can assign admin), and `Service.SetUserRole` SHALL fail with `ErrOwnRole` when the actor
+changes their own role, to any role, and with `ErrStrongerUser` (REQ-AUTH-026) when the target's current role holds a
+permission the actor's role does not. The actor's role is read inside the same transaction as the change; a rejected
+call changes nothing and writes no audit row. `ErrLastAdmin` (REQ-AUTH-015) is checked first and applies to every
+actor. An actor is a signed-in user when its address is not "local" and either the request context carries its
+`Principal` (set by the session middleware) or the user has a session; a signed-in principal whose user no longer
+exists holds no permissions. Decision: actors with address "local" (the CLI actor "cli" of REQ-AUTH-021, setup and
+test actors) and actors that are not signed-in users hold no role and are exempt from the hold and own-role rules,
+so `asi user set-role` still sets any role; web actors always carry the request's client address. The web UI SHALL
+answer these errors with 403 and the users page naming the problem.
+
+#### Scenario: user manager assigns a stronger role
+- WHEN a signed-in user whose role holds only user.manage sets "editor" on a viewer or creates a user with role "admin"
+- THEN the call fails with `ErrPermissionNotHeld` (HTTP 403), the viewer keeps "viewer", no user is created and no
+  audit row is added
+
+#### Scenario: self-promotion
+- WHEN that user sets any role, including a weaker one, on themselves
+- THEN the call fails with `ErrOwnRole` (HTTP 403) and their role is unchanged
+
+#### Scenario: legal assignment
+- WHEN that user sets a role with no permissions on another user whose role holds only user.manage, or an admin sets
+  "editor" on another user
+- THEN the role is changed (HTTP 303)
+
+#### Scenario: CLI actor
+- WHEN `asi user set-role` sets "admin" on a viewer
+- THEN the role is changed; demoting the last enabled admin still fails with `ErrLastAdmin`
+
+### REQ-AUTH-025: Role edits only with held permissions
+When the actor is a signed-in user (REQ-AUTH-024), `Service.CreateRole` and `Service.UpdateRole` SHALL fail with
+`ErrPermissionNotHeld` when the submitted permission set contains a permission the actor's own role does not hold,
+and `Service.UpdateRole` and `Service.DeleteRole` SHALL fail with `ErrOwnRole` for the role the actor currently has,
+whatever permissions are submitted. Built-in roles keep failing with `ErrBuiltinRole` (REQ-AUTH-004) for every actor,
+and that check comes first. A rejected call changes nothing and writes no audit row. The web UI SHALL answer these
+errors with 403 and the roles page naming the problem, and SHALL parse the role form (body bounded like the other
+forms, 400 when it cannot be read) before reading the ticked permissions, so a POST carrying the CSRF token only in
+the `X-CSRF-Token` header keeps the submitted permissions.
+
+#### Scenario: role manager grants an unheld permission
+- WHEN a signed-in user whose role holds only role.manage creates role "evil" with user.manage, or gives
+  inventory.read to a custom role
+- THEN the call fails with `ErrPermissionNotHeld` (HTTP 403), "evil" does not exist and the other role is unchanged
+
+#### Scenario: own role
+- WHEN that user updates or deletes their own role
+- THEN the call fails with `ErrOwnRole` (HTTP 403) and the role keeps [role.manage]
+
+#### Scenario: held permission
+- WHEN that user gives role.manage to another custom role
+- THEN the role is saved (HTTP 303)
+
+#### Scenario: CSRF token in the header
+- WHEN an admin posts the role form with perm=export and perm=inventory.read and the CSRF token only in `X-CSRF-Token`
+- THEN the role has exactly [export, inventory.read]
+
+### REQ-AUTH-026: User actions only on users the actor fully holds
+When the actor is a signed-in user (REQ-AUTH-024), `Service.ResetPassword`, `Service.ResetPasswordKeepSession`,
+`Service.SetUserDisabled` (disable and enable), `Service.DeleteUser` and `Service.SetUserRole` SHALL fail with
+`ErrStrongerUser` unless the actor's own role holds every permission of the target user's current role, with no
+exception for any permission (a user manager who should manage viewers needs inventory.read as well);
+`SetUserRole` additionally keeps the REQ-AUTH-024 rules for the new role. Resetting the password of, disabling,
+enabling or deleting oneself SHALL fail with `ErrOwnAccount`; the own password is changed only through
+`Service.ChangePassword` (REQ-AUTH-023, `/account`). The target is read and locked inside the same transaction as the
+change; `ErrLastAdmin` (REQ-AUTH-015) is checked first; a rejected call changes nothing and writes no audit row.
+Actors with address "local" (the CLI actor "cli") are exempt, as in REQ-AUTH-024. The web UI SHALL answer these errors
+with 403 and the users page naming the problem, and SHALL show the role, password and action controls only on rows
+the signed-in user may act on (plain text otherwise, with a link to `/account` on their own row), with one sentence
+saying that only users whose role the signed-in user fully holds can be managed.
+
+#### Scenario: user manager resets the admin's password
+- WHEN a signed-in user whose role holds only user.manage posts a new password to `/users/admin/password`
+- THEN the answer is 403, the admin's password is unchanged and no audit row is added
+
+#### Scenario: target without inventory.read is managed
+- WHEN that user resets the password of, disables, deletes or sets role "nobody" on a user whose role holds only
+  user.manage
+- THEN the change is made
+
+#### Scenario: viewer needs inventory.read
+- WHEN that user acts on a viewer
+- THEN the call fails with `ErrStrongerUser`; with a role holding user.manage and inventory.read it succeeds
+
+#### Scenario: self
+- WHEN a signed-in user, admin included, resets their own password, disables or deletes themselves through `/users`
+- THEN the call fails with `ErrOwnAccount` (HTTP 403) and nothing changes
+
+#### Scenario: operator on the host
+- WHEN `asi user set-role` or `asi user delete` targets an admin while another all-permission user remains
+- THEN the change is made
+

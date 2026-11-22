@@ -1,7 +1,8 @@
 # Specs
 
 Living specifications: what the system does **now**. One file per capability, `specs/<capability>.md`.
-They are the reference for anyone changing the code and should be kept in step with code and tests.
+They are the reference for builders, verifiers and reviewers, and are checked for drift against code and tests
+by review.
 
 ## File format
 

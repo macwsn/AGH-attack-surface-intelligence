@@ -1,0 +1,40 @@
+# Third HOLDOUT lab: 8 web applications with a UI at the root, used nowhere else. Truth lives in truth-holdout3.json.
+# Official upstream images, pinned. No published ports, internal bridge only. Do not add `ports:`.
+name: asi-vulhub-holdout3
+
+networks:
+  vh:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.28.35.0/24
+          ip_range: 172.28.35.240/28
+          gateway: 172.28.35.1
+
+services:
+  syncthing:
+    image: syncthing/syncthing:1.27.4
+    networks: { vh: { ipv4_address: 172.28.35.10 } }
+  etherpad:
+    image: etherpad/etherpad:1.9.7
+    networks: { vh: { ipv4_address: 172.28.35.11 } }
+  filebrowser:
+    image: filebrowser/filebrowser:v2.27.0
+    networks: { vh: { ipv4_address: 172.28.35.12 } }
+  meilisearch:
+    image: getmeili/meilisearch:v1.7.3
+    networks: { vh: { ipv4_address: 172.28.35.13 } }
+  kanboard:
+    image: kanboard/kanboard:v1.2.35
+    networks: { vh: { ipv4_address: 172.28.35.14 } }
+  navidrome:
+    image: deluan/navidrome:0.51.1
+    networks: { vh: { ipv4_address: 172.28.35.15 } }
+  ntfy:
+    image: binwiederhier/ntfy:v2.9.0
+    command: ["serve"]
+    networks: { vh: { ipv4_address: 172.28.35.16 } }
+  adguardhome:
+    image: adguard/adguardhome:v0.107.45
+    networks: { vh: { ipv4_address: 172.28.35.17 } }

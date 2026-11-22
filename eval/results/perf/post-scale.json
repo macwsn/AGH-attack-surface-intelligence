@@ -1,0 +1,58 @@
+{
+  "network": "10.99.0.0/18",
+  "addresses": 16384,
+  "live_hosts": 485,
+  "workers": 16,
+  "max_rate": 1000,
+  "run1": {
+    "hosts_expected": 485,
+    "hosts_found": 485,
+    "false_hosts": 0,
+    "host_recall": 1.0,
+    "services_expected": 594,
+    "services_found": 594,
+    "service_recall": 1.0,
+    "seconds": 126,
+    "addresses_per_second": 130.0
+  },
+  "run2": {
+    "hosts_expected": 393,
+    "hosts_found": 393,
+    "false_hosts": 0,
+    "host_recall": 1.0,
+    "services_expected": 483,
+    "services_found": 483,
+    "service_recall": 1.0,
+    "seconds": 131,
+    "addresses_per_second": 125.1
+  },
+  "run3": {
+    "hosts_expected": 485,
+    "hosts_found": 485,
+    "false_hosts": 0,
+    "host_recall": 1.0,
+    "services_expected": 594,
+    "services_found": 594,
+    "service_recall": 1.0,
+    "seconds": 130,
+    "addresses_per_second": 126.0
+  },
+  "changes": {
+    "taken_down": 92,
+    "reported_missing": 92,
+    "reported_returned": 92,
+    "other_changes_1_2": 0,
+    "other_changes_2_3": 0
+  },
+  "target_side_rate": {
+    "peak_per_second": 274,
+    "avg_while_scanning": 61.0,
+    "seconds_over_limit": 0,
+    "peak_syn": 200,
+    "peak_http": 93
+  },
+  "peak_memory_mib": {
+    "asi": 491.0,
+    "postgres": 48.5
+  }
+}

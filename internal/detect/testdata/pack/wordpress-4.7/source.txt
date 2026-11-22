@@ -1,0 +1,7 @@
+captured from the running lab-agh stack
+image: wordpress:4.7 (sha256:64d2ad26106b464b0d722185341cf242036a8d46af62a95de24ebc6dc566e2db)
+compose: lab-agh/docker-compose-vulnerable.yml, service wordpress
+capture date: 2026-11-21
+command: curl -sS -i -L --max-redirs 5 http://wordpress<path> from a container on the stack network (host ports not published)
+paths: / (root.http), /version (version.http), /api/version (api__version.http)
+state: fresh install (database mysql:5.7 empty), / redirects to /wp-admin/install.php

@@ -59,7 +59,7 @@ func TestFailedGroupDoesNotCountHostsAsMissed(t *testing.T) {
 	if run, err = inv.RunByName(ctx, "f2"); err != nil || run.Status != inventory.RunCompleted || run.AddressTotal != 8 {
 		t.Fatalf("run = %+v, %v; want completed with 8 addresses", run, err)
 	}
-	e := exportOf(t, inv, "f2")
+	e := exportAsOf(t, inv, "f2")
 	if h := hostOf(t, e, stuck); h.Status != inventory.StatusActive || h.MissedRuns != 0 {
 		t.Fatalf("host of the failed group = %s missed %d, want active and not missed", h.Status, h.MissedRuns)
 	}

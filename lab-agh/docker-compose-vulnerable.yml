@@ -4,7 +4,7 @@ services:
   wordpress:
     image: wordpress:4.7
     ports:
-      - "8088:80"
+      - "127.0.0.1:8088:80"
     environment:
       WORDPRESS_DB_HOST: mysql
       WORDPRESS_DB_USER: wpuser
@@ -30,13 +30,13 @@ services:
   adminer:
     image: adminer
     ports:
-      - "8089:8080"
+      - "127.0.0.1:8089:8080"
 
   ftp:
     image: fauria/vsftpd
     ports:
-      - "21:21"
-      - "21000-21010:21000-21010"
+      - "127.0.0.1:21:21"
+      - "127.0.0.1:21000-21010:21000-21010"
     environment:
       FTP_USER: test
       FTP_PASS: test123
@@ -47,4 +47,4 @@ services:
   dvwa:
     image: vulnerables/web-dvwa
     ports:
-      - "8090:80"
+      - "127.0.0.1:8090:80"

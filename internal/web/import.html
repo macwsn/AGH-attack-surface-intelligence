@@ -1,0 +1,43 @@
+{{define "content"}}
+<div class="page-head"><div><h1>Import</h1>
+<p class="lede">Upload a JSON or CSV file to record its hosts and services as a run, like a scan; start with a dry run to see what would change.</p></div></div>
+<section class="panel">
+<header><h2>Upload a file</h2></header>
+<div class="body">
+{{with .Data.Error}}<div class="notice error" role="alert">{{.}}</div>{{end}}
+<form method="post" action="/import" enctype="multipart/form-data" hx-post="/import" hx-encoding="multipart/form-data" hx-target="main" hx-select="main" hx-swap="outerHTML" hx-disabled-elt="find button">
+{{.CSRFField}}
+<label class="field"><span>File</span><input type="file" name="file" accept=".json,.csv,application/json,text/csv" required><span class="hint">An <code>asi.export/v1</code> JSON file or a CSV with an address column, at most 20 MiB.</span></label>
+<label class="field"><span>Format</span><select name="format">
+<option value="">From the file name</option>
+<option value="json"{{if eq .Data.Format "json"}} selected{{end}}>JSON</option>
+<option value="csv"{{if eq .Data.Format "csv"}} selected{{end}}>CSV</option>
+</select></label>
+<label class="field"><span>Run name</span><input type="text" name="name" value="{{.Data.Name}}"><span class="hint">Leave empty to name the run after the time of the import.</span></label>
+<label class="check"><input type="checkbox" name="dry_run" value="1"{{if .Data.DryRun}} checked{{end}}> Dry run: show what would change and record nothing</label>
+<div class="form-actions"><button class="primary" type="submit">Import file</button></div>
+</form>
+</div>
+</section>
+{{with .Data.Report}}{{template "report" .}}{{end}}
+{{with .Data.Token}}<section class="panel">
+<header><h2>Import this file</h2></header>
+<div class="body">
+<p class="muted">The dry run found nothing that stops the import. Importing records the same file as a run; it does not need to be uploaded again.</p>
+<form method="post" action="/import/confirm">{{$.CSRFField}}<input type="hidden" name="token" value="{{.}}">
+<div class="form-actions"><button class="primary" type="submit">Import {{$.Data.ConfirmHosts}} {{if eq $.Data.ConfirmHosts 1}}host{{else}}hosts{{end}}</button></div></form>
+</div>
+</section>{{end}}
+<section class="panel">
+<header><h2>What a file looks like</h2></header>
+<div class="body">
+<p>Start from a sample and replace its rows: <a class="btn" href="/import/sample.csv" download>Sample CSV</a> <a class="btn" href="/import/sample.json" download>Sample JSON</a></p>
+<p class="muted">A JSON file is an <code>asi.export/v1</code> export. A CSV has one row per service (or per host without services) and these columns; only address is required, other columns are ignored.</p>
+</div>
+<table class="data">
+<thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+<tbody>{{range .Data.Columns}}<tr><td><code>{{.Name}}</code></td><td>{{.Meaning}}</td></tr>{{end}}</tbody>
+</table>
+</section>
+{{end}}
+

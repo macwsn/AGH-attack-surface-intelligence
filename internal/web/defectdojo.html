@@ -1,0 +1,66 @@
+{{define "content"}}
+<div class="page-head"><div><h1>DefectDojo</h1>
+<p class="lede">Send the services of a run to DefectDojo as an Nmap scan, and its services and findings as findings; save the connection, test it, then export.</p></div></div>
+{{with .Data.OK}}<div class="notice ok" role="status">{{.}}</div>{{end}}
+{{with .Data.Error}}<div class="notice error" role="alert">{{.}}</div>{{end}}
+{{if .Data.Confirm}}
+<form method="post" action="/defectdojo/export">
+{{.CSRFField}}
+<input type="hidden" name="run" value="{{.Data.Run}}">
+<input type="hidden" name="force" value="1">
+<div class="form-actions"><button type="submit">Export run {{.Data.Run}} anyway</button></div>
+</form>
+{{end}}
+<div class="cols">
+<section class="panel">
+<header><h2>Connection</h2></header>
+<div class="body">
+{{if .Data.CanEdit}}
+<form method="post" action="/defectdojo/settings">
+{{.CSRFField}}
+<label class="field"><span>Base URL</span><input type="url" name="base_url" value="{{.Data.Form.BaseURL}}" required><span class="hint">For example https://defectdojo.example.edu.pl</span></label>
+<label class="field"><span>API token</span><input type="password" name="token" autocomplete="off"{{if not .Data.Settings.TokenSet}} required{{end}}><span class="hint">{{if .Data.Settings.TokenSet}}A token is saved. Leave empty to keep it.{{else}}Stored encrypted and never shown again.{{end}}</span></label>
+{{with .Data.Choices}}
+<label class="field"><span>Product</span><select name="product_id" required hx-get="/defectdojo" hx-include="this" hx-trigger="change" hx-target="#dojo-engagement" hx-select="#dojo-engagement" hx-swap="outerHTML"><option value="">Choose a product</option>{{range .Products}}<option value="{{.ID}}"{{if eq .ID $.Data.Form.ProductID}} selected{{end}}>{{with .Name}}{{.}} {{end}}(id {{.ID}})</option>{{end}}</select><span class="hint">Products of DefectDojo that the API token can see. The id is the number in the address of the product, 2 in /product/2.</span></label>
+<label class="field" id="dojo-engagement"><span>Engagement</span><select name="engagement_id" required><option value="">{{if .Engagements}}Choose an engagement{{else}}No engagements in this product{{end}}</option>{{range .Engagements}}<option value="{{.ID}}"{{if eq .ID $.Data.Form.EngagementID}} selected{{end}}>{{with .Name}}{{.}} {{end}}(id {{.ID}})</option>{{end}}</select><span class="hint">Engagements of the chosen product. The id is the number in the address of the engagement, 3 in /engagement/3.</span></label>
+{{else}}
+<label class="field"><span>Product id</span><input type="number" name="product_id" min="1" value="{{with .Data.Form.ProductID}}{{.}}{{end}}" required><span class="hint">In DefectDojo open Products and then the product: the id is the number in the address, 2 in /product/2.{{if .Data.Settings.TokenSet}} The list of products could not be loaded from DefectDojo; Test connection shows why.{{end}}</span></label>
+<label class="field" id="dojo-engagement"><span>Engagement id</span><input type="number" name="engagement_id" min="1" value="{{with .Data.Form.EngagementID}}{{.}}{{end}}" required><span class="hint">Open the engagement of that product: the id is the number in the address, 3 in /engagement/3. Saving checks that the engagement belongs to the product.</span></label>
+{{end}}
+<label class="check"><input type="checkbox" name="force" value="1"> Save even if the connection test fails</label>
+<div class="form-actions"><button type="submit">Save changes</button></div>
+</form>
+{{else}}
+<dl class="kv">
+<dt>Base URL</dt><dd class="addr">{{with .Data.Settings.BaseURL}}{{.}}{{else}}Not set{{end}}</dd>
+<dt>Product id</dt><dd class="num">{{with .Data.Settings.ProductID}}{{.}}{{else}}Not set{{end}}</dd>
+<dt>Engagement id</dt><dd class="num">{{with .Data.Settings.EngagementID}}{{.}}{{else}}Not set{{end}}</dd>
+<dt>API token</dt><dd>{{if .Data.Settings.TokenSet}}Saved{{else}}Not set{{end}}</dd>
+</dl>
+<p class="muted">Changing the connection needs the scan.configure permission.</p>
+{{end}}
+<form method="post" action="/defectdojo/test">
+{{.CSRFField}}
+<div class="form-actions"><button type="submit">Test connection</button></div>
+</form>
+</div>
+</section>
+<section class="panel">
+<header><h2>Export a run</h2></header>
+<div class="body">
+<dl class="kv">
+<dt>Nmap scan test</dt><dd class="num">{{with .Data.Settings.NmapTestID}}{{.}}{{else}}Not exported yet{{end}}</dd>
+<dt>Findings test</dt><dd class="num">{{with .Data.Settings.FindingsTestID}}{{.}}{{else}}Not exported yet{{end}}</dd>
+</dl>
+{{if .Data.Exported}}{{with .Data.Settings}}
+<p>Open in DefectDojo: <a href="{{.BaseURL}}/engagement/{{.EngagementID}}">engagement {{.EngagementID}}</a>{{with .NmapTestID}}, <a href="{{$.Data.Settings.BaseURL}}/test/{{.}}">Nmap scan test {{.}}</a>{{end}}{{with .FindingsTestID}}, <a href="{{$.Data.Settings.BaseURL}}/test/{{.}}">findings test {{.}}</a>{{end}}.</p>
+{{end}}{{end}}
+<form method="post" action="/defectdojo/export">
+{{.CSRFField}}
+<label class="field"><span>Run</span><select name="run"><option value="">Latest</option>{{range .Data.Runs}}<option value="{{.}}"{{if eq . $.Data.Run}} selected{{end}}>{{.}}</option>{{end}}</select><span class="hint">Completed runs, newest first. Later exports update the same tests.</span></label>
+<div class="form-actions"><button class="primary" type="submit">Export to DefectDojo</button>{{if .Data.Preview}}<button type="submit" name="preview" value="1">Preview</button>{{end}}</div>
+</form>
+</div>
+</section>
+</div>
+{{end}}

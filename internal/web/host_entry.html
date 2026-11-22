@@ -1,0 +1,43 @@
+{{define "content"}}
+<div class="page-head"><div><h1>{{with .Data.Editing}}Edit host <span class="addr">{{.}}</span>{{else}}Add a host{{end}}</h1>
+<p class="lede">The entry is checked, matched against signatures and recorded as a run, like a scan. Services you leave out count as missed.</p></div></div>
+<form class="filters" method="get" action="/hosts/entry">
+<label class="grow">Edit an existing host <input type="search" name="address" placeholder="Address" required></label>
+<button type="submit">Load host</button>
+</form>
+<section class="panel">
+<header><h2>Host</h2></header>
+<div class="body">
+{{with .Data.Error}}<div class="notice error" role="alert">{{.}}</div>{{end}}
+{{with .Data.Exists}}<div class="notice warn" role="alert">Host <span class="addr">{{.}}</span> is already in the inventory, so nothing was recorded. <a href="/hosts/entry?address={{.}}">Edit host {{.}}</a> to change it.</div>{{end}}
+<form method="post" action="/hosts/entry">
+{{.CSRFField}}
+<input type="hidden" name="editing" value="{{.Data.Editing}}">
+<label class="field"><span>Address</span><input type="text" name="address" value="{{.Data.Form.Address}}" required></label>
+<label class="field"><span>Hostnames</span><input type="text" name="hostnames" value="{{.Data.Form.Hostnames}}"><span class="hint">Separated by commas.</span></label>
+<label class="field"><span>Tags</span><input type="text" name="tags" value="{{.Data.Form.Tags}}"><span class="hint">Separated by commas.</span></label>
+<label class="field"><span>Notes</span><textarea name="notes">{{.Data.Form.Notes}}</textarea></label>
+<h2>Services</h2>
+<div class="table-wrap"><table class="data">
+<thead><tr><th class="num">Row</th><th>Port</th><th>Protocol</th><th>Service</th><th>Product</th><th>Version</th><th>Scheme</th><th>Status code</th><th>Title</th><th>Technologies</th><th>Findings</th></tr></thead>
+<tbody>{{range .Data.Rows}}{{$s := .Service}}<tr>
+<td class="num">{{.N}}</td>
+<td><input type="number" name="port" value="{{$s.Port}}" aria-label="Port"></td>
+<td><input type="text" name="protocol" value="{{$s.Protocol}}" aria-label="Protocol"></td>
+<td><input type="text" name="service" value="{{$s.Service}}" aria-label="Service"></td>
+<td><input type="text" name="product" value="{{$s.Product}}" aria-label="Product"></td>
+<td><input type="text" name="version" value="{{$s.Version}}" aria-label="Version"></td>
+<td><input type="text" name="scheme" value="{{$s.Scheme}}" aria-label="Scheme"></td>
+<td><input type="number" name="status_code" value="{{$s.StatusCode}}" aria-label="Status code"></td>
+<td><input type="text" name="title" value="{{$s.Title}}" aria-label="Title"></td>
+<td><input type="text" name="technologies" value="{{$s.Technologies}}" aria-label="Technologies"></td>
+<td><input type="text" name="findings" value="{{$s.Findings}}" aria-label="Findings"></td>
+</tr>{{end}}</tbody>
+</table></div>
+<p class="hint">Leave a row empty to skip it. Technologies as <code>name:version</code>, separated by semicolons.</p>
+<div class="form-actions"><button class="primary" type="submit">Save host</button></div>
+</form>
+</div>
+</section>
+{{with .Data.Report}}{{template "report" .}}{{end}}
+{{end}}

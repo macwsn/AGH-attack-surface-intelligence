@@ -1,0 +1,1 @@
+documented markers (written fixture, not a capture): vulhub airflow/CVE-2020-17526, apache/airflow:1.10.10 webserver with RBAC on 8080

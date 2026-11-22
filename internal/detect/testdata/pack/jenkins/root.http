@@ -1,0 +1,13 @@
+HTTP/1.1 403 Forbidden
+Date: Sat, 21 Nov 2026 10:00:00 GMT
+X-Content-Type-Options: nosniff
+Set-Cookie: JSESSIONID.4c1f6d2e=node0abc123.node0; Path=/; HttpOnly
+X-Hudson: 1.395
+X-Jenkins: 2.440.3
+X-Jenkins-Session: 6e1d2a7b
+Content-Type: text/html;charset=utf-8
+Server: Jetty(10.0.20)
+
+<html><head><meta http-equiv='refresh' content='1;url=/login?from=%2F'/><script id='redirect' data-redirect-url='/login?from=%2F' src='/static/6e1d2a7b/scripts/redirect.js'></script></head><body style='background-color:white; color:white;'>
+Authentication required
+</body></html>

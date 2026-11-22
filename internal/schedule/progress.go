@@ -35,3 +35,12 @@ func ProgressOf(total, workers int, groups []inventory.GroupInfo) Progress {
 	}
 	return p
 }
+
+func (p Progress) WithInFlight(n int) Progress {
+	if n <= 0 || p.Total <= p.Done {
+		return p
+	}
+	p.Done = min(p.Done+n, p.Total)
+	p.Percent = min(100, p.Done*100/p.Total)
+	return p
+}

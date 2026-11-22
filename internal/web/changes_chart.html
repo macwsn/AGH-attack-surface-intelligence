@@ -1,0 +1,16 @@
+{{define "change-chart"}}
+<section class="panel">
+<header><h2>Changes per run, last {{len .Runs}} runs</h2>{{if .Runs}}<a class="more" href="/changes">All changes</a>{{end}}</header>
+<div class="body">
+{{if .Runs}}
+<div class="marks"><span class="change new">New or returned</span><span class="change missing">Missing or inactive</span><span class="change changed">Changed</span></div>
+<svg class="chart" role="img" aria-label="New, missing and changed per run, last {{len .Runs}} runs, highest bar {{.Max}}" width="{{.Width}}" height="{{.Height}}" viewBox="0 0 {{.Width}} {{.Height}}">
+<line class="axis" x1="0" y1="{{.AxisY}}" x2="{{.Width}}" y2="{{.AxisY}}"></line>
+{{range .Runs}}<g data-run="{{.To}}" data-new="{{.New}}" data-missing="{{.Missing}}" data-changed="{{.Changed}}"><title>{{.Title}}</title>{{range .Bars}}<rect class="{{.Class}}" x="{{.X}}" y="{{.Y}}" width="8" height="{{.Height}}"></rect>{{end}}<text x="{{.LabelX}}" y="{{.LabelY}}" transform="rotate(45 {{.LabelX}} {{.LabelY}})">{{.To}}</text></g>
+{{end}}</svg>
+{{else}}
+<div class="empty"><p>A chart of changes per run appears here once two scan runs have completed.</p></div>
+{{end}}
+</div>
+</section>
+{{end}}

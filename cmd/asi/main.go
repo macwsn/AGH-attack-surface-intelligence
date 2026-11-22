@@ -19,6 +19,7 @@ import (
 	"asi/internal/auth"
 	"asi/internal/config"
 	"asi/internal/detect"
+	"asi/internal/exchange/defectdojo"
 	"asi/internal/inventory"
 	"asi/internal/scan"
 	"asi/internal/scan/nmap"
@@ -34,25 +35,39 @@ Commands:
   migrate    apply embedded schema migrations; idempotent
   serve      web UI + JSON API + scheduler + scan workers
   user       user create --username U --role R [--password-stdin]
-  scan       scan run --targets-file F [--exclude-file F] --ports LIST --name NAME [--signatures-dir D] [--inactive-after N] [--max-rate PPS] [--workers N] --wait
+             user list
+             user set-role --username U --role R
+             user delete --username U
+  role       role list
+  scan       scan run --targets-file F [--exclude-file F] --ports LIST --name NAME [--signatures-dir D] [--inactive-after N] [--max-rate PPS] [--workers N] [--http-timeout D] [--max-addresses N] [--max-work N] [--service-detection light|standard] [--no-adaptive] [--mode full|recheck] --wait
+             scan plan (same flags as scan run; sends nothing)
              scan resume NAME
              scan show NAME
   export     export --format json|csv --out FILE [--run NAME]
   diff       diff --from NAME --to NAME --format json --out FILE
-  import     import --format json|csv --file FILE
+  import     import --format json|csv --file FILE [--name NAME] [--dry-run] [--signatures-dir D] [--inactive-after N]
   host       host edit ADDRESS [--add-tag T]... [--remove-tag T]... [--notes TEXT]
+  inventory  inventory rebuild-summary
+  signature  signature hunt --file SIG.yaml [--since DURATION] [--format text|json]
+  defectdojo defectdojo configure --url URL --product ID --engagement ID [--token-stdin] [--force]
+             defectdojo test
+             defectdojo export --run NAME [--dry-run [--out DIR] | --force]
+  key        key status
+             key rotate [--batch N]
   version    print the version
 
 Environment:
   ASI_DATABASE_URL   Postgres URL (postgres://user:password@host:port/db)
   ASI_MASTER_KEY     base64 of 32 bytes, field encryption key
+  ASI_MASTER_KEY_PREVIOUS  comma-separated base64 keys that encrypted older data (read only; key rotate rewrites it)
   ASI_LISTEN         listen address for serve (default :8080)
-  ASI_SIGNATURES_DIR signatures directory serve checks UI signature ids against (optional)
+  ASI_INTEREST_WEIGHTS  interest score weights, e.g. admin-panel=30,staging=20 (unset keys keep defaults)
+  ASI_SIGNATURES_DIR signatures directory serve matches scans, imports and entries with (optional)
+  ASI_TIMEZONE       IANA zone the UI shows times in, e.g. Europe/Warsaw (default: the process local zone)
+  ASI_VOLATILE_HEADERS  response headers that never count as a change, comma-separated (optional)
 `
 
-var notImplemented = map[string]bool{"import": true}
-
-var inventoryCommands = map[string]bool{"scan": true, "export": true, "diff": true, "host": true}
+var inventoryCommands = map[string]bool{"scan": true, "export": true, "diff": true, "import": true, "host": true, "inventory": true, "signature": true}
 
 var errUsage = errors.New("usage")
 
@@ -83,7 +98,7 @@ func runWith(ctx context.Context, deps scanDeps, args []string, stdin io.Reader,
 		fmt.Fprintln(stdout, version.String())
 		return 0
 	}
-	if cmd != "migrate" && cmd != "serve" && cmd != "user" && !notImplemented[cmd] && !inventoryCommands[cmd] {
+	if cmd != "migrate" && cmd != "serve" && cmd != "user" && cmd != "role" && cmd != "defectdojo" && cmd != "key" && !inventoryCommands[cmd] {
 		fmt.Fprintf(stderr, "asi: unknown command %q\n\n%s", cmd, usage)
 		return 2
 	}
@@ -92,7 +107,7 @@ func runWith(ctx context.Context, deps scanDeps, args []string, stdin io.Reader,
 		return 0
 	}
 
-	err := dispatch(ctx, deps, cmd, rest, stdin, stdout, getenv)
+	err := dispatch(ctx, deps, cmd, rest, stdin, stdout, stderr, getenv)
 	if errors.Is(err, errUsage) {
 		fmt.Fprint(stderr, usage)
 		return 2
@@ -104,15 +119,23 @@ func runWith(ctx context.Context, deps scanDeps, args []string, stdin io.Reader,
 	return 0
 }
 
-func dispatch(ctx context.Context, deps scanDeps, cmd string, args []string, stdin io.Reader, stdout io.Writer, getenv func(string) string) error {
+func dispatch(ctx context.Context, deps scanDeps, cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer, getenv func(string) string) error {
 	var (
-		uc     userCreateArgs
+		ua     userAction
 		action inventoryAction
+		dojo   dojoAction
+		key    keyAction
 		err    error
 	)
 	switch {
 	case cmd == "user":
-		uc, err = parseUserCreate(args)
+		ua, err = parseUser(args)
+	case cmd == "role":
+		err = parseRole(args)
+	case cmd == "defectdojo":
+		dojo, err = parseDefectDojo(args)
+	case cmd == "key":
+		key, err = parseKey(args)
 	case inventoryCommands[cmd]:
 		action, err = parseInventoryCommand(cmd, args)
 	}
@@ -122,6 +145,9 @@ func dispatch(ctx context.Context, deps scanDeps, cmd string, args []string, std
 	cfg, err := config.Load(getenv)
 	if err != nil {
 		return err
+	}
+	if cfg.Location != nil {
+		time.Local = cfg.Location
 	}
 	switch cmd {
 	case "migrate":
@@ -135,15 +161,27 @@ func dispatch(ctx context.Context, deps scanDeps, cmd string, args []string, std
 		}
 		return serve(ctx, cfg, deps, stdout)
 	case "user":
-		return userCreate(ctx, cfg, uc, stdin, stdout)
-	case "import":
-		return errors.New("not implemented yet")
+		return runUser(ctx, cfg, ua, stdin, stdout)
+	case "role":
+		return roleList(ctx, cfg, stdout)
+	case "defectdojo":
+		return withDefectDojo(ctx, cfg, deps, stdin, stdout, dojo)
+	case "key":
+		return withKeys(ctx, cfg, stdout, key)
+	case "export", "diff":
+		return withInventory(ctx, cfg, deps, stderr, action)
 	default:
 		return withInventory(ctx, cfg, deps, stdout, action)
 	}
 }
 
+const encryptBatch = 500
+
 func migrate(ctx context.Context, cfg config.Config, stdout io.Writer) error {
+	keys, err := store.NewKeyring(cfg.MasterKey, cfg.PreviousKeys...)
+	if err != nil {
+		return err
+	}
 	s, err := store.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return err
@@ -155,9 +193,23 @@ func migrate(ctx context.Context, cfg config.Config, stdout io.Writer) error {
 	}
 	if len(applied) == 0 {
 		fmt.Fprintln(stdout, "migrations: up to date")
-		return nil
+	} else {
+		fmt.Fprintf(stdout, "migrations: applied %s\n", strings.Join(applied, ", "))
 	}
-	fmt.Fprintf(stdout, "migrations: applied %s\n", strings.Join(applied, ", "))
+	sealed, err := s.EncryptPending(ctx, keys, encryptBatch)
+	if err != nil {
+		return err
+	}
+	if sealed > 0 {
+		fmt.Fprintf(stdout, "field encryption: encrypted %d stored values\n", sealed)
+	}
+	n, err := inventory.New(s, keys).BackfillSummary(ctx)
+	if err != nil {
+		return err
+	}
+	if n > 0 {
+		fmt.Fprintf(stdout, "host summary: rebuilt %d hosts\n", n)
+	}
 	return nil
 }
 
@@ -199,7 +251,7 @@ func userCreate(ctx context.Context, cfg config.Config, a userCreateArgs, stdin 
 	}
 	defer s.Close()
 	svc := auth.NewService(s, auth.Config{})
-	if err := svc.CreateUser(ctx, auth.Actor{Username: "cli", Addr: "local"}, a.username, password, a.role); err != nil {
+	if err := svc.CreateUser(ctx, cliActor, a.username, password, a.role); err != nil {
 		return err
 	}
 	fmt.Fprintf(stdout, "user %s created with role %s\n", a.username, a.role)
@@ -207,7 +259,7 @@ func userCreate(ctx context.Context, cfg config.Config, a userCreateArgs, stdin 
 }
 
 func serve(ctx context.Context, cfg config.Config, deps scanDeps, stdout io.Writer) error {
-	keyring, err := store.NewKeyring(cfg.MasterKey)
+	keyring, err := store.NewKeyring(cfg.MasterKey, cfg.PreviousKeys...)
 	if err != nil {
 		return err
 	}
@@ -216,6 +268,14 @@ func serve(ctx context.Context, cfg config.Config, deps scanDeps, stdout io.Writ
 		return err
 	}
 	defer s.Close()
+	if _, err := s.EncryptPending(ctx, keyring, encryptBatch); err != nil {
+		fmt.Fprintf(stdout, "asi serve: %s\n", oneLine(err.Error()))
+	}
+	if err := s.CheckKeys(ctx, keyring); errors.Is(err, store.ErrKeyMismatch) {
+		return err
+	} else if err != nil {
+		fmt.Fprintf(stdout, "asi serve: %s\n", oneLine(err.Error()))
+	}
 	if cfg.SignaturesDir != "" {
 		if _, err := detect.LoadDir(cfg.SignaturesDir); err != nil {
 			return fmt.Errorf("ASI_SIGNATURES_DIR: %w", err)
@@ -223,11 +283,24 @@ func serve(ctx context.Context, cfg config.Config, deps scanDeps, stdout io.Writ
 	}
 
 	inv := inventory.New(s, keyring)
-	sched := &schedule.Scheduler{
-		Store:   schedule.NewStore(s),
-		Scanner: &scan.Scanner{Store: inv, Runner: deps.runner, Transport: deps.transport, Signatures: detect.NewLibrary(s, "")},
+	inv.Interest = cfg.Interest
+	inv.BodyRetention = cfg.BodyRetention
+	inv.VolatileHeaders = cfg.VolatileHeaders
+	if n, err := inv.BackfillSummary(ctx); err != nil {
+		fmt.Fprintf(stdout, "asi serve: %s\n", oneLine(err.Error()))
+	} else if n > 0 {
+		fmt.Fprintf(stdout, "asi serve: host summary rebuilt for %d hosts\n", n)
 	}
-	handler, err := web.New(web.Deps{Store: s, Keyring: keyring, Auth: auth.NewService(s, auth.Config{}), Scans: sched, SignaturesDir: cfg.SignaturesDir})
+	lib := detect.NewLibrary(s, keyring, cfg.SignaturesDir)
+	sched := &schedule.Scheduler{
+		Store:   schedule.NewStore(s, keyring),
+		Scanner: &scan.Scanner{Store: inv, Runner: deps.runner, Transport: deps.transport, Signatures: lib},
+	}
+	dojo := &defectdojo.Service{Store: defectdojo.DBStore{DB: s, Keys: keyring}, Inventory: inv,
+		HTTP: &http.Client{Timeout: dojoTimeout}}
+	authSvc := auth.NewService(s, auth.Config{})
+	handler, err := web.New(web.Deps{Store: s, Keyring: keyring, Auth: authSvc, Users: authSvc, Roles: authSvc, Audit: authSvc, Scans: sched,
+		DefectDojo: dojo, SignaturesDir: cfg.SignaturesDir, Inventory: inv, Library: lib})
 	if err != nil {
 		return err
 	}

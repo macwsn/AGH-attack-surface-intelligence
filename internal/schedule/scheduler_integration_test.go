@@ -105,7 +105,7 @@ func newEnv(t *testing.T) *env {
 		t.Fatal(err)
 	}
 	g := &gatedNmap{blocked: make(chan struct{}, 1)}
-	return &env{db: db, inv: inventory.New(db, k), st: schedule.NewStore(db), clock: &fakeTime{}, nmap: g, run: g.runner()}
+	return &env{db: db, inv: inventory.New(db, k), st: schedule.NewStore(db, k), clock: &fakeTime{}, nmap: g, run: g.runner()}
 }
 
 func (e *env) scheduler(t *testing.T, ctx context.Context) *schedule.Scheduler {
@@ -498,5 +498,113 @@ func TestEditDuringRunAppliesToNextRun(t *testing.T) {
 		if !slices.Equal(c.Opts.ProbePorts, []int{8080}) || !slices.Equal(c.Addrs, []string{"10.0.1.1", "10.0.1.2"}) {
 			t.Errorf("next run did not use the edited settings: %+v", c)
 		}
+	}
+}
+
+type finishGate struct {
+	*inventory.Inventory
+	reached chan struct{}
+	release chan struct{}
+}
+
+func (g *finishGate) SetRunStatus(ctx context.Context, runID int64, st inventory.RunStatus) error {
+	if err := g.Inventory.SetRunStatus(ctx, runID, st); err != nil {
+		return err
+	}
+	if st == inventory.RunCompleted {
+		g.reached <- struct{}{}
+		<-g.release
+	}
+	return nil
+}
+
+// REQ-SCHEDULE-005
+func TestStartNowAfterRunRecordedCompletedIsNotRejectedAsOpen(t *testing.T) {
+	e := newEnv(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	d, err := e.st.CreateDefinition(ctx, admin, definition("finish"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gate := &finishGate{Inventory: e.inv, reached: make(chan struct{}, 1), release: make(chan struct{})}
+	s := &schedule.Scheduler{
+		Store:   e.st,
+		Scanner: &scan.Scanner{Store: gate, Runner: e.run, Clock: scantest.NewClock(time.Unix(0, 0))},
+		Now:     e.clock.Now,
+		Logf:    t.Logf,
+	}
+	s.Start(ctx)
+	t.Cleanup(s.Wait)
+	var once sync.Once
+	release := func() { once.Do(func() { close(gate.release) }) }
+	t.Cleanup(release)
+
+	e.clock.Set("2026-11-18T12:00:00Z")
+	first, err := s.StartNow(ctx, admin, d.ID)
+	if err != nil {
+		t.Fatalf("StartNow: %v", err)
+	}
+	<-gate.reached
+	if st := status(t, e, first.ID); st != inventory.RunCompleted {
+		t.Fatalf("status of the first run = %s, want completed", st)
+	}
+	e.clock.Set("2026-11-18T12:05:00Z")
+	_, err = s.StartNow(ctx, admin, d.ID)
+	release()
+	if err != nil {
+		t.Fatalf("StartNow after the first run was recorded completed: %v", err)
+	}
+}
+
+// REQ-SCHEDULE-011 AC1 AC3: targets and excludes of a definition and its runs are stored encrypted; deleting a definition is refused
+// while its run is open, keeps its runs (marked as of a deleted definition) and is audited.
+func TestDeleteDefinitionKeepsRunsAndEncryptsScope(t *testing.T) {
+	e := newEnv(t)
+	ctx := context.Background()
+	d, err := e.st.CreateDefinition(ctx, admin, definition("campus"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	run, err := e.st.StartRun(ctx, d.ID, time.Date(2026, 11, 16, 22, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, table := range []string{"scan_definitions", "runs"} {
+		var raw string
+		if err := e.db.Pool.QueryRow(ctx, `SELECT string_agg(row_to_json(t)::text, ' ') FROM `+table+` t`).Scan(&raw); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(raw, "10.0.0.0/28") || strings.Contains(raw, "10.0.0.14") {
+			t.Errorf("%s holds the targets or excludes in plain text: %s", table, raw)
+		}
+	}
+	if got, err := e.st.Run(ctx, run.ID); err != nil || !slices.Equal(got.Settings.Targets, []string{"10.0.0.0/28"}) ||
+		!slices.Equal(got.Settings.Excludes, []string{"10.0.0.14"}) {
+		t.Fatalf("run settings = %+v, %v", got.Settings, err)
+	}
+	if err := e.st.DeleteDefinition(ctx, admin, d.ID); !errors.Is(err, schedule.ErrRunOpen) {
+		t.Fatalf("delete with an open run: %v, want ErrRunOpen", err)
+	}
+	if _, err := e.db.Pool.Exec(ctx, `UPDATE runs SET status = 'completed', finished_at = now() WHERE id = $1`, run.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.st.DeleteDefinition(ctx, admin, d.ID); err != nil {
+		t.Fatalf("DeleteDefinition: %v", err)
+	}
+	if _, err := e.st.Definition(ctx, d.ID); !errors.Is(err, schedule.ErrUnknownDefinition) {
+		t.Fatalf("definition after delete: %v, want ErrUnknownDefinition", err)
+	}
+	got, err := e.st.Run(ctx, run.ID)
+	if err != nil || !got.DefinitionDeleted || got.DefinitionID != 0 || !slices.Equal(got.Settings.Targets, []string{"10.0.0.0/28"}) {
+		t.Fatalf("run after delete = %+v, %v; want kept, marked definition deleted", got, err)
+	}
+	var audited int
+	if err := e.db.Pool.QueryRow(ctx, `SELECT count(*) FROM audit_log WHERE action = 'scan.delete' AND target = 'campus' AND actor = 'alice'`).
+		Scan(&audited); err != nil || audited != 1 {
+		t.Fatalf("scan.delete audit rows = %d, %v; want 1", audited, err)
+	}
+	if err := e.st.DeleteDefinition(ctx, admin, d.ID); !errors.Is(err, schedule.ErrUnknownDefinition) {
+		t.Fatalf("second delete: %v, want ErrUnknownDefinition", err)
 	}
 }

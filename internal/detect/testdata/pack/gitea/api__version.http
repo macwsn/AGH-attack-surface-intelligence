@@ -1,0 +1,10 @@
+HTTP/1.1 404 Not Found
+Content-Type: text/html; charset=utf-8
+Refresh: 1; url=/
+Set-Cookie: i_like_gitea=3b6267cd89f76863; Path=/; HttpOnly; SameSite=Lax
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Date: Sat, 21 Nov 2026 17:31:14 GMT
+Content-Length: 46
+
+Not Found. <a href="/">Go to default page</a>.

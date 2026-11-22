@@ -2,17 +2,21 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
 
 	"asi/internal/auth"
+	"asi/internal/diff"
+	"asi/internal/inventory"
 )
 
 type fakeAuth struct {
@@ -433,7 +437,7 @@ func TestNavShowsOnlyAllowedEntries(t *testing.T) {
 	} {
 		body := do(r, http.MethodGet, "/", nil, fa.session(t, user)).Body.String()
 		for path, shown := range want {
-			if got := strings.Contains(body, `<a href="`+path+`">`); got != shown {
+			if got := strings.Contains(body, `<a href="`+path+`"`); got != shown {
 				t.Errorf("%s: nav entry %s shown = %v, want %v", user, path, got, shown)
 			}
 		}
@@ -441,6 +445,47 @@ func TestNavShowsOnlyAllowedEntries(t *testing.T) {
 	login := do(r, http.MethodGet, "/login", nil).Body.String()
 	if strings.Contains(login, `<nav>`) {
 		t.Errorf("anonymous login page shows navigation")
+	}
+}
+
+func TestNavMarksCurrentSection(t *testing.T) {
+	r, fa := newTestRouter(t)
+	p, err := fa.LookupSession(context.Background(), fa.session(t, "alice").Value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current := regexp.MustCompile(`<a href="([^"]*)" aria-current="page">`)
+	for path, want := range map[string]string{
+		"/":                        "/",
+		"/hosts/":                  "/hosts/",
+		"/hosts/10.0.0.1":          "/hosts/",
+		"/hosts/10.0.0.1/timeline": "/hosts/",
+		"/hosts/entry":             "/hosts/",
+		"/changes":                 "/changes",
+		"/scans":                   "/scans",
+		"/scans/42":                "/scans",
+		"/runs/42":                 "/scans",
+		"/runs":                    "/scans",
+		"/groups":                  "/groups",
+		"/signatures/7":            "/signatures",
+		"/import":                  "/import",
+		"/export":                  "/export",
+		"/hostsx":                  "",
+	} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req = req.WithContext(auth.WithPrincipal(req.Context(), p))
+		rec := httptest.NewRecorder()
+		r.Error(rec, req, http.StatusNotFound, "x")
+		got := current.FindAllStringSubmatch(rec.Body.String(), -1)
+		if want == "" {
+			if len(got) != 0 {
+				t.Errorf("%s: marked %v, want none", path, got)
+			}
+			continue
+		}
+		if len(got) != 1 || got[0][1] != want {
+			t.Errorf("%s: marked %v, want exactly %s", path, got, want)
+		}
 	}
 }
 
@@ -504,6 +549,61 @@ func TestLoginIgnoresUnsafeNext(t *testing.T) {
 	}
 }
 
+var chartRunRE = regexp.MustCompile(`<g data-run="([^"]+)" data-new="(\d+)" data-missing="(\d+)" data-changed="(\d+)"><title>([^<]+)</title>`)
+
+// REQ-WEB-015
+func TestDashboardChangeChart(t *testing.T) {
+	inv := &fakeInventory{exports: map[string]inventory.Export{}}
+	for i := 0; i < 22; i++ {
+		name := fmt.Sprintf("c%02d", i)
+		var hosts []inventory.ExportHost
+		for j := 0; j <= i%4; j++ {
+			hosts = append(hosts, inventory.ExportHost{Address: fmt.Sprintf("10.0.0.%d", j+1), Status: inventory.StatusActive})
+		}
+		inv.runs = append([]inventory.Run{{ID: int64(i + 1), Name: name, Status: inventory.RunCompleted}}, inv.runs...)
+		inv.exports[name] = inventory.Export{Run: name, Hosts: hosts}
+	}
+	inv.runs = append([]inventory.Run{{ID: 99, Name: "running", Status: inventory.RunRunning}}, inv.runs...)
+	r, viewer := newChangesRouter(t, inv)
+	rec := do(r, http.MethodGet, "/", nil, viewer)
+	body := rec.Body.String()
+	m := chartRunRE.FindAllStringSubmatch(body, -1)
+	if rec.Code != http.StatusOK || len(m) != 20 || m[0][1] != "c02" || m[19][1] != "c21" {
+		t.Fatalf("chart has %d runs (status %d):\n%s", len(m), rec.Code, body)
+	}
+	if m[1][2] != "1" || m[0][5] != "c02: 1 new, 0 missing, 0 changed (against c01)" {
+		t.Errorf("chart values = %v", m[:2])
+	}
+	if !strings.Contains(body, `<svg class="chart" role="img"`) || strings.Contains(body, "style=") || externalRef.MatchString(body) {
+		t.Errorf("chart markup:\n%s", body)
+	}
+
+	few := &fakeInventory{runs: inv.runs[len(inv.runs)-3:], exports: inv.exports}
+	r, viewer = newChangesRouter(t, few)
+	if m := chartRunRE.FindAllStringSubmatch(do(r, http.MethodGet, "/", nil, viewer).Body.String(), -1); len(m) != 2 {
+		t.Errorf("3 runs: chart has %d entries, want 2", len(m))
+	}
+	r, viewer = newChangesRouter(t, &fakeInventory{})
+	if body := do(r, http.MethodGet, "/", nil, viewer).Body.String(); !strings.Contains(body, "A chart of changes per run appears here once two scan runs have completed.") || strings.Contains(body, "<svg") {
+		t.Errorf("no empty state:\n%s", body)
+	}
+}
+
+// REQ-WEB-015
+func TestChangeChartGeometry(t *testing.T) {
+	c := newChangeChart([]diff.RunCounts{{From: "a", To: "b", New: 4, Missing: 1, Changed: 0}, {From: "b", To: "c", New: 0, Missing: 0, Changed: 2}})
+	if c.Max != 4 || len(c.Runs) != 2 {
+		t.Fatalf("chart = %+v", c)
+	}
+	bars := c.Runs[0].Bars
+	if bars[0].Height != chartPlot || bars[0].Y != c.AxisY-chartPlot || bars[1].Height != chartPlot/4 || bars[2].Height != 0 {
+		t.Errorf("bars = %+v", bars)
+	}
+	if c.Runs[1].Bars[0].X <= bars[2].X {
+		t.Errorf("runs overlap: %+v", c.Runs)
+	}
+}
+
 // REQ-SIGNATURES-005
 func TestSignaturePagesForbiddenToViewerAndOperator(t *testing.T) {
 	r, fa := newTestRouter(t)
@@ -541,5 +641,155 @@ func TestSignaturePagesForbiddenToViewerAndOperator(t *testing.T) {
 	rec = do(r, http.MethodGet, "/", nil, fa.session(t, "alice"))
 	if !strings.Contains(rec.Body.String(), `href="/signatures"`) {
 		t.Error("admin does not see the Signatures nav entry")
+	}
+}
+
+// REQ-WEB-001 REQ-SIGNATURES-026
+func TestRoutesDeclareEveryRequiredPermission(t *testing.T) {
+	r, _ := newTestRouter(t)
+	sig, read, exp, del := auth.PermSignatureManage, auth.PermInventoryRead, auth.PermExport, auth.PermInventoryDelete
+	want := map[string][]auth.Permission{
+		"POST /signatures/test":                                   {sig, read},
+		"POST /signatures/hunt":                                   {sig, read},
+		"GET /signatures/hunts/{id}":                              {sig, read},
+		"POST /signatures/hunts/{id}/save":                        {sig, read},
+		"GET /signatures/hunts/{id}/csv":                          {sig, read, exp},
+		"GET /hosts/{address}/delete":                             {del, read},
+		"GET /hosts/{address}/services/{port}/{protocol}/delete":  {del, read},
+		"POST /hosts/{address}/delete":                            {del},
+		"POST /hosts/{address}/services/{port}/{protocol}/delete": {del},
+		"GET /signatures":                                         {sig},
+		"GET /signatures/new":                                     {sig},
+		"GET /signatures/export":                                  {sig},
+		"POST /defectdojo/settings":                               {auth.PermScanConfigure},
+		"GET /defectdojo":                                         {exp},
+	}
+	seen := 0
+	for _, rt := range r.Routes() {
+		key := rt.Method + " " + rt.Path
+		perms, ok := want[key]
+		if !ok {
+			continue
+		}
+		seen++
+		got := rt.Access.Permissions()
+		if fmt.Sprint(got) != fmt.Sprint(perms) {
+			t.Errorf("%s requires %v, want %v", key, got, perms)
+		}
+		if first, gated := rt.Access.Permission(); !gated || first != perms[0] {
+			t.Errorf("%s Permission() = %q %v, want %q true", key, first, gated, perms[0])
+		}
+		for _, p := range perms {
+			if !strings.Contains(rt.Access.String(), string(p)) {
+				t.Errorf("%s access %q does not name %s", key, rt.Access, p)
+			}
+		}
+	}
+	if seen != len(want) {
+		t.Errorf("found %d of %d declared routes", seen, len(want))
+	}
+	if p, gated := SignedIn().Permission(); gated || p != "" {
+		t.Errorf("SignedIn().Permission() = %q %v, want none", p, gated)
+	}
+	if got := Require(sig, read).String(); got != "permissions signature.manage + inventory.read" {
+		t.Errorf("String() = %q", got)
+	}
+	if got := Require(read).String(); got != "permission inventory.read" {
+		t.Errorf("String() = %q", got)
+	}
+}
+
+// REQ-WEB-001
+func TestMultiPermissionAccessNeedsAll(t *testing.T) {
+	ok := func(http.ResponseWriter, *http.Request) {}
+	if _, err := build(Deps{Auth: newFakeAuth()}, files, append(append([]Feature{}, features...), func(r *Router, _ Deps) {
+		r.Handle(http.MethodGet, "/x", Require(auth.PermInventoryRead, "nope"), ok)
+	})); err == nil {
+		t.Fatal("build accepted an unknown permission in the second position")
+	}
+	r, fa := newTestRouter(t, func(r *Router, _ Deps) {
+		r.Handle(http.MethodGet, "/both", Require(auth.PermInventoryRead, auth.PermExport), ok)
+	})
+	fa.passwords["erin"] = "erin-password-1"
+	fa.roles["erin"] = auth.Principal{Username: "erin", Role: "custom", Permissions: []auth.Permission{auth.PermExport}}
+	for user, want := range map[string]int{"victor": http.StatusForbidden, "erin": http.StatusForbidden, "alice": http.StatusOK} {
+		if rec := do(r, http.MethodGet, "/both", nil, fa.session(t, user)); rec.Code != want {
+			t.Errorf("GET /both as %s = %d, want %d", user, rec.Code, want)
+		}
+	}
+}
+
+var navGroupRE = regexp.MustCompile(`<div class="nav-group">(?:<h2 class="nav-heading">([^<]*)</h2>)?(.*?)</div>`)
+var navEntryRE = regexp.MustCompile(`<a href="([^"]*)"[^>]*>([^<]*)</a>`)
+
+func navLayout(t *testing.T, page string) []string {
+	t.Helper()
+	nav := regexp.MustCompile(`(?s)<nav aria-label="Main">(.*?)</nav>`).FindStringSubmatch(page)
+	if nav == nil {
+		t.Fatalf("page has no main navigation:\n%s", page)
+	}
+	var got []string
+	for _, g := range navGroupRE.FindAllStringSubmatch(nav[1], -1) {
+		entries := []string{}
+		for _, e := range navEntryRE.FindAllStringSubmatch(g[2], -1) {
+			entries = append(entries, e[2]+" "+e[1])
+		}
+		got = append(got, g[1]+": "+strings.Join(entries, ", "))
+	}
+	if rest := navGroupRE.ReplaceAllString(nav[1], ""); strings.TrimSpace(rest) != "" {
+		t.Errorf("navigation has markup outside its groups: %q", rest)
+	}
+	return got
+}
+
+var adminNavLayout = []string{
+	"Overview: Dashboard /, Changes /changes",
+	"Inventory: Hosts /hosts/, Groups /groups",
+	"Scanning: Scans /scans, Signatures /signatures",
+	"Data: Import /import, Export /export, DefectDojo /defectdojo",
+	"Administration: Users /users/, Roles /roles, Audit log /audit",
+}
+
+// REQ-WEB-006
+func TestNavGroupsInFixedOrder(t *testing.T) {
+	r, fa := newTestRouter(t)
+	page := do(r, http.MethodGet, "/", nil, fa.session(t, "alice")).Body.String()
+	if got := navLayout(t, page); !slices.Equal(got, adminNavLayout) {
+		t.Errorf("admin navigation =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(adminNavLayout, "\n"))
+	}
+	if strings.Contains(page, "Add host") {
+		t.Error("navigation still has an Add host entry")
+	}
+	if regexp.MustCompile(`style\s*=`).MatchString(page) {
+		t.Error("layout has inline styles")
+	}
+
+	reversed := slices.Clone(features)
+	slices.Reverse(reversed[1:])
+	rr, err := build(Deps{Auth: fa}, files, reversed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var headings []string
+	for _, g := range navLayout(t, do(rr, http.MethodGet, "/", nil, fa.session(t, "alice")).Body.String()) {
+		headings = append(headings, g[:strings.Index(g, ":")])
+	}
+	if want := []string{"Overview", "Inventory", "Scanning", "Data", "Administration"}; !slices.Equal(headings, want) {
+		t.Errorf("headings with features registered in reverse = %v, want %v", headings, want)
+	}
+
+	viewer := navLayout(t, do(r, http.MethodGet, "/", nil, fa.session(t, "victor")).Body.String())
+	if want := adminNavLayout[:2]; !slices.Equal(viewer, want) {
+		t.Errorf("viewer navigation = %v, want %v", viewer, want)
+	}
+}
+
+func TestNavRejectsUnknownGroup(t *testing.T) {
+	fa := newFakeAuth()
+	_, err := build(Deps{Auth: fa}, files, []Feature{RegisterShell, func(r *Router, _ Deps) {
+		r.NavIn(NavGroup(99), "X", "/x", SignedIn())
+	}})
+	if err == nil || !strings.Contains(err.Error(), "unknown group") {
+		t.Fatalf("build = %v, want an unknown group error", err)
 	}
 }

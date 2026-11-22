@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+X-CouchDB-Body-Time: 0
+X-Couch-Request-ID: 1106be1535
+Server: CouchDB/2.1.0 (Erlang OTP/17)
+Date: Sat, 21 Nov 2026 23:41:18 GMT
+Content-Type: application/json
+Content-Length: 116
+Cache-Control: must-revalidate
+
+{"couchdb":"Welcome","version":"2.1.0","features":["scheduler"],"vendor":{"name":"The Apache Software Foundation"}}

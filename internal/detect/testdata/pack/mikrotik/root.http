@@ -1,0 +1,18 @@
+HTTP/1.1 200 OK
+Content-Type: text/html
+Expires: 0
+Cache-Control: no-cache
+
+<html>
+<head>
+<title>RouterOS router configuration page</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+<div class="top"><a href="http://www.mikrotik.com"><img src="mikrotik_logo.png" alt="MikroTik"></a></div>
+<h1>RouterOS v6.49.10</h1>
+<p>You have connected to a router. Administrative access only.</p>
+<a href="/webfig/">Webfig</a>
+</body>
+</html>

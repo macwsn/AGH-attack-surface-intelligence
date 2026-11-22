@@ -1,0 +1,97 @@
+# Outdated version table (docs/contracts.md §4, finding kind `outdated`).
+# minimum: oldest release still maintained upstream or by a current LTS distribution;
+# a detected version below it produces an `outdated` finding. A detected version with fewer parts than the
+# minimum is compared on the parts it has (Drupal "10" against "10.5" is not outdated: the minor is unknown).
+# latest: newest release known when the entry was checked.
+# checked: the date the minimum and latest were checked against the upstream support policy.
+- name: WordPress
+  minimum: "6.0"
+  latest: "6.9"
+  checked: "2026-11-21"
+- name: PHP
+  minimum: "8.1"
+  latest: "8.5.0"
+  checked: "2026-11-21"
+- name: nginx
+  minimum: "1.24"
+  latest: "1.29.3"
+  checked: "2026-11-21"
+# Apache httpd: upstream maintains only the latest 2.4.x; 2.4.52 is the oldest release shipped by a current
+# Ubuntu LTS (22.04). RHEL 8 reports 2.4.37 with backported fixes and is flagged too.
+- name: Apache
+  minimum: "2.4.52"
+  latest: "2.4.71"
+  checked: "2026-11-21"
+- name: OpenSSH
+  minimum: "8.9"
+  latest: "10.2"
+  checked: "2026-11-21"
+# FTP servers: the minimum is the oldest release shipped by a current LTS distribution. vsftpd 3.0.3 (Debian 12,
+# RHEL 8 and 9; Ubuntu 22.04 ships 3.0.5); ProFTPD 1.3.7 (Ubuntu 22.04; upstream maintains 1.3.8 and 1.3.9);
+# Pure-FTPd 1.0.50 (Ubuntu 22.04, Debian 12).
+- name: vsftpd
+  minimum: "3.0.3"
+  latest: "3.0.5"
+  checked: "2026-11-21"
+- name: ProFTPD
+  minimum: "1.3.7"
+  latest: "1.3.9"
+  checked: "2026-11-21"
+- name: Pure-FTPd
+  minimum: "1.0.50"
+  latest: "1.0.52"
+  checked: "2026-11-21"
+- name: MySQL
+  minimum: "8.0"
+  latest: "9.5.0"
+  checked: "2026-11-21"
+- name: phpMyAdmin
+  minimum: "5.2"
+  latest: "5.2.3"
+  checked: "2026-11-21"
+# Tomcat 9.0 (upstream end of support 2027-03-31), 10.1 and 11.0 are maintained.
+- name: Apache Tomcat
+  minimum: "9.0"
+  latest: "11.0"
+  checked: "2026-11-21"
+# Jenkins supports only the current LTS line (2.580.x) and the weekly releases after it.
+- name: Jenkins
+  minimum: "2.580"
+  latest: "2.580.2"
+  checked: "2026-11-21"
+# Grafana supports the current major and the last minor of the previous major.
+- name: Grafana
+  minimum: "11.6"
+  latest: "12.3"
+  checked: "2026-11-21"
+# Elasticsearch: 8.19 (end of support 2027-07-15) and the current 9.x minors.
+- name: Elasticsearch
+  minimum: "8.19"
+  latest: "9.4.3"
+  checked: "2026-11-21"
+# Redis: upstream maintains 8.x; 6.0 is the oldest shipped by a current LTS distribution (Ubuntu 22.04).
+- name: Redis
+  minimum: "6.0"
+  latest: "8.10"
+  checked: "2026-11-21"
+# ActiveMQ Classic: 5.18, 5.19 and 6.x are maintained; 5.17 reached end of life.
+- name: ActiveMQ
+  minimum: "5.18"
+  latest: "6.1"
+  checked: "2026-11-21"
+# Joomla: 5.4 and 6.x are maintained; 4.4 reached end of life on 2025-10-17.
+- name: Joomla
+  minimum: "5.4"
+  latest: "6.0"
+  checked: "2026-11-21"
+# Drupal: the two latest minors of 10 (end of life 2026-12-09) and 11 are maintained.
+- name: Drupal
+  minimum: "10.5"
+  latest: "11.2"
+  checked: "2026-11-21"
+# Gitea: upstream maintains only the latest release (gitea/gitea:latest reports 28.4.0 on 2026-11-21); the minimum
+# stays at 1.22 so self-hosted 1.x instances still on a recent line are not flagged.
+- name: Gitea
+  minimum: "1.22"
+  latest: "28.4.0"
+  checked: "2026-11-21"

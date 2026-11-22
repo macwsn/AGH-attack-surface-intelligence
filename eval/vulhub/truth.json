@@ -1,0 +1,438 @@
+{
+ "lab": "asi-vulhub",
+ "network": "172.32.0.0/24",
+ "excluded": [
+  "172.32.0.1",
+  "172.32.0.2",
+  "172.32.0.3"
+ ],
+ "ports_verified": "listening sockets read from /proc/net/tcp{,6} in every container, then confirmed with nmap -sT from a helper on the network (a full -p- at --max-rate 500 was too slow for 16 hosts)",
+ "generic_technologies": [
+  "Apache HTTP Server",
+  "Apache httpd",
+  "Apache",
+  "httpd",
+  "nginx",
+  "Jetty",
+  "Apache-Coyote",
+  "Apache Tomcat/Coyote JSP engine",
+  "Golang net/http server",
+  "PHP",
+  "Java",
+  "OpenJDK",
+  "Go",
+  "Golang",
+  "Python",
+  "Perl",
+  "Ruby",
+  "Node.js",
+  "Debian",
+  "Ubuntu",
+  "UNIX",
+  "Linux",
+  "Alpine Linux",
+  "OpenSSH",
+  "SSH",
+  "HTTP",
+  "Basic",
+  "MySQL",
+  "MariaDB"
+ ],
+ "benign_libraries": [
+  "jQuery",
+  "jQuery UI",
+  "jQuery Migrate",
+  "Underscore.js",
+  "Backbone.js",
+  "Bootstrap",
+  "Semantic UI",
+  "Vue.js",
+  "Clipboard.js",
+  "YUI",
+  "AngularJS",
+  "React",
+  "Font Awesome",
+  "CodeMirror",
+  "Moment.js",
+  "Lodash",
+  "RequireJS",
+  "Prototype",
+  "Twig",
+  "Symfony"
+ ],
+ "services": [
+  {
+   "name": "joomla",
+   "address": "172.32.0.10",
+   "product": "Joomla",
+   "aliases": [
+    "Joomla",
+    "Joomla!",
+    "Joomla CMS"
+   ],
+   "version": "4.2.7",
+   "version_source": "image tag; verified: GET /administrator/manifests/files/joomla.xml",
+   "category": "cms",
+   "ports": [
+    80
+   ],
+   "http_ports": [
+    80
+   ],
+   "admin_panel": false,
+   "login_path": "/administrator/",
+   "outdated": true,
+   "vulhub_dir": "joomla/CVE-2023-23752",
+   "notes": "Installed site. Apache 2.4.54 (Debian), PHP 7.4.33 underneath."
+  },
+  {
+   "name": "drupal",
+   "address": "172.32.0.11",
+   "product": "Drupal",
+   "aliases": [
+    "Drupal",
+    "Drupal CMS"
+   ],
+   "version": "8.5.0",
+   "version_source": "image tag / Vulhub dir (page only says 'Drupal 8')",
+   "category": "cms",
+   "ports": [
+    80
+   ],
+   "http_ports": [
+    80
+   ],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "drupal/CVE-2018-7600",
+   "notes": "NOT installed: / redirects to /core/install.php, /user/login redirects there too. Apache 2.4.25, PHP 7.2.3."
+  },
+  {
+   "name": "wordpress",
+   "address": "172.32.0.12",
+   "product": "WordPress",
+   "aliases": [
+    "WordPress",
+    "Wordpress CMS"
+   ],
+   "version": "4.6",
+   "version_source": "image tag; verified: ver=4.6 in install page assets and /readme.html",
+   "category": "cms",
+   "ports": [
+    80
+   ],
+   "http_ports": [
+    80
+   ],
+   "admin_panel": false,
+   "login_path": "/wp-login.php",
+   "outdated": true,
+   "vulhub_dir": "wordpress/pwnscriptum",
+   "notes": "NOT installed: / and /wp-login.php redirect to /wp-admin/install.php. Apache 2.4.7 (Ubuntu), PHP 5.5.9."
+  },
+  {
+   "name": "tomcat",
+   "address": "172.32.0.13",
+   "product": "Apache Tomcat",
+   "aliases": [
+    "Apache Tomcat",
+    "Tomcat"
+   ],
+   "version": "8.0.43",
+   "version_source": "verified: page title 'Apache Tomcat/8.0.43' (image tag says only 8.0)",
+   "category": "app-server",
+   "ports": [
+    8009,
+    8080
+   ],
+   "http_ports": [
+    8080
+   ],
+   "admin_panel": false,
+   "login_path": "/manager/html",
+   "outdated": true,
+   "vulhub_dir": "tomcat/tomcat8",
+   "notes": "Default ROOT page; /manager/html answers 401 Basic. 8009 = AJP."
+  },
+  {
+   "name": "jenkins",
+   "address": "172.32.0.14",
+   "product": "Jenkins",
+   "aliases": [
+    "Jenkins",
+    "Jenkins CI"
+   ],
+   "version": "2.441",
+   "version_source": "image tag; verified: X-Jenkins header",
+   "category": "ci",
+   "ports": [
+    8080,
+    50000
+   ],
+   "http_ports": [
+    8080
+   ],
+   "admin_panel": true,
+   "login_path": "/login",
+   "outdated": true,
+   "vulhub_dir": "jenkins/CVE-2024-23897",
+   "notes": "Dashboard is open to anonymous at /. 50000 = agent port. Vulhub's DEBUG=1 (JDWP on 5005) deliberately not set."
+  },
+  {
+   "name": "grafana",
+   "address": "172.32.0.15",
+   "product": "Grafana",
+   "aliases": [
+    "Grafana"
+   ],
+   "version": "8.2.6",
+   "version_source": "image tag; verified: version in /login boot data",
+   "category": "monitoring",
+   "ports": [
+    3000
+   ],
+   "http_ports": [
+    3000
+   ],
+   "admin_panel": true,
+   "login_path": "/login",
+   "outdated": true,
+   "vulhub_dir": "grafana/CVE-2021-43798",
+   "notes": "/ redirects to /login."
+  },
+  {
+   "name": "phpmyadmin",
+   "address": "172.32.0.16",
+   "product": "phpMyAdmin",
+   "aliases": [
+    "phpMyAdmin"
+   ],
+   "version": "4.8.1",
+   "version_source": "image tag; verified: page title",
+   "category": "admin-tool",
+   "ports": [
+    80
+   ],
+   "http_ports": [
+    80
+   ],
+   "admin_panel": true,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "phpmyadmin/CVE-2018-12613",
+   "notes": "auth_type=config: / is the logged-in admin UI, no login page. Apache 2.4.25, PHP 7.2.5."
+  },
+  {
+   "name": "nginx",
+   "address": "172.32.0.17",
+   "product": "nginx",
+   "aliases": [
+    "nginx"
+   ],
+   "version": "1.13.2",
+   "version_source": "image tag; verified: Server header",
+   "category": "web-server",
+   "ports": [
+    8080,
+    8081
+   ],
+   "http_ports": [
+    8080,
+    8081
+   ],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "nginx/CVE-2017-7529",
+   "notes": "8080 is a caching reverse proxy to 8081 (default welcome page)."
+  },
+  {
+   "name": "httpd",
+   "address": "172.32.0.18",
+   "product": "Apache HTTP Server",
+   "aliases": [
+    "Apache HTTP Server",
+    "Apache httpd",
+    "Apache",
+    "httpd"
+   ],
+   "version": "2.4.49",
+   "version_source": "image tag; verified: Server header",
+   "category": "web-server",
+   "ports": [
+    80
+   ],
+   "http_ports": [
+    80
+   ],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "httpd/CVE-2021-41773",
+   "notes": "Base image vulhub/httpd:2.4.49 used directly; the Vulhub Dockerfile's cgi/config tweaks are not applied."
+  },
+  {
+   "name": "elasticsearch",
+   "address": "172.32.0.19",
+   "product": "Elasticsearch",
+   "aliases": [
+    "Elasticsearch",
+    "Elastic Elasticsearch"
+   ],
+   "version": "1.4.2",
+   "version_source": "image tag; verified: JSON at /",
+   "category": "database",
+   "ports": [
+    9200,
+    9300
+   ],
+   "http_ports": [
+    9200
+   ],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "elasticsearch/CVE-2015-1427",
+   "notes": "Unauthenticated REST API on 9200, transport on 9300."
+  },
+  {
+   "name": "redis",
+   "address": "172.32.0.20",
+   "product": "Redis",
+   "aliases": [
+    "Redis"
+   ],
+   "version": "4.0.14",
+   "version_source": "image tag; verified: REDIS_VERSION env and nmap -sV",
+   "category": "database",
+   "ports": [
+    6379
+   ],
+   "http_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "redis/4-unacc",
+   "notes": "No auth."
+  },
+  {
+   "name": "activemq",
+   "address": "172.32.0.21",
+   "product": "Apache ActiveMQ",
+   "aliases": [
+    "Apache ActiveMQ",
+    "ActiveMQ"
+   ],
+   "version": "5.17.3",
+   "version_source": "image tag; verified: ACTIVEMQ_VERSION env and nmap -sV on 61616",
+   "category": "message-queue",
+   "ports": [
+    1883,
+    5005,
+    5672,
+    8161,
+    61613,
+    61614,
+    61616
+   ],
+   "http_ports": [
+    8161
+   ],
+   "admin_panel": true,
+   "login_path": "/admin/",
+   "outdated": true,
+   "vulhub_dir": "activemq/CVE-2023-46604",
+   "notes": "8161 web console: every path answers 401 Basic (realm ActiveMQRealm). 5005 = JDWP. One extra random high JMX/RMI port changes per start and is not in truth."
+  },
+  {
+   "name": "gitea",
+   "address": "172.32.0.22",
+   "product": "Gitea",
+   "aliases": [
+    "Gitea"
+   ],
+   "version": "1.4.0",
+   "version_source": "image tag; verified: 'Gitea Version: 1.4.0' on /install",
+   "category": "scm",
+   "ports": [
+    22,
+    3000
+   ],
+   "http_ports": [
+    3000
+   ],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "gitea/1.4-rce",
+   "notes": "NOT installed: / and /user/login redirect to /install. 22 = OpenSSH 7.5."
+  },
+  {
+   "name": "joomla-mysql",
+   "address": "172.32.0.100",
+   "product": "MySQL",
+   "aliases": [
+    "MySQL",
+    "MySQL Server",
+    "Oracle MySQL"
+   ],
+   "version": "5.7.44",
+   "version_source": "verified: MYSQL_VERSION env and nmap -sV (image mysql:5.7)",
+   "category": "database",
+   "ports": [
+    3306
+   ],
+   "http_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "joomla/CVE-2023-23752",
+   "notes": "Dependency of joomla."
+  },
+  {
+   "name": "wordpress-mysql",
+   "address": "172.32.0.101",
+   "product": "MySQL",
+   "aliases": [
+    "MySQL",
+    "MySQL Server",
+    "Oracle MySQL"
+   ],
+   "version": "5.7.44",
+   "version_source": "verified: MYSQL_VERSION env and nmap -sV (image mysql:5)",
+   "category": "database",
+   "ports": [
+    3306
+   ],
+   "http_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "wordpress/pwnscriptum",
+   "notes": "Dependency of wordpress."
+  },
+  {
+   "name": "phpmyadmin-mysql",
+   "address": "172.32.0.102",
+   "product": "MySQL",
+   "aliases": [
+    "MySQL",
+    "MySQL Server",
+    "Oracle MySQL"
+   ],
+   "version": "5.5.62",
+   "version_source": "verified: MYSQL_VERSION env and nmap -sV (image mysql:5.5)",
+   "category": "database",
+   "ports": [
+    3306
+   ],
+   "http_ports": [],
+   "admin_panel": false,
+   "login_path": null,
+   "outdated": true,
+   "vulhub_dir": "phpmyadmin/CVE-2018-12613",
+   "notes": "Dependency of phpmyadmin."
+  }
+ ]
+}

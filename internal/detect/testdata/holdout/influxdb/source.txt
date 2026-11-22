@@ -1,0 +1,6 @@
+captured from a local container of the Vulhub image
+image: vulhub/influxdb:1.6.6 (sha256:b02ddee99d79717b430dc0eb09db3481da378372d32019f79d11236044d2bbaa)
+capture date: 2026-11-22
+command: curl -sS -i -L --max-redirs 5 http://<host>:8086<path> (host rewritten to fixture.test)
+paths: / (root.http), /version (version.http), /api/version (api__version.http)
+state: first start of the image, no configuration

@@ -4,6 +4,7 @@ go 1.27
 
 require (
 	github.com/jackc/pgx/v5 v5.11.0
+	github.com/projectdiscovery/wappalyzergo v0.3.10
 	golang.org/x/crypto v0.58.0
 	golang.org/x/net v0.62.0
 	gopkg.in/yaml.v3 v3.0.1

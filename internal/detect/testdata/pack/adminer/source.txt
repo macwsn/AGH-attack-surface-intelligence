@@ -1,0 +1,7 @@
+captured from the running lab-agh stack
+image: adminer:latest (sha256:037125c2bc4836b4917d4fd08a16f817eac2848778c4e9aab87a8340aef08dfd)
+compose: lab-agh/docker-compose-vulnerable.yml, service adminer:8080
+capture date: 2026-11-21
+command: curl -sS -i -L --max-redirs 5 http://adminer:8080<path> from a container on the stack network (host ports not published)
+paths: / (root.http), /version (version.http), /api/version (api__version.http)
+state: login page; adminer answers every path with its login page

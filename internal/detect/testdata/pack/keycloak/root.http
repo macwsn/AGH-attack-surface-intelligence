@@ -1,0 +1,19 @@
+HTTP/1.1 200 OK
+Cache-Control: no-cache, must-revalidate, no-transform, no-store
+Content-Type: text/html;charset=utf-8
+Referrer-Policy: no-referrer
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Welcome to Keycloak</title>
+    <link rel="shortcut icon" href="/resources/7k2xq/welcome/keycloak.v2/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="/resources/7k2xq/welcome/keycloak.v2/css/welcome.css">
+</head>
+<body>
+<div class="pf-v5-c-page"><h1>Welcome to Keycloak</h1><a href="/admin/">Administration Console</a></div>
+</body>
+</html>

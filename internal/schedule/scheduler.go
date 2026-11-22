@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/netip"
 	"sync"
 	"time"
 
@@ -135,6 +136,14 @@ func (s *Scheduler) stepDefinition(d Definition, now time.Time) error {
 		return err
 	}
 	if ok {
+		if open.Stalled {
+			paused, err := s.Store.PauseStalled(s.base, open.ID)
+			if err != nil || !paused {
+				return err
+			}
+			s.logf("scheduler: run %q stalled (no heartbeat and no live executor), marked paused, it resumes in its next window", open.Name)
+			open.Status = inventory.RunPaused
+		}
 		if open.Held {
 			return nil
 		}
@@ -144,10 +153,17 @@ func (s *Scheduler) stepDefinition(d Definition, now time.Time) error {
 		return nil
 	}
 	w, in := d.Schedule.WindowAt(now)
-	if !in || !d.Schedule.Due(d.LastRunAt, now, w) {
+	if !in {
 		return nil
 	}
-	run, err := s.Store.StartRun(s.base, d.ID, now)
+	mode, hosts, err := s.nextRun(d, now, w)
+	if err != nil || mode == "" {
+		return err
+	}
+	if err := scan.CheckWork(d.Settings); err != nil {
+		return fmt.Errorf("scheduled start refused: %w", err)
+	}
+	run, err := s.Store.StartRunMode(s.base, d.ID, now, mode, hosts)
 	if errors.Is(err, ErrRunOpen) {
 		return nil
 	}
@@ -157,10 +173,79 @@ func (s *Scheduler) stepDefinition(d Definition, now time.Time) error {
 	return s.launch(d.ID, run, w.End)
 }
 
+func (s *Scheduler) nextRun(d Definition, now time.Time, w Span) (string, []string, error) {
+	every, rechecks := d.Schedule.RecheckInterval()
+	if !rechecks {
+		if d.Schedule.Due(d.LastRunAt, now, w) {
+			return inventory.ModeFull, nil, nil
+		}
+		return "", nil, nil
+	}
+	lastFull, err := s.Store.LastFullRunAt(s.base, d.ID)
+	if err != nil {
+		return "", nil, err
+	}
+	if d.Schedule.Due(lastFull, now, w) {
+		return inventory.ModeFull, nil, nil
+	}
+	if d.LastRunAt != nil && now.Before(d.LastRunAt.Add(every)) {
+		return "", nil, nil
+	}
+	base, ok, err := s.Store.LatestCompletedRun(s.base, d.ID)
+	if err != nil {
+		return "", nil, err
+	}
+	if !ok {
+		return inventory.ModeFull, nil, nil
+	}
+	candidates, err := s.recheckCandidates(s.base, d, base)
+	if err != nil {
+		return "", nil, err
+	}
+	var baseCovered time.Time
+	for _, c := range candidates {
+		if !c.LastCovered.Before(base.StartedAt) && c.LastCovered.After(baseCovered) {
+			baseCovered = c.LastCovered
+		}
+	}
+	for i, c := range candidates {
+		if !c.LastCovered.Before(base.StartedAt) {
+			candidates[i].LastCovered = baseCovered
+		}
+	}
+	loc, err := d.Schedule.Location()
+	if err != nil {
+		return "", nil, err
+	}
+	picked := PickRecheck(now.In(loc), every, candidates)
+	if len(picked) == 0 {
+		return "", nil, nil
+	}
+	return inventory.ModeRecheck, picked, nil
+}
+
+func (s *Scheduler) recheckCandidates(ctx context.Context, d Definition, base Run) ([]RecheckHost, error) {
+	exp, err := s.Scanner.Store.Export(ctx, base.Name)
+	if err != nil {
+		return nil, fmt.Errorf("recheck hosts: %w", err)
+	}
+	set, err := s.Scanner.TargetSet(ctx, d.Settings)
+	if err != nil {
+		return nil, fmt.Errorf("recheck hosts: %w", err)
+	}
+	own := exp.Hosts[:0:0]
+	for _, h := range exp.Hosts {
+		if a, err := netip.ParseAddr(h.Address); err == nil && set.Contains(a) {
+			own = append(own, h)
+		}
+	}
+	return recheckHosts(own, d.Settings.Ports), nil
+}
+
 func (s *Scheduler) launch(defID int64, run Run, deadline time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.execs[defID] != nil {
+	if old := s.execs[defID]; old != nil && old.runID == run.ID {
 		return ErrRunOpen
 	}
 	ctx, cancel := context.WithCancel(s.base)
@@ -171,7 +256,9 @@ func (s *Scheduler) launch(defID int64, run Run, deadline time.Time) error {
 		err := s.Scanner.Run(ctx, run.Run)
 		cancel()
 		s.mu.Lock()
-		delete(s.execs, defID)
+		if s.execs[defID] == ex {
+			delete(s.execs, defID)
+		}
 		s.mu.Unlock()
 		if err != nil {
 			s.logf("scheduler: %v", err)
@@ -180,14 +267,27 @@ func (s *Scheduler) launch(defID int64, run Run, deadline time.Time) error {
 	return nil
 }
 
-func (s *Scheduler) StartNow(ctx context.Context, actor auth.Actor, defID int64) (Run, error) {
-	s.mu.Lock()
-	busy := s.execs[defID] != nil
-	s.mu.Unlock()
-	if busy {
-		return Run{}, ErrRunOpen
+func (s *Scheduler) StartNow(ctx context.Context, actor auth.Actor, defID int64, mode ...string) (Run, error) {
+	m := inventory.ModeFull
+	if len(mode) > 0 && mode[0] != "" {
+		m = mode[0]
 	}
-	run, err := s.Store.StartRun(ctx, defID, s.now())
+	if !inventory.ValidMode(m) {
+		return Run{}, fmt.Errorf("start scan %d: invalid mode %q, want %s or %s", defID, m, inventory.ModeFull, inventory.ModeRecheck)
+	}
+	if m == inventory.ModeRecheck {
+		if err := s.checkRecheckBase(ctx, defID); err != nil {
+			return Run{}, err
+		}
+	}
+	d, err := s.Store.Definition(ctx, defID)
+	if err != nil {
+		return Run{}, err
+	}
+	if err := scan.CheckWork(d.Settings); err != nil {
+		return Run{}, fmt.Errorf("start scan %q: %w", d.Name, err)
+	}
+	run, err := s.Store.StartRunMode(ctx, defID, s.now(), m, nil)
 	if err != nil {
 		return Run{}, err
 	}
@@ -195,6 +295,28 @@ func (s *Scheduler) StartNow(ctx context.Context, actor auth.Actor, defID int64)
 		return Run{}, err
 	}
 	return run, s.launch(defID, run, time.Time{})
+}
+
+func (s *Scheduler) checkRecheckBase(ctx context.Context, defID int64) error {
+	d, err := s.Store.Definition(ctx, defID)
+	if err != nil {
+		return err
+	}
+	base, ok, err := s.Store.LatestCompletedRun(ctx, defID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("start recheck of scan %q: %w: no completed run of the scan definition", d.Name, inventory.ErrNoRecheckBase)
+	}
+	candidates, err := s.recheckCandidates(ctx, d, base)
+	if err != nil {
+		return err
+	}
+	if len(candidates) == 0 {
+		return fmt.Errorf("start recheck of scan %q: %w: run %q has no known open service", d.Name, inventory.ErrNoRecheckBase, base.Name)
+	}
+	return nil
 }
 
 func (s *Scheduler) Pause(ctx context.Context, actor auth.Actor, runID int64) error {
@@ -230,12 +352,6 @@ func (s *Scheduler) Resume(ctx context.Context, actor auth.Actor, runID int64) e
 	}
 	if run.Status != inventory.RunPaused || run.DefinitionID == 0 {
 		return ErrNotPaused
-	}
-	s.mu.Lock()
-	busy := s.execs[run.DefinitionID] != nil
-	s.mu.Unlock()
-	if busy {
-		return ErrRunOpen
 	}
 	if err := s.Store.setHeld(ctx, actor, run, false); err != nil {
 		return err

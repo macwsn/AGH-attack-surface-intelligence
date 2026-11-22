@@ -2,11 +2,15 @@ package web
 
 import (
 	"bytes"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"io/fs"
 	"log"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"slices"
@@ -25,19 +29,28 @@ const (
 )
 
 type Access struct {
-	kind accessKind
-	perm auth.Permission
+	kind  accessKind
+	perms []auth.Permission
 }
 
 func Public() Access { return Access{kind: accessPublic} }
 
 func SignedIn() Access { return Access{kind: accessSignedIn} }
 
-func Require(p auth.Permission) Access { return Access{kind: accessPermission, perm: p} }
+func Require(p auth.Permission, more ...auth.Permission) Access {
+	return Access{kind: accessPermission, perms: append([]auth.Permission{p}, more...)}
+}
 
 func (a Access) IsPublic() bool { return a.kind == accessPublic }
 
-func (a Access) Permission() (auth.Permission, bool) { return a.perm, a.kind == accessPermission }
+func (a Access) Permission() (auth.Permission, bool) {
+	if a.kind != accessPermission || len(a.perms) == 0 {
+		return "", false
+	}
+	return a.perms[0], true
+}
+
+func (a Access) Permissions() []auth.Permission { return slices.Clone(a.perms) }
 
 func (a Access) String() string {
 	switch a.kind {
@@ -46,7 +59,14 @@ func (a Access) String() string {
 	case accessSignedIn:
 		return "signed-in"
 	case accessPermission:
-		return "permission " + string(a.perm)
+		names := make([]string, len(a.perms))
+		for i, p := range a.perms {
+			names[i] = string(p)
+		}
+		if len(names) > 1 {
+			return "permissions " + strings.Join(names, " + ")
+		}
+		return "permission " + strings.Join(names, "")
 	}
 	return "undeclared"
 }
@@ -56,8 +76,13 @@ func (a Access) check() error {
 	case accessPublic, accessSignedIn:
 		return nil
 	case accessPermission:
-		if !slices.Contains(auth.AllPermissions, a.perm) {
-			return fmt.Errorf("%w: %q", auth.ErrUnknownPermission, a.perm)
+		if len(a.perms) == 0 {
+			return errors.New("no permission declared")
+		}
+		for _, p := range a.perms {
+			if !slices.Contains(auth.AllPermissions, p) {
+				return fmt.Errorf("%w: %q", auth.ErrUnknownPermission, p)
+			}
 		}
 		return nil
 	}
@@ -71,7 +96,15 @@ func (a Access) allows(p *auth.Principal) bool {
 	case accessSignedIn:
 		return p != nil
 	case accessPermission:
-		return p != nil && slices.Contains(p.Permissions, a.perm)
+		if p == nil || len(a.perms) == 0 {
+			return false
+		}
+		for _, perm := range a.perms {
+			if !slices.Contains(p.Permissions, perm) {
+				return false
+			}
+		}
+		return true
 	}
 	return false
 }
@@ -83,10 +116,32 @@ type Route struct {
 	handler http.Handler
 }
 
+type NavGroup int
+
+const (
+	NavNone NavGroup = iota
+	NavOverview
+	NavInventory
+	NavScanning
+	NavData
+	NavAdministration
+)
+
+var navHeadings = []string{NavOverview: "Overview", NavInventory: "Inventory", NavScanning: "Scanning",
+	NavData: "Data", NavAdministration: "Administration"}
+
+type NavSection struct {
+	Heading string
+	Entries []NavEntry
+}
+
 type NavEntry struct {
-	Label  string
-	Path   string
-	Access Access
+	Group   NavGroup
+	Label   string
+	Path    string
+	Access  Access
+	Current bool
+	Also    []string
 }
 
 type Router struct {
@@ -127,12 +182,20 @@ func (r *Router) checkRoute(method, path string, access Access, h http.HandlerFu
 	return access.check()
 }
 
-func (r *Router) Nav(label, path string, access Access) {
+func (r *Router) Nav(label, path string, access Access, also ...string) {
+	r.NavIn(NavNone, label, path, access, also...)
+}
+
+func (r *Router) NavIn(g NavGroup, label, path string, access Access, also ...string) {
+	if g < NavNone || int(g) >= len(navHeadings) {
+		r.errs = append(r.errs, fmt.Errorf("nav entry %q: unknown group %d", label, g))
+		return
+	}
 	if err := access.check(); err != nil {
 		r.errs = append(r.errs, fmt.Errorf("nav entry %q: %w", label, err))
 		return
 	}
-	r.nav = append(r.nav, NavEntry{Label: label, Path: path, Access: access})
+	r.nav = append(r.nav, NavEntry{Group: g, Label: label, Path: path, Access: access, Also: also})
 }
 
 func (r *Router) Routes() []Route { return slices.Clone(r.routes) }
@@ -182,12 +245,44 @@ func (r *Router) guard(rt Route) http.Handler {
 			r.Error(w, req, http.StatusForbidden, "Your role does not allow this page.")
 			return
 		}
-		if req.Method != http.MethodGet && req.Method != http.MethodHead && !auth.ValidCSRF(req, p.CSRFToken) {
+		if req.Method != http.MethodGet && req.Method != http.MethodHead && !validCSRF(req, p.CSRFToken) {
 			r.Error(w, req, http.StatusForbidden, "Invalid or missing CSRF token. Reload the page and try again.")
 			return
 		}
 		rt.handler.ServeHTTP(w, req)
 	})
+}
+
+const csrfPeekBytes = 64 << 10
+
+func validCSRF(req *http.Request, want string) bool {
+	mt, params, _ := mime.ParseMediaType(req.Header.Get("Content-Type"))
+	if mt != "multipart/form-data" || req.Header.Get(auth.CSRFHeader) != "" {
+		return auth.ValidCSRF(req, want)
+	}
+	if params["boundary"] == "" || want == "" {
+		return false
+	}
+	body := req.Body
+	var seen bytes.Buffer
+	mr := multipart.NewReader(io.TeeReader(io.LimitReader(body, csrfPeekBytes), &seen), params["boundary"])
+	ok := false
+	for {
+		part, err := mr.NextPart()
+		if err != nil || part.FileName() != "" {
+			break
+		}
+		if part.FormName() == auth.CSRFFormField {
+			got, err := io.ReadAll(io.LimitReader(part, 256))
+			ok = err == nil && subtle.ConstantTimeCompare(got, []byte(want)) == 1
+			break
+		}
+	}
+	req.Body = struct {
+		io.Reader
+		io.Closer
+	}{io.MultiReader(&seen, body), body}
+	return ok
 }
 
 func (r *Router) principal(req *http.Request) (auth.Principal, error) {
@@ -217,7 +312,7 @@ func (r *Router) unauthorized(w http.ResponseWriter, req *http.Request) {
 type View struct {
 	Title     string
 	User      *auth.Principal
-	Nav       []NavEntry
+	Nav       []NavSection
 	CSRFToken string
 	Data      any
 }
@@ -253,11 +348,41 @@ func (r *Router) withUser(req *http.Request, v *View) {
 	if v.CSRFToken == "" {
 		v.CSRFToken = p.CSRFToken
 	}
+	var shown []NavEntry
+	cur, best := -1, 0
 	for _, n := range r.nav {
 		if n.Access.allows(&p) {
-			v.Nav = append(v.Nav, n)
+			for _, prefix := range append([]string{n.Path}, n.Also...) {
+				if navMatches(prefix, req.URL.Path) && len(prefix) > best {
+					cur, best = len(shown), len(prefix)
+				}
+			}
+			shown = append(shown, n)
 		}
 	}
+	if cur >= 0 {
+		shown[cur].Current = true
+	}
+	for g := range navHeadings {
+		var sec NavSection
+		for _, n := range shown {
+			if int(n.Group) == g {
+				sec.Entries = append(sec.Entries, n)
+			}
+		}
+		if len(sec.Entries) > 0 {
+			sec.Heading = navHeadings[g]
+			v.Nav = append(v.Nav, sec)
+		}
+	}
+}
+
+func navMatches(navPath, path string) bool {
+	if navPath == "/" {
+		return path == "/"
+	}
+	base := strings.TrimSuffix(navPath, "/")
+	return path == base || strings.HasPrefix(path, base+"/")
 }
 
 type errorData struct {
@@ -291,12 +416,20 @@ func (r *Router) ServerError(w http.ResponseWriter, req *http.Request, err error
 const layoutFile = "layout.html"
 
 func parsePages(fsys fs.FS) (map[string]*template.Template, error) {
-	base, err := template.ParseFS(fsys, layoutFile)
+	base, err := template.New(layoutFile).Funcs(template.FuncMap{"zoned": isoTime}).ParseFS(fsys, layoutFile)
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
 	}
 	if base.Lookup("layout") == nil {
 		return nil, fmt.Errorf("parse templates: %s does not define \"layout\"", layoutFile)
+	}
+	for _, p := range partials {
+		if _, err := fs.Stat(fsys, p); err != nil {
+			continue
+		}
+		if base, err = base.ParseFS(fsys, p); err != nil {
+			return nil, fmt.Errorf("parse template %s: %w", p, err)
+		}
 	}
 	names, err := fs.Glob(fsys, "*.html")
 	if err != nil {
@@ -304,7 +437,7 @@ func parsePages(fsys fs.FS) (map[string]*template.Template, error) {
 	}
 	pages := make(map[string]*template.Template, len(names))
 	for _, name := range names {
-		if name == layoutFile {
+		if name == layoutFile || slices.Contains(partials, name) {
 			continue
 		}
 		t, err := base.Clone()

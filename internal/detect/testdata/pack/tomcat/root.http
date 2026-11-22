@@ -1,0 +1,24 @@
+HTTP/1.1 200 
+Content-Type: text/html;charset=UTF-8
+Transfer-Encoding: chunked
+Date: Sat, 21 Nov 2026 10:00:00 GMT
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Apache Tomcat/9.0.85</title>
+        <link href="favicon.ico" rel="icon" type="image/x-icon" />
+        <link href="tomcat.css" rel="stylesheet" type="text/css" />
+    </head>
+    <body>
+        <div id="wrapper">
+            <div id="upper" class="curved container">
+                <div id="congrats" class="curved container">
+                    <h2>If you're seeing this, you've successfully installed Tomcat. Congratulations!</h2>
+                </div>
+            </div>
+            <p class="copyright">Copyright &copy;1999-2026 Apache Software Foundation.  All Rights Reserved</p>
+        </div>
+    </body>
+</html>

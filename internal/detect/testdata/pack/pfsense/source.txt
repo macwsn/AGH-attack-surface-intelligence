@@ -1,0 +1,2 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: pfSense 2.7 login page (title pfSense - Login, usernamefld/passwordfld), docs.netgate.com

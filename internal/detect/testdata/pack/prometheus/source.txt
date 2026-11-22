@@ -1,0 +1,2 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Prometheus web UI (/ -> /graph), title Prometheus Time Series Collection and Processing Server, prometheus.io docs

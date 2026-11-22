@@ -1,0 +1,9 @@
+HTTP/1.1 404 Not Found
+Content-Type: text/plain; charset=utf-8
+X-Content-Type-Options: nosniff
+X-Influxdb-Build: OSS
+X-Influxdb-Version: 1.6.6
+Date: Sat, 21 Nov 2026 23:41:18 GMT
+Content-Length: 19
+
+404 page not found

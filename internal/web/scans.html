@@ -2,14 +2,31 @@
 <div class="page-head">
 <div>
 <h1>Scans</h1>
-<p class="lede">Scan definitions: {{len .Data.Scans}}. The scheduler starts each enabled scan in its windows.</p>
+<p class="lede">{{len .Data.Scans}} scan definitions, each started by the scheduler in its windows while enabled; open one to change it or start it now.</p>
 </div>
-{{if .Data.CanConfigure}}<div class="actions"><a class="btn primary" href="/scans/new">New scan</a></div>{{end}}
+{{if .Data.CanConfigure}}<div class="actions"><a class="btn" href="/scans/new">New scan</a></div>{{end}}
 </div>
+{{with .Data.Message}}<div class="notice ok" role="status">{{.}}</div>{{end}}
+{{if .Data.CanQuick}}{{$q := .Data.Quick}}
+<section class="panel">
+<header><h2>Quick scan</h2></header>
+<div class="body">
+<form class="filters" method="post" action="/scans/quick">
+{{.CSRFField}}
+<label class="grow{{if $q.Problem}} field{{end}}">Targets <input type="text" name="targets" value="{{$q.Targets}}" placeholder="10.0.0.0/24, 10.0.1.1-20, 192.0.2.7, www.example.edu.pl" required{{if $q.Problem}} aria-invalid="true" aria-describedby="quick-problem"{{end}}>{{with $q.Problem}}<span class="problem" id="quick-problem" role="alert">{{.}}</span>{{end}}</label>
+<label>Ports <select name="port_preset">
+{{range $q.PresetChoices}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}: {{.Note}}</option>
+{{end}}</select></label>
+<button class="primary" type="submit">Scan now</button>
+</form>
+<p class="muted">Separate several targets with commas. The scan starts at once at the normal pace (at most 100 packets and requests per second) with adaptive back-off and no schedule; change it later on its page, or use New scan for every setting.</p>
+</div>
+</section>
+{{end}}
 {{if .Data.Scans}}
 <div class="table-wrap">
 <table class="data">
-<thead><tr><th>Name</th><th>State</th><th>Windows</th><th>Frequency</th><th>Last run</th><th>Run status</th></tr></thead>
+<thead><tr><th>Name</th><th>State</th><th>Windows</th><th>Frequency</th><th>Last run</th><th>Run status</th><th class="num">Duration</th><th>Next start</th></tr></thead>
 <tbody>
 {{range .Data.Scans}}
 <tr{{if not .Definition.Enabled}} class="is-off"{{end}}>
@@ -18,13 +35,15 @@
 <td class="addr">{{.Windows}}</td>
 <td>{{.Frequency}}</td>
 <td>{{with .LastRun}}<a class="addr" href="/runs/{{.ID}}">{{.Name}}</a>{{else}}<span class="muted">Never</span>{{end}}</td>
-<td>{{with .LastRun}}{{template "run-status" .}}{{end}}</td>
+<td>{{with .LastRun}}{{template "run-status" .}}{{else}}<span class="muted">-</span>{{end}}</td>
+<td class="num">{{with .Duration}}{{.}}{{else}}<span class="muted">-</span>{{end}}</td>
+<td class="nowrap">{{with .NextStart}}{{.}}{{else}}<span class="muted">-</span>{{end}}</td>
 </tr>
 {{end}}
 </tbody>
 </table>
 </div>
 {{else}}
-<div class="empty"><p>No scans yet.</p>{{if .Data.CanConfigure}}<p><a class="btn primary" href="/scans/new">Create a scan</a></p>{{end}}</div>
+<div class="empty"><p>No scans yet.</p>{{if .Data.CanConfigure}}<p><a class="btn" href="/scans/new">Create a scan</a></p>{{end}}</div>
 {{end}}
 {{end}}

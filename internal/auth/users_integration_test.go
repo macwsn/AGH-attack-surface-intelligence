@@ -286,3 +286,73 @@ func TestConcurrentDemoteKeepsAdmin(t *testing.T) {
 		}
 	}
 }
+
+// REQ-AUTH-024
+func TestUserActionsNameTheRefusal(t *testing.T) {
+	ctx := context.Background()
+	e, mgr := newTargetEnv(t)
+	cli := Actor{Username: "cli", Addr: "local"}
+	if err := e.s.SetUserDisabled(ctx, cli, "root2", true); err != nil {
+		t.Fatalf("cli disable root2: %v", err)
+	}
+	updates := e.audits(t, auditUserUpdate) + e.audits(t, auditUserPass) + e.audits(t, auditUserEnable) + e.audits(t, auditUserDisable) + e.audits(t, auditUserDelete)
+	for name, call := range map[string]func(string) error{
+		"reset":   func(u string) error { return e.s.ResetPasswordKeepSession(ctx, mgr, u, otherPassword, "") },
+		"disable": func(u string) error { return e.s.SetUserDisabled(ctx, mgr, u, true) },
+		"enable":  func(u string) error { return e.s.SetUserDisabled(ctx, mgr, u, false) },
+		"delete":  func(u string) error { return e.s.DeleteUser(ctx, mgr, u) },
+		"role":    func(u string) error { return e.s.SetUserRole(ctx, mgr, u, "nobody") },
+	} {
+		for _, target := range []string{"root2", "viewer"} {
+			if err := call(target); !errors.Is(err, ErrStrongerUser) {
+				t.Errorf("usermgr %s(%s) err = %v, want ErrStrongerUser", name, target, err)
+			}
+		}
+		if name == "role" {
+			continue
+		}
+		if err := call("usermgr"); !errors.Is(err, ErrOwnAccount) {
+			t.Errorf("usermgr %s(self) err = %v, want ErrOwnAccount", name, err)
+		}
+	}
+	if got := e.audits(t, auditUserUpdate) + e.audits(t, auditUserPass) + e.audits(t, auditUserEnable) + e.audits(t, auditUserDisable) + e.audits(t, auditUserDelete); got != updates {
+		t.Errorf("refused actions wrote %d audit rows", got-updates)
+	}
+	if !e.user(t, "root2").Disabled {
+		t.Errorf("root2 enabled by usermgr")
+	}
+	root := e.signIn(t, "root")
+	if err := e.s.ResetPasswordKeepSession(ctx, root, "root", otherPassword, ""); !errors.Is(err, ErrOwnAccount) {
+		t.Errorf("admin reset own password err = %v, want ErrOwnAccount", err)
+	}
+	if err := e.s.ResetPasswordKeepSession(ctx, root, "viewer", otherPassword, ""); err != nil {
+		t.Errorf("admin reset viewer password: %v", err)
+	}
+	if err := e.s.SetUserDisabled(ctx, root, "root2", false); err != nil {
+		t.Errorf("admin enable root2: %v", err)
+	}
+}
+
+// REQ-AUTH-015
+func TestUserHoldingAllPermissionsCountsAsAdmin(t *testing.T) {
+	ctx := context.Background()
+	s := newTestService(t, Config{})
+	if err := s.CreateRole(ctx, setupActor, "superuser", AllPermissions); err != nil {
+		t.Fatalf("CreateRole superuser: %v", err)
+	}
+	if err := s.CreateRole(ctx, setupActor, "almost", AllPermissions[1:]); err != nil {
+		t.Fatalf("CreateRole almost: %v", err)
+	}
+	mustAddUser(t, s, "root", RoleAdmin)
+	mustAddUser(t, s, "su", "superuser")
+	cli := Actor{Username: "cli", Addr: "local"}
+	if err := s.SetUserRole(ctx, cli, "root", "superuser"); err != nil {
+		t.Errorf("move admin to another all-permission role: %v", err)
+	}
+	if err := s.SetUserDisabled(ctx, cli, "root", true); err != nil {
+		t.Errorf("disable one of two all-permission users: %v", err)
+	}
+	if err := s.SetUserRole(ctx, cli, "su", "almost"); !errors.Is(err, ErrLastAdmin) {
+		t.Errorf("demote last all-permission user to a role missing one permission err = %v, want ErrLastAdmin", err)
+	}
+}

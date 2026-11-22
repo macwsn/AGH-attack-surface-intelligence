@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -43,6 +45,7 @@ type RuleError struct {
 	ID     string
 	Rule   string
 	Detail string
+	Field  string
 }
 
 func (e *RuleError) Error() string {
@@ -60,6 +63,7 @@ type Signature struct {
 	All        []Matcher
 	Any        []Matcher
 	Version    *Matcher
+	builtin    bool
 }
 
 type Matcher struct {
@@ -81,21 +85,21 @@ type rawSignature struct {
 	ID         string         `yaml:"id"`
 	Name       string         `yaml:"name"`
 	Kind       string         `yaml:"kind"`
-	Category   string         `yaml:"category"`
+	Category   string         `yaml:"category,omitempty"`
 	Confidence *int           `yaml:"confidence"`
-	Request    map[string]any `yaml:"request"`
+	Request    map[string]any `yaml:"request,omitempty"`
 	Match      struct {
-		All []rawMatcher `yaml:"all"`
-		Any []rawMatcher `yaml:"any"`
+		All []rawMatcher `yaml:"all,omitempty"`
+		Any []rawMatcher `yaml:"any,omitempty"`
 	} `yaml:"match"`
-	Version *rawMatcher `yaml:"version"`
+	Version *rawMatcher `yaml:"version,omitempty"`
 }
 
 type rawMatcher struct {
 	Type  string `yaml:"type"`
-	Name  string `yaml:"name"`
-	Value string `yaml:"value"`
-	Group int    `yaml:"group"`
+	Name  string `yaml:"name,omitempty"`
+	Value string `yaml:"value,omitempty"`
+	Group int    `yaml:"group,omitempty"`
 }
 
 func LoadDir(dir string) (*Set, error) {
@@ -158,7 +162,7 @@ func Parse(data []byte) ([]Signature, error) {
 func checkExtraRequests(sigs []Signature) error {
 	paths := map[string]bool{}
 	for _, s := range sigs {
-		if s.Path == "/" || paths[s.Path] {
+		if s.builtin || s.Path == "/" || paths[s.Path] {
 			continue
 		}
 		paths[s.Path] = true
@@ -170,21 +174,31 @@ func checkExtraRequests(sigs []Signature) error {
 }
 
 func compile(r rawSignature) (Signature, error) {
+	field := ""
 	fail := func(rule, format string, args ...any) (Signature, error) {
-		return Signature{}, &RuleError{ID: r.ID, Rule: rule, Detail: fmt.Sprintf(format, args...)}
+		return Signature{}, &RuleError{ID: r.ID, Rule: rule, Detail: fmt.Sprintf(format, args...), Field: field}
 	}
+	field = FieldName
+	if strings.TrimSpace(r.Name) == "" && r.ID == "" {
+		return fail(RuleSchema, "name is required")
+	}
+	field = FieldID
 	if !idPattern.MatchString(r.ID) {
 		return fail(RuleSchema, "id %q must match [a-z0-9-]+", r.ID)
 	}
+	field = FieldName
 	if strings.TrimSpace(r.Name) == "" {
 		return fail(RuleSchema, "name is required")
 	}
+	field = FieldKind
 	if !kinds[r.Kind] {
 		return fail(RuleSchema, "unknown kind %q", r.Kind)
 	}
+	field = FieldConfidence
 	if r.Confidence == nil || *r.Confidence < 0 || *r.Confidence > 100 {
 		return fail(RuleSchema, "confidence must be 0-100")
 	}
+	field = FieldRequest
 	s := Signature{ID: r.ID, Name: r.Name, Kind: r.Kind, Category: r.Category, Confidence: *r.Confidence, Method: "GET", Path: "/"}
 	for key, v := range r.Request {
 		switch strings.ToLower(key) {
@@ -196,10 +210,11 @@ func compile(r rawSignature) (Signature, error) {
 			s.Method = m
 		case "path":
 			p, _ := v.(string)
-			if !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || strings.ContainsAny(p, "?#") {
-				return fail(RulePath, "path %v", v)
+			clean, problem := requestPath(p)
+			if problem != "" {
+				return fail(RulePath, "path %q %s", p, problem)
 			}
-			s.Path = p
+			s.Path = clean
 		case "body", "data", "form", "json":
 			return fail(RuleBody, "request field %q", key)
 		case "headers", "header", "cookies", "cookie":
@@ -210,20 +225,22 @@ func compile(r rawSignature) (Signature, error) {
 			return fail(RuleSchema, "unknown request field %q", key)
 		}
 	}
+	field = FieldMatch
 	if len(r.Match.All) == 0 && len(r.Match.Any) == 0 {
 		return fail(RuleSchema, "match needs an all or any group")
 	}
 	var err error
-	if s.All, err = compileMatchers(r.ID, r.Match.All); err != nil {
+	if s.All, err = compileMatchers(r.ID, "all", r.Match.All); err != nil {
 		return Signature{}, err
 	}
-	if s.Any, err = compileMatchers(r.ID, r.Match.Any); err != nil {
+	if s.Any, err = compileMatchers(r.ID, "any", r.Match.Any); err != nil {
 		return Signature{}, err
 	}
 	if r.Version != nil {
+		field = FieldVersion
 		v, err := compileMatcher(r.ID, *r.Version)
 		if err != nil {
-			return Signature{}, err
+			return Signature{}, withField(err, field)
 		}
 		if v.value == nil {
 			return fail(RuleSchema, "version type %q cannot extract a value", v.Type)
@@ -236,12 +253,50 @@ func compile(r rawSignature) (Signature, error) {
 	return s, nil
 }
 
-func compileMatchers(id string, raws []rawMatcher) ([]Matcher, error) {
+func withField(err error, field string) error {
+	var re *RuleError
+	if errors.As(err, &re) && re.Field == "" {
+		re.Field = field
+	}
+	return err
+}
+
+func requestPath(p string) (string, string) {
+	switch {
+	case !strings.HasPrefix(p, "/"):
+		return "", "is not an absolute path (a scheme or a relative path)"
+	case strings.HasPrefix(p, "//"):
+		return "", "names a host"
+	case strings.Contains(p, "?"):
+		return "", "has a query string"
+	case strings.Contains(p, "#"):
+		return "", "has a fragment"
+	}
+	decoded, err := url.PathUnescape(p)
+	if err != nil {
+		return "", "has an invalid percent-encoding"
+	}
+	if strings.Contains(decoded, `\`) {
+		return "", "contains a backslash"
+	}
+	for _, seg := range strings.Split(decoded, "/") {
+		if seg, _, _ = strings.Cut(seg, ";"); seg == "." || seg == ".." {
+			return "", "contains a dot segment (" + seg + "), also when percent-encoded"
+		}
+	}
+	clean := path.Clean(p)
+	if strings.HasSuffix(p, "/") && clean != "/" {
+		clean += "/"
+	}
+	return clean, ""
+}
+
+func compileMatchers(id, group string, raws []rawMatcher) ([]Matcher, error) {
 	out := make([]Matcher, 0, len(raws))
-	for _, r := range raws {
+	for i, r := range raws {
 		m, err := compileMatcher(id, r)
 		if err != nil {
-			return nil, err
+			return nil, withField(err, ConditionField(group, i))
 		}
 		out = append(out, m)
 	}
@@ -486,21 +541,46 @@ func (s *Signature) EvaluateStored(h *probe.HTTP) Evaluation {
 	if s.Path != "/" {
 		return Evaluation{Reason: fmt.Sprintf("Only the response for / is stored; testing never sends the request %s %s.", s.Method, s.Path)}
 	}
-	r := &probe.Response{URL: h.URL, StatusCode: h.StatusCode, Title: h.Title, Headers: h.Headers, Cookies: h.Cookies, RedirectChain: h.RedirectChain}
+	e := s.evaluateStored(h, nil)
+	if !e.Matched && s.NeedsBody() {
+		e.Reason += " No response body was given, so body matchers do not hold."
+	}
+	return e
+}
+
+func (s *Signature) evaluateStored(h *probe.HTTP, body []byte) Evaluation {
+	r := &probe.Response{URL: h.URL, StatusCode: h.StatusCode, Title: h.Title, Headers: h.Headers, Cookies: h.Cookies, RedirectChain: h.RedirectChain, Body: body}
 	ok, ev := s.evaluate(r, h)
 	if !ok {
-		reason := "The stored response does not satisfy the match groups."
-		for _, m := range append(slices.Clone(s.All), s.Any...) {
-			if m.Type == "body_regex" {
-				reason += " Response bodies are not stored, so body matchers never hold in a test."
-				break
-			}
-		}
-		return Evaluation{Reason: reason}
+		return Evaluation{Reason: "The stored response does not satisfy the match groups."}
 	}
 	e := Evaluation{Matched: true, Evidence: ev}
 	if s.Version != nil {
 		e.Version = s.Version.extract(r)
 	}
 	return e
+}
+
+func (s *Signature) NeedsBody() bool {
+	if s.Version != nil && s.Version.Type == "body_regex" {
+		return true
+	}
+	return slices.ContainsFunc(append(slices.Clone(s.All), s.Any...), func(m Matcher) bool { return m.Type == "body_regex" })
+}
+
+func (s *Signature) EvaluateHistory(h *probe.HTTP, body []byte) (Evaluation, bool) {
+	if h == nil {
+		return Evaluation{Reason: "The observation has no HTTP response."}, false
+	}
+	if s.Path != "/" {
+		return Evaluation{Reason: fmt.Sprintf("Only the response for / is stored; the request %s %s was never sent.", s.Method, s.Path)}, false
+	}
+	if body == nil && s.NeedsBody() {
+		return Evaluation{Reason: "No response body is stored for this observation."}, false
+	}
+	return s.evaluateStored(h, body), true
+}
+
+func (s *Signature) Evidence(ev []string) string {
+	return evidence(s.Method + " " + s.Path + ": " + strings.Join(ev, "; "))
 }

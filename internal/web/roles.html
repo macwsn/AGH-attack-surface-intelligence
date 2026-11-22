@@ -1,0 +1,55 @@
+{{define "content"}}
+<div class="page-head"><div><h1>Roles</h1>
+<p class="lede">{{len .Data.Roles}} roles, {{.Data.Custom}} custom, each a set of permissions where only custom roles can be changed; create a role below.</p></div></div>
+{{with .Data.Message}}<div class="notice ok" role="status">{{.}}</div>{{end}}
+{{with .Data.Problem}}<div class="notice warn" role="alert">{{.}}</div>{{end}}
+{{with .Data.Confirm}}
+<section class="panel">
+<header><h2>Delete role {{.Name}}</h2></header>
+<div class="body">
+<div class="notice warn">Delete the custom role {{.Name}}? This cannot be undone.</div>
+<form method="post" action="{{.Path}}/delete">{{$.CSRFField}}
+<div class="form-actions"><button class="danger" type="submit">Delete role {{.Name}}</button><a class="btn" href="/roles">Cancel</a></div>
+</form>
+</div>
+</section>
+{{end}}
+<div class="table-wrap">
+<table class="data">
+<thead><tr><th>Role</th>{{range .Data.Permissions}}<th><code>{{.}}</code></th>{{end}}<th>Actions</th></tr></thead>
+<tbody>
+{{range .Data.Roles}}{{$r := .}}
+<tr>
+<td><strong>{{.Name}}</strong>{{if .Builtin}} <span class="tag">Built-in</span>{{end}}</td>
+{{range .Ticks}}<td>{{if $r.Builtin}}<input type="checkbox" aria-label="{{$r.Name}}: {{.Permission}}"{{if .Granted}} checked{{end}} disabled>{{else}}<input type="checkbox" form="{{$r.FormID}}" name="perm" value="{{.Permission}}" aria-label="{{$r.Name}}: {{.Permission}}"{{if .Granted}} checked{{end}}>{{end}}</td>
+{{end}}
+<td>{{if .Builtin}}<span class="muted">Read-only</span>{{else}}<div class="marks">
+<form id="{{.FormID}}" method="post" action="{{.Path}}">{{$.CSRFField}}<button class="small" type="submit">Save changes</button></form>
+<a class="btn small danger" href="{{.Path}}/delete">Delete role {{.Name}}</a>
+</div>{{end}}</td>
+</tr>
+{{end}}
+</tbody>
+</table>
+</div>
+<section class="panel">
+<header><h2>Permissions</h2></header>
+<div class="body">
+<dl class="kv">
+{{range .Data.Permissions}}<dt><code>{{.}}</code></dt><dd>{{.Description}}</dd>
+{{end}}</dl>
+</div>
+</section>
+<section class="panel">
+<header><h2>Create role</h2></header>
+<div class="body">
+<form method="post" action="/roles/create">
+{{.CSRFField}}
+<label class="field"><span>Name</span><input type="text" name="name" value="{{.Data.Create.Name}}" required autocomplete="off"></label>
+{{range .Data.Create.Ticks}}<label class="check"><input type="checkbox" name="perm" value="{{.Permission}}"{{if .Granted}} checked{{end}}> <code>{{.Permission}}</code> <span class="muted">{{.Permission.Description}}</span></label>
+{{end}}
+<div class="form-actions"><button class="primary" type="submit">Create role</button></div>
+</form>
+</div>
+</section>
+{{end}}

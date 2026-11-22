@@ -1,0 +1,6 @@
+No new defect: no check that passed in run 1 fails in run 2, quickstart diffs are still exact (`service_missing 8787` / `service_returned 8787`), and every version the pack reports was checked against the images (Gitea 28.4.0, WordPress 7.1.5 and 4.7.5, phpMyAdmin 5.2.3, Adminer 6.3.0, Toxiproxy 2.12.0, DVWA 1.10). Observations:
+- Still no finding of kind `interesting-header` / `interesting-cookie` on any stack (C6): `X-Powered-By: PHP/5.6.30`, phpMyAdmin and Gitea cookies are exported but not flagged. Command: `asi scan run --targets-file /work/targets.txt --ports 80,81,443,6379,8080,8081 --name c1 --max-rate 300 --wait`.
+- Traefik dashboard (8086) is the one admin panel not flagged (4/5); cause is the filed https-first issue (ASI sees the TLS 404, not `/dashboard/`).
+- RabbitMQ AMQP 5673 stays generic (`Advanced Message Queue Protocol`, no product/version); DVWA is a technology only (no admin/login finding, `PHP` without version).
+- The pack adds `GET /version` and `GET /api/version` to every HTTP service (seen in WordPress, Adminer, DVWA logs): still GET only, requests per scan 14 -> 22 on the vulnerable stack.
+- The outdated table says "latest 6.9" for WordPress while the lab's `wordpress:latest` is 7.1.5 (evidence text only; the 4.7.5 verdict is right). Bonus findings: `outdated-apache` on 8088 (2.4.10) and 8090 (2.4.25).

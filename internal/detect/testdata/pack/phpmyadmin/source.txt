@@ -1,0 +1,7 @@
+captured from the running lab-agh stack
+image: phpmyadmin:latest (sha256:7d0b1d9826aa1345a4cab1feded7b19b5f8b1d90579b3180fbc1353157e35c7b)
+compose: lab-agh/docker-compose-modern.yml, service phpmyadmin
+capture date: 2026-11-21
+command: curl -sS -i -L --max-redirs 5 http://phpmyadmin<path> from a container on the stack network (host ports not published)
+paths: / (root.http), /version (version.http), /api/version (api__version.http)
+state: login page (PMA_HOST=mariadb)

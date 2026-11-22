@@ -1,0 +1,320 @@
+{
+ "tool": "httpx -td",
+ "totals": {
+  "services": 11,
+  "hosts_found": 9,
+  "ports_found": 13,
+  "ports_total": 33,
+  "recognised": 4,
+  "version_exact": 2,
+  "version_major_minor": 1,
+  "version_wrong": 0,
+  "version_missing": 8,
+  "admin_expected": 5,
+  "admin_flagged": 0,
+  "admin_false_flags": 0,
+  "outdated_expected": 11,
+  "outdated_flagged": 0,
+  "false_technologies": 6,
+  "unexpected_hosts": [],
+  "summary": "recognised 4/11, version exact 2/11, admin flagged 0/5, false technologies 6"
+ },
+ "services": [
+  {
+   "service": "solr",
+   "address": "172.28.33.10",
+   "product": "Apache Solr",
+   "version": "8.2.0",
+   "category": "search",
+   "host_found": true,
+   "ports": {
+    "5005": false,
+    "8983": true,
+    "18983": false
+   },
+   "extra_ports": [],
+   "recognised": false,
+   "matched_names": [],
+   "matched_sources": [],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": true,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": [
+    "Chosen",
+    "D3",
+    "Highlight.js",
+    "timeago"
+   ]
+  },
+  {
+   "service": "couchdb",
+   "address": "172.28.33.11",
+   "product": "Apache CouchDB",
+   "version": "2.1.0",
+   "category": "database",
+   "host_found": true,
+   "ports": {
+    "5984": true,
+    "5986": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "CouchDB"
+   ],
+   "matched_sources": [
+    "httpx"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "2.1.0"
+   ],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "nacos",
+   "address": "172.28.33.12",
+   "product": "Nacos",
+   "version": "1.4.0",
+   "category": "service-registry",
+   "host_found": true,
+   "ports": {
+    "5005": false,
+    "7848": false,
+    "8848": true
+   },
+   "extra_ports": [],
+   "recognised": false,
+   "matched_names": [],
+   "matched_sources": [],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "metabase",
+   "address": "172.28.33.13",
+   "product": "Metabase",
+   "version": "0.40.4",
+   "category": "analytics",
+   "host_found": true,
+   "ports": {
+    "3000": true
+   },
+   "extra_ports": [],
+   "recognised": false,
+   "matched_names": [],
+   "matched_sources": [],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": true,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "webmin",
+   "address": "172.28.33.14",
+   "product": "Webmin",
+   "version": "1.910",
+   "category": "admin-tool",
+   "host_found": true,
+   "ports": {
+    "10000": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "MiniServ",
+    "Webmin"
+   ],
+   "matched_sources": [
+    "httpx"
+   ],
+   "version_status": "exact",
+   "versions_seen": [
+    "1.910"
+   ],
+   "admin_expected": true,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "glassfish",
+   "address": "172.28.33.15",
+   "product": "GlassFish",
+   "version": "4.1",
+   "category": "app-server",
+   "host_found": true,
+   "ports": {
+    "3700": false,
+    "4848": true,
+    "5005": false,
+    "7676": false,
+    "8080": true,
+    "8181": true,
+    "8686": false
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "GlassFish"
+   ],
+   "matched_sources": [
+    "httpx"
+   ],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": true,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": [
+    "JavaServer Pages"
+   ]
+  },
+  {
+   "service": "influxdb",
+   "address": "172.28.33.16",
+   "product": "InfluxDB",
+   "version": "1.6.6",
+   "category": "database",
+   "host_found": true,
+   "ports": {
+    "8086": true
+   },
+   "extra_ports": [],
+   "recognised": false,
+   "matched_names": [],
+   "matched_sources": [],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "opensmtpd",
+   "address": "172.28.33.17",
+   "product": "OpenSMTPD",
+   "version": "6.6.1p1",
+   "category": "mail",
+   "host_found": false,
+   "ports": {
+    "25": false
+   },
+   "extra_ports": [],
+   "recognised": false,
+   "matched_names": [],
+   "matched_sources": [],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "gogs",
+   "address": "172.28.33.18",
+   "product": "Gogs",
+   "version": "0.11.66",
+   "category": "scm",
+   "host_found": true,
+   "ports": {
+    "22": false,
+    "3000": true
+   },
+   "extra_ports": [],
+   "recognised": true,
+   "matched_names": [
+    "Gogs"
+   ],
+   "matched_sources": [
+    "httpx"
+   ],
+   "version_status": "major_minor",
+   "versions_seen": [
+    "0.11.66.0916"
+   ],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": [
+    "Macaron"
+   ]
+  },
+  {
+   "service": "openfire",
+   "address": "172.28.33.19",
+   "product": "Openfire",
+   "version": "4.7.4",
+   "category": "chat-server",
+   "host_found": true,
+   "ports": {
+    "5222": false,
+    "5223": false,
+    "5262": false,
+    "5263": false,
+    "5269": false,
+    "5270": false,
+    "5275": false,
+    "5276": false,
+    "7070": true,
+    "7777": false,
+    "9090": true
+   },
+   "extra_ports": [],
+   "recognised": false,
+   "matched_names": [],
+   "matched_sources": [],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": true,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  },
+  {
+   "service": "mosquitto",
+   "address": "172.28.33.20",
+   "product": "Mosquitto",
+   "version": "1.6.15",
+   "category": "message-queue",
+   "host_found": false,
+   "ports": {
+    "1883": false
+   },
+   "extra_ports": [],
+   "recognised": false,
+   "matched_names": [],
+   "matched_sources": [],
+   "version_status": "missing",
+   "versions_seen": [],
+   "admin_expected": false,
+   "admin_flagged": false,
+   "outdated_expected": true,
+   "outdated_flagged": false,
+   "false_technologies": []
+  }
+ ]
+}

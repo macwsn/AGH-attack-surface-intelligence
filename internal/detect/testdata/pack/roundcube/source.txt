@@ -1,0 +1,2 @@
+documented markers (written fixture, not a capture), 2026-11-21
+follows: Roundcube login page (roundcube_sessid cookie, rcmail = new rcube_webmail()), roundcube.net

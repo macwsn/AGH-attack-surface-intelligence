@@ -1,0 +1,17 @@
+HTTP/1.1 301 Moved Permanently
+Server: debut/1.30
+Location: /general/status.html
+Content-Length: 0
+
+HTTP/1.1 200 OK
+Server: debut/1.30
+Content-Type: text/html
+Cache-Control: no-cache
+
+<!DOCTYPE html>
+<html lang="en">
+<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Brother HL-L2350DW series</title>
+<link rel="stylesheet" type="text/css" href="../common/css/common.css"></head>
+<body><div id="mainContent"><h1>Status</h1><dl><dt>Device Status</dt><dd>Sleep</dd></dl></div></body>
+</html>

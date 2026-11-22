@@ -1,0 +1,46 @@
+{{define "content"}}{{with .Data}}
+<div class="page-head"><div><h1>Hosts</h1>
+<p class="lede">Filter the list or open a host to see its services and history: {{.Total}} {{if .Filtered}}matching {{.HostWord}}{{else}}{{.HostWord}} in the inventory{{end}}.</p></div>
+{{if .CanCreate}}<div class="actions"><a class="btn primary" href="/hosts/entry">Add host</a></div>{{end}}</div>
+{{with .Deleted}}<div class="notice ok" role="status">Host {{.}} deleted.</div>{{end}}
+
+<form class="filters" method="get" action="/hosts/">
+<label class="grow">Search <input type="search" name="q" value="{{.Filter.Text}}" placeholder="Address, hostname, name, title"></label>
+<label>Status <select name="status">{{range .Statuses}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></label>
+<label>Port <input type="number" name="port" min="1" max="65535" value="{{.Filter.Port}}" placeholder="443"></label>
+<label>Service <input type="text" name="service" value="{{.Filter.Service}}" placeholder="http"></label>
+<label>Technology <input type="text" name="technology" value="{{.Filter.Technology}}" placeholder="WordPress"></label>
+<label>Finding <select name="finding">{{range .FindingKinds}}<option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>{{end}}</select></label>
+<label>Tag <input type="text" name="tag" value="{{.Filter.Tag}}" placeholder="crown-jewel"></label>
+{{with .Filter.Sort}}<input type="hidden" name="sort" value="{{.}}">{{end}}{{if .Filter.Desc}}<input type="hidden" name="dir" value="desc">{{end}}
+<button type="submit">Apply</button>
+{{if .Filtered}}<a class="btn" href="{{.ClearURL}}">Clear filters</a>{{end}}
+</form>
+
+{{if .Rows}}
+<div class="result-line"><span>Showing {{.From}}-{{.To}} of {{.Total}}</span><span class="pager">{{if .PrevURL}}<a class="btn small" href="{{.PrevURL}}" rel="prev">Previous</a>{{else}}<a class="btn small" aria-disabled="true">Previous</a>{{end}}<span class="num">{{.Page}} / {{.Pages}}</span>{{if .NextURL}}<a class="btn small" href="{{.NextURL}}" rel="next">Next</a>{{else}}<a class="btn small" aria-disabled="true">Next</a>{{end}}</span></div>
+<div class="table-wrap">
+<table class="data">
+<thead><tr>
+{{range .Columns}}<th{{if .Num}} class="num"{{end}}{{with .AriaSort}} aria-sort="{{.}}"{{end}}><a href="{{.URL}}">{{.Label}}</a></th>{{end}}
+<th>Services</th><th>Technologies</th><th>Findings</th><th>Tags</th>
+</tr></thead>
+<tbody>
+{{range .Rows}}<tr{{if eq .Status "inactive"}} class="is-off"{{end}}>
+<td><a class="addr" href="{{.URL}}">{{.Address}}</a>{{with .Hostnames}}<br><span class="muted">{{.}}</span>{{end}}</td>
+<td>{{.DisplayName}}</td>
+<td><span class="status {{.Status}}">{{.StatusLabel}}</span></td>
+<td class="num"><span class="meter{{if .InterestHigh}} high{{end}}"><progress max="100" value="{{.Interest}}"></progress>{{.Interest}}</span></td>
+<td class="nowrap"><span title="{{.LastSeenExact}}">{{.LastSeen}}</span></td>
+<td class="addr">{{range $i, $p := .PortList}}{{if $i}}, {{end}}{{if $p.Off}}<span class="status {{$p.Status}}" title="{{$p.Label}} service">{{$p.Port}}</span>{{else}}{{$p.Port}}{{end}}{{end}}</td>
+<td>{{.Technologies}}</td>
+<td><div class="marks">{{range .Kinds}}<span class="kind {{.Class}}">{{.Label}}</span>{{end}}</div></td>
+<td><div class="marks">{{range .Tags}}<span class="tag">{{.}}</span>{{end}}</div></td>
+</tr>
+{{end}}</tbody>
+</table>
+</div>
+{{else}}
+<div class="empty">{{if .Filtered}}<p>No hosts match these filters.</p><p><a class="btn" href="{{.ClearURL}}">Clear filters</a></p>{{else if gt .Page 1}}<p>This page is past the last host.</p><p><a class="btn" href="/hosts/">First page</a></p>{{else}}<p>No hosts yet. Hosts appear here after the first scan run.</p>{{end}}</div>
+{{end}}
+{{end}}{{end}}

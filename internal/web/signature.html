@@ -1,26 +1,66 @@
 {{define "content"}}
-{{$d := .Data}}
+{{$d := .Data}}{{$g := $d.Guided}}
 <div class="page-head"><div><h1>{{if $d.ID}}Signature <code>{{$d.ID}}</code>{{else}}New signature{{end}}</h1>
-<p class="lede">One signature in YAML. Saving checks the same safety rules as the signatures directory.</p></div></div>
+{{if $d.Builtin}}<p class="lede"><span class="tag">Built-in</span> Shipped with ASI. It can be enabled or disabled, not edited or deleted.</p>{{else if $g}}<p class="lede">Describe what a response must show. The YAML beside the form is what gets saved; saving checks the same safety rules as the signatures directory.</p>{{else}}<p class="lede">One signature in YAML. Saving checks the same safety rules as the signatures directory.</p>{{end}}</div>
+{{if $d.Builtin}}<div class="actions">{{if $d.Enabled}}<form method="post" action="/signatures/{{$d.ID}}/disable">{{.CSRFField}}<button type="submit">Disable signature {{$d.ID}}</button></form>{{else}}<form method="post" action="/signatures/{{$d.ID}}/enable">{{.CSRFField}}<button type="submit">Enable</button></form>{{end}}</div>{{end}}</div>
+{{if not $d.Builtin}}<nav class="tabs" aria-label="Editor"><a href="{{if $d.ID}}/signatures/{{$d.ID}}{{else}}/signatures/new{{end}}"{{if $g}} aria-current="page"{{end}}>Form</a><a href="{{if $d.ID}}/signatures/{{$d.ID}}{{else}}/signatures/new{{end}}?view=yaml"{{if not $g}} aria-current="page"{{end}}>Edit as YAML</a></nav>{{end}}
+{{with $d.Note}}<div class="notice" role="status">{{.}}</div>{{end}}
 {{with $d.Problem}}<div class="notice error" role="alert">{{with .Rule}}Rule violated: {{.}}. {{end}}{{.Detail}}</div>{{end}}
 <div class="cols">
 <section class="panel">
 <header><h2>Signature</h2></header>
 <div class="body">
-<form id="signature" method="post" action="{{if $d.ID}}/signatures/{{$d.ID}}{{else}}/signatures{{end}}">
+{{if $g}}
+<form id="signature" method="post" action="{{if $d.ID}}/signatures/{{$d.ID}}{{else}}/signatures{{end}}" hx-post="/signatures/form" hx-trigger="change" hx-target="#signature-yaml" hx-select="#signature-yaml" hx-swap="outerHTML">
 {{.CSRFField}}
 <input type="hidden" name="id" value="{{$d.ID}}">
-<label class="field"><span>YAML</span><textarea name="source" rows="16" required>{{$d.Source}}</textarea><span class="hint">Fields id, name, kind, category, confidence, request, match and version, as in docs/contracts.md §4.</span></label>
+<input type="hidden" name="mode" value="form">
+<label class="field"><span>Name</span><input type="text" name="f_name" value="{{$g.Name}}"{{with index $g.Problems "name"}} aria-invalid="true" aria-describedby="problem-name"{{end}}>{{with index $g.Problems "name"}}<span class="problem" id="problem-name">{{.}}</span>{{end}}</label>
+{{if $d.ID}}<input type="hidden" name="f_id" value="{{$g.ID}}">{{else}}<label class="field"><span>ID</span><input type="text" name="f_id" value="{{$g.ID}}" placeholder="{{$g.SignatureID}}"{{with index $g.Problems "id"}} aria-invalid="true" aria-describedby="problem-id"{{end}}><span class="hint">Lower-case letters, digits and dashes. Leave empty to derive it from the name.</span>{{with index $g.Problems "id"}}<span class="problem" id="problem-id">{{.}}</span>{{end}}</label>{{end}}
+<label class="field"><span>Kind</span><select name="f_kind"{{with index $g.Problems "kind"}} aria-invalid="true" aria-describedby="problem-kind"{{end}}>{{range $g.Kinds}}<option{{if eq . $g.Kind}} selected{{end}}>{{.}}</option>{{end}}</select>{{with index $g.Problems "kind"}}<span class="problem" id="problem-kind">{{.}}</span>{{end}}</label>
+<label class="field"><span>Category</span><input type="text" name="f_category" value="{{$g.Category}}" placeholder="web-server"><span class="hint">Optional, for technologies.</span></label>
+<label class="field"><span>Confidence</span><input type="number" name="f_confidence" value="{{$g.Confidence}}" min="0" max="100"{{with index $g.Problems "confidence"}} aria-invalid="true" aria-describedby="problem-confidence"{{end}}><span class="hint">0-100: how sure a match is.</span>{{with index $g.Problems "confidence"}}<span class="problem" id="problem-confidence">{{.}}</span>{{end}}</label>
+<label class="field"><span>Conditions</span><select name="f_group"{{with index $g.Problems "match"}} aria-invalid="true" aria-describedby="problem-match"{{end}}><option value="all"{{if not $g.Any}} selected{{end}}>All conditions must hold</option><option value="any"{{if $g.Any}} selected{{end}}>Any condition is enough</option></select>{{with index $g.Problems "match"}}<span class="problem" id="problem-match">{{.}}</span>{{end}}</label>
+{{range $g.Rows}}<div class="condition">
+<label class="field"><span>Matcher</span><select name="c_matcher">{{$m := .Matcher}}{{range $g.Matchers}}<option{{if eq . $m}} selected{{end}}>{{.}}</option>{{end}}</select></label>
+<label class="field"><span>Header or cookie name</span><input type="text" name="c_name" value="{{.Name}}" placeholder="Server"></label>
+<label class="field grow"><span>Value</span><input type="text" name="c_value" value="{{.Value}}" placeholder="nginx"{{if .Problem}} aria-invalid="true" aria-describedby="problem-condition-{{.Index}}"{{end}}>{{if .Problem}}<span class="problem" id="problem-condition-{{.Index}}">{{.Problem}}</span>{{end}}</label>
+<button class="small" type="submit" name="remove" value="{{.Index}}" formaction="/signatures/form" formnovalidate>Remove</button>
+</div>{{end}}
+<span class="hint">Header and title, body and the cookie name are RE2 regexes; status is a number; favicon is a SHA-256 hex or a Shodan mmh3 number.</span>
+<div class="form-actions"><button type="submit" name="add" value="1" formaction="/signatures/form" formnovalidate>Add condition</button></div>
+<label class="field"><span>Version from</span><select name="f_version_from"{{with index $g.Problems "version"}} aria-invalid="true" aria-describedby="problem-version"{{end}}><option value=""{{if eq $g.VersionFrom ""}} selected{{end}}>No version</option>{{range $g.VersionSources}}<option{{if eq . $g.VersionFrom}} selected{{end}}>{{.}}</option>{{end}}</select></label>
+<label class="field"><span>Version header name</span><input type="text" name="f_version_name" value="{{$g.VersionName}}" placeholder="Server"></label>
+<label class="field"><span>Version pattern</span><input type="text" name="f_version" value="{{$g.Version}}" placeholder="nginx/([0-9.]+)"{{with index $g.Problems "version"}} aria-invalid="true" aria-describedby="problem-version"{{end}}><span class="hint">Optional RE2 regex; its first group is the version.</span>{{with index $g.Problems "version"}}<span class="problem" id="problem-version">{{.}}</span>{{end}}</label>
+<label class="field"><span>Request path</span><input type="text" name="f_path" value="{{$g.Path}}" placeholder="/"{{with index $g.Problems "request"}} aria-invalid="true" aria-describedby="problem-request"{{end}}><span class="hint">Optional. A literal path such as /admin/login, no query string. Empty uses the response for /.</span>{{with index $g.Problems "request"}}<span class="problem" id="problem-request">{{.}}</span>{{end}}</label>
 <label class="check"><input type="checkbox" name="enabled" value="1"{{if $d.Enabled}} checked{{end}}> Use this signature in scans</label>
 <div class="form-actions"><button class="primary" type="submit">{{if $d.ID}}Save changes{{else}}Create signature{{end}}</button><a class="btn" href="/signatures">Cancel</a></div>
 </form>
-{{if $d.ID}}<form method="post" action="/signatures/{{$d.ID}}/delete">{{.CSRFField}}<div class="form-actions"><button class="danger" type="submit">Delete signature</button></div></form>{{end}}
+{{else}}
+<form id="signature" method="post" action="{{if $d.Builtin}}/signatures/test{{else if $d.ID}}/signatures/{{$d.ID}}{{else}}/signatures{{end}}">
+{{.CSRFField}}
+<input type="hidden" name="id" value="{{$d.ID}}">
+<label class="field"><span>YAML</span><textarea name="source" rows="16" required{{if $d.Builtin}} readonly{{end}}>{{$d.Source}}</textarea><span class="hint">Fields id, name, kind, category, confidence, request, match and version, as in docs/contracts.md §4.</span></label>
+{{if $d.Builtin}}<p class="muted">{{if $d.Enabled}}Enabled: scans use this signature.{{else}}Disabled: scans do not use this signature.{{end}}</p>
+<div class="form-actions"><a class="btn" href="/signatures">Back to signatures</a></div>
+{{else}}<label class="check"><input type="checkbox" name="enabled" value="1"{{if $d.Enabled}} checked{{end}}> Use this signature in scans</label>
+<div class="form-actions"><button class="primary" type="submit">{{if $d.ID}}Save changes{{else}}Create signature{{end}}</button><a class="btn" href="/signatures">Cancel</a></div>{{end}}
+</form>
+{{end}}
+{{if and $d.ID (not $d.Builtin)}}<form method="post" action="/signatures/{{$d.ID}}/delete">{{.CSRFField}}<div class="form-actions"><button class="danger" type="submit">Delete signature {{$d.ID}}</button></div></form>{{end}}
 </div>
 </section>
-<section class="panel">
-<header><h2>Test against a service</h2></header>
+{{if $g}}<section class="panel">
+<header><h2>YAML</h2></header>
+<div class="body" id="signature-yaml">
+<label class="field"><span>Generated YAML</span><textarea form="signature" name="source" rows="16" readonly>{{$d.Source}}</textarea><span class="hint">Read-only. Updated when a field changes; this is what gets saved.</span></label>
+<div class="form-actions"><button form="signature" type="submit" name="view" value="yaml" formaction="/signatures/form" formnovalidate>Edit this YAML</button></div>
+</div>
+</section>{{end}}
+{{if $d.CanHunt}}<section class="panel">
+<header><h2>Test against stored data</h2></header>
 <div class="body">
-<p class="muted">Evaluates the draft above against the stored latest observation of a service. No request is sent.</p>
+<p class="muted">Evaluates the draft {{if $g}}signature{{else}}above{{end}} against the stored latest observation of a service. No request is sent.</p>
 {{with $d.Test}}
 {{if .Matched}}<div class="notice ok" role="status">Matches {{.Service}}{{with .Version}}, version {{.}}{{end}}.</div>
 {{else}}<div class="notice warn" role="status">No match on {{.Service}}. {{.Reason}}</div>{{end}}
@@ -34,8 +74,21 @@
 <label class="field"><span>Address</span><input form="signature" type="text" name="address" value="{{$d.Address}}"></label>
 <label class="field"><span>Port</span><input form="signature" type="number" name="port" value="{{$d.Port}}" min="1" max="65535"></label>
 <label class="field"><span>Protocol</span><select form="signature" name="protocol"><option{{if eq $d.Protocol "tcp"}} selected{{end}}>tcp</option><option{{if eq $d.Protocol "udp"}} selected{{end}}>udp</option></select></label>
-<div class="form-actions"><button form="signature" type="submit" formaction="/signatures/test" formnovalidate>Test signature</button></div>
+<div class="form-actions"><button form="signature" type="submit" formaction="/signatures/test" formnovalidate>Test against stored data</button></div>
 </div>
 </section>
+<section class="panel">
+<header><h2>Hunt in history</h2></header>
+<div class="body">
+<p class="muted">Evaluates the draft {{if $g}}signature{{else}}above{{end}} against every stored observation of every service. No request is sent; signatures with another request path than / are reported as not evaluable.</p>
+<label class="field"><span>Period</span><select form="signature" name="since">
+<option value=""{{if eq $d.Since ""}} selected{{end}}>All stored runs</option>
+<option value="7d"{{if eq $d.Since "7d"}} selected{{end}}>Last 7 days</option>
+<option value="30d"{{if eq $d.Since "30d"}} selected{{end}}>Last 30 days</option>
+<option value="90d"{{if eq $d.Since "90d"}} selected{{end}}>Last 90 days</option>
+</select></label>
+<div class="form-actions"><button form="signature" type="submit" formaction="/signatures/hunt" formnovalidate>Hunt in history</button></div>
+</div>
+</section>{{end}}
 </div>
 {{end}}

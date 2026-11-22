@@ -1,0 +1,34 @@
+{{define "content"}}
+{{with .Data}}
+<div class="page-head"><div><h1 class="addr">{{.Address}}</h1>
+<p class="lede">{{if .Usual}}<span class="muted">{{.Usual}}</span>{{else}}<span class="status {{.Status}}">{{.StatusText}}</span>{{end}} · Seen in {{.Seen}} of {{.Covering}} covering runs</p></div>
+<div class="actions"><a class="btn" href="/changes">All changes</a></div></div>
+<div class="cols">
+<section class="panel">
+<header><h2>Interest</h2></header>
+<div class="body">
+<p><span class="meter{{if .High}} high{{end}}"><progress max="100" value="{{.Score}}"></progress>{{.Score}}</span></p>
+{{if .Reasons}}<table class="data">
+<thead><tr><th>Reason</th><th class="num">Points</th></tr></thead>
+<tbody>{{range .Reasons}}<tr data-reason="{{.Code}}"><td>{{.Label}}</td><td class="num">{{.Points}}</td></tr>{{end}}</tbody>
+</table>{{else}}<p class="muted">Nothing notable on this host.</p>{{end}}
+</div>
+</section>
+<section class="panel">
+<header><h2>Presence, last {{len .Cells}} runs</h2></header>
+<div class="body">
+<svg class="strip" role="img" aria-label="Seen in {{.Seen}} of {{.Covering}} covering runs" width="{{.StripWidth}}" height="16" viewBox="0 0 {{.StripWidth}} 16">{{range .Cells}}<rect class="{{.Class}}" x="{{.X}}" y="0.5" width="7" height="15"><title>{{.Title}}</title></rect>{{end}}</svg>
+</div>
+</section>
+</div>
+<h2>Runs</h2>
+<div class="table-wrap">
+<table class="data">
+<thead><tr><th>Run</th><th>Time</th><th>Presence</th><th>Changes</th></tr></thead>
+<tbody>
+{{range .Runs}}<tr data-run="{{.Name}}"><td class="addr">{{.Name}}</td><td class="num">{{.At}}</td><td><span class="presence"><i class="{{.Class}}"></i></span> {{.Label}}</td><td>{{range .Changes}}<div data-type="{{.Type}}"><span class="change {{.Mark}}">{{.Label}}</span> <span class="addr">{{.Service}}</span>{{if .HTTPGone}}<div class="diff">HTTP data no longer available</div>{{end}}{{if .Fields}}<div class="diff">{{range $i, $f := .Fields}}{{if $i}}<br>{{end}}{{$f.Field}} {{with $f.Old}}<del>{{.}}</del>{{end}} {{with $f.New}}<ins>{{.}}</ins>{{end}}{{end}}</div>{{end}}</div>{{else}}<span class="muted">No changes</span>{{end}}</td></tr>
+{{end}}</tbody>
+</table>
+</div>
+{{end}}
+{{end}}

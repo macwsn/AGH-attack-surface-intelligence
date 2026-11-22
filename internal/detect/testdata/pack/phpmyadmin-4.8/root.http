@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+Server: Apache/2.4.25 (Debian)
+X-Powered-By: PHP/7.2.5
+Set-Cookie: pma_lang=en; expires=Mon, 21-Dec-2026 10:00:00 GMT; Max-Age=2592000; path=/; httponly
+Set-Cookie: phpMyAdmin=0d9f1a3c5b7e8d2f4a6c; path=/; HttpOnly
+X-Frame-Options: DENY
+X-Robots-Tag: noindex, nofollow
+Content-Type: text/html; charset=utf-8
+
+<!DOCTYPE HTML><html lang='en' dir='ltr' class='chrome chrome66'><head><meta charset="utf-8" /><meta name="referrer" content="no-referrer" /><meta name="robots" content="noindex,nofollow" /><title>localhost / mysql | phpMyAdmin 4.8.1</title><link rel="stylesheet" type="text/css" href="phpmyadmin.css.php?nocache=5623838262ltr&amp;server=1" /><script data-cfasync='false' type='text/javascript' src='js/whitelist.php?v=4.8.1&amp;lang=en'></script><script data-cfasync='false' type='text/javascript' src='js/vendor/jquery/jquery.min.js?v=4.8.1'></script><script data-cfasync='false' type='text/javascript'>// <![CDATA[
+PMA_commonParams.setAll({common_query:"&lang=en",opendb_url:"db_structure.php",server:"1",table:"",db:"",user:"root"});
+// ]]></script></head><body><div id="pma_navigation"><div id="pma_navigation_resizer"></div><div id="pma_navigation_collapser"></div><div id="pma_navigation_content"><div id="pma_navigation_header"><a class="hide navigation_url" href="navigation.php?ajax_request=1"></a></div></div></div><div id="page_content"><h2>General settings</h2></div></body></html>

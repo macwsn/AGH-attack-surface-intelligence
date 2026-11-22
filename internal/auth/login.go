@@ -33,9 +33,10 @@ func (s *Service) Login(ctx context.Context, username, password, addr string) (S
 
 func (s *Service) checkCredentials(ctx context.Context, username, password string) (int64, bool, error) {
 	var userID int64
+	var disabled bool
 	encoded := s.dummyHash
-	err := s.store.Pool.QueryRow(ctx, `SELECT id, password_hash FROM users WHERE username = $1`, username).
-		Scan(&userID, &encoded)
+	err := s.store.Pool.QueryRow(ctx, `SELECT id, password_hash, disabled FROM users WHERE username = $1`, username).
+		Scan(&userID, &encoded, &disabled)
 	found := err == nil
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return 0, false, fmt.Errorf("look up user: %w", err)
@@ -44,7 +45,7 @@ func (s *Service) checkCredentials(ctx context.Context, username, password strin
 	if err != nil {
 		return 0, false, fmt.Errorf("verify password: %w", err)
 	}
-	return userID, found && ok, nil
+	return userID, found && ok && !disabled, nil
 }
 
 func (s *Service) Logout(ctx context.Context, token, addr string) error {

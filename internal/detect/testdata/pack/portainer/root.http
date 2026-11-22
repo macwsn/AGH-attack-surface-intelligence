@@ -1,0 +1,19 @@
+HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Cache-Control: max-age=31536000
+Content-Type: text/html; charset=utf-8
+X-Content-Type-Options: nosniff
+X-Xss-Protection: 1; mode=block
+
+<!doctype html>
+<html lang="en" ng-app="portainer" ng-strict-di data-edition="CE">
+<head>
+<meta charset="utf-8" />
+<title>Portainer</title>
+<meta name="description" content="" />
+<link rel="icon" type="image/x-icon" href="dist/favicon.ico" />
+</head>
+<body ng-controller="MainController">
+<div id="page-wrapper" ui-view="sidebar"></div>
+</body>
+</html>

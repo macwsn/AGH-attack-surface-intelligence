@@ -1,0 +1,439 @@
+{
+ "product_commit": "182dc8af0a05eb7514c8155728f7bd89c807edc0",
+ "scenarios": [
+  {
+   "scenario": "kill-resume",
+   "status": "PASS",
+   "reason": "resumed run equals the uninterrupted one; scan show said status=running after the kill; 2 orphan nmap",
+   "property": "after kill -9 and 'scan resume' the export equals the export of an uninterrupted run (same hosts, same services, no duplicates)",
+   "measured": {
+    "baseline_seconds": 119.5,
+    "killed_after_seconds": 42.7,
+    "groups_done_at_kill": 1,
+    "scan_exit_after_kill": "137",
+    "status_shown_after_kill": "running",
+    "orphan_nmap_after_kill": 2,
+    "nmap_2s_after_kill": 2,
+    "resume_right_after_kill_exit": "1",
+    "seconds_until_not_shown_running": 55.5,
+    "status_then": "stalled",
+    "nmap_left_before_resume": 0,
+    "resume_exit": "0",
+    "compare": {
+     "hosts_a": 54,
+     "hosts_b": 54,
+     "services_a": 70,
+     "services_b": 70,
+     "duplicates": [],
+     "differences": [],
+     "equal": true
+    }
+   },
+   "evidence": "eval/results/reliability/run2/kill-resume/",
+   "product_commit": "182dc8af0a05eb7514c8155728f7bd89c807edc0"
+  },
+  {
+   "scenario": "db-restart",
+   "status": "PASS",
+   "reason": "both variants ended equal to the uninterrupted run (restart: scan exit 0, outage: scan exit 0)",
+   "property": "a Postgres restart (and a 20 s outage) mid-scan: the scan completes correctly or ends in a clearly reported, resumable state; after resume the export equals the uninterrupted one; no panic",
+   "measured": {
+    "restart": {
+     "variant": "restart",
+     "verdict": "ok",
+     "why": "",
+     "scan_exit": "0",
+     "status_after_fault": "completed",
+     "needed_resume": "no",
+     "resume_exit": "none",
+     "scan_stderr": "",
+     "compare": {
+      "hosts_a": 54,
+      "hosts_b": 54,
+      "services_a": 70,
+      "services_b": 70,
+      "duplicates": [],
+      "differences": [],
+      "equal": true
+     }
+    },
+    "outage": {
+     "variant": "outage",
+     "verdict": "ok",
+     "why": "",
+     "scan_exit": "0",
+     "status_after_fault": "completed",
+     "needed_resume": "no",
+     "resume_exit": "none",
+     "scan_stderr": "",
+     "compare": {
+      "hosts_a": 54,
+      "hosts_b": 54,
+      "services_a": 70,
+      "services_b": 70,
+      "duplicates": [],
+      "differences": [],
+      "equal": true
+     }
+    }
+   },
+   "evidence": "eval/results/reliability/run2/db-restart/",
+   "product_commit": "182dc8af0a05eb7514c8155728f7bd89c807edc0"
+  },
+  {
+   "scenario": "host-vanishes",
+   "status": "PASS",
+   "reason": "run completed, no service_changed for the vanished host",
+   "property": "a host that answers discovery and nmap but is gone before the HTTP probe: the run completes and the host produces no service_changed entry in the diffs around that run",
+   "measured": {
+    "window_hit": "yes",
+    "target_state_after_v1": "exited",
+    "v1_exit": "0",
+    "detail": {
+     "diff-v0-v1": [],
+     "diff-v0-v1_other_hosts": 0,
+     "diff-v1-v2": [],
+     "diff-v1-v2_other_hosts": 0,
+     "v1_record": [
+      {
+       "status": "active",
+       "services": [
+        {
+         "port": 80,
+         "state": "open",
+         "status": "active",
+         "service": "http",
+         "product": "",
+         "http": {
+          "scheme": "http",
+          "url": "http://172.29.0.50/",
+          "status_code": 0,
+          "title": "",
+          "headers": {},
+          "cookies": [],
+          "redirect_chain": [],
+          "favicon_sha256": "",
+          "favicon_mmh3": 0,
+          "response_time_ms": 3,
+          "error": "connection refused"
+         }
+        }
+       ]
+      }
+     ],
+     "service_changed": 0
+    }
+   },
+   "evidence": "eval/results/reliability/run2/host-vanishes/",
+   "product_commit": "182dc8af0a05eb7514c8155728f7bd89c807edc0"
+  },
+  {
+   "scenario": "hostile-http",
+   "status": "FAIL",
+   "reason": "scan exit 137/137 (137 = hung past 900 s); missing: bigbody, loop, offsite, slowloris, silent, slowbody, badtls, garbage, xss, longtitle, latin2, brokenutf, manyheaders, crlfnul, chunked, http10, bigcookie;",
+   "property": "17 misbehaving HTTP targets: the run completes in bounded time, the export is valid UTF-8 JSON, bodies are capped, every hostile service is recorded as open, a second identical scan gives zero diff changes, an off-target redirect is recorded but not followed",
+   "measured": {
+    "scan1_seconds": 901.3,
+    "scan2_seconds": 900.9,
+    "scan1_exit": "137",
+    "scan2_exit": "137",
+    "requests_to_offsite_host": 0,
+    "db_bytes_after_two_scans": 9246387,
+    "export": {
+     "export_bytes": 104,
+     "valid_utf8": true,
+     "valid_json": true,
+     "missing": [
+      "172.29.0.10:80 bigbody",
+      "172.29.0.11:80 loop",
+      "172.29.0.12:80 offsite",
+      "172.29.0.13:80 slowloris",
+      "172.29.0.14:80 silent",
+      "172.29.0.15:80 slowbody",
+      "172.29.0.16:443 badtls",
+      "172.29.0.17:80 garbage",
+      "172.29.0.18:80 xss",
+      "172.29.0.19:80 longtitle",
+      "172.29.0.20:80 latin2",
+      "172.29.0.21:80 brokenutf",
+      "172.29.0.22:80 manyheaders",
+      "172.29.0.23:80 crlfnul",
+      "172.29.0.24:80 chunked",
+      "172.29.0.25:80 http10",
+      "172.29.0.26:80 bigcookie"
+     ],
+     "not_open": [],
+     "no_http": [],
+     "recorded": {},
+     "longest_string": 20,
+     "offsite_in_inventory": false
+    },
+    "diff": {
+     "changes": 0,
+     "sample": []
+    }
+   },
+   "evidence": "eval/results/reliability/run2/hostile-http/",
+   "product_commit": "182dc8af0a05eb7514c8155728f7bd89c807edc0"
+  },
+  {
+   "scenario": "concurrent-runs",
+   "status": "PASS",
+   "reason": "both cases clean; rejection: asi scan: inventory: run already exists: \"c-same\"",
+   "property": "two runs with different names at once give equal, duplicate-free results; two runs with the same name: one is rejected with a one-line error",
+   "measured": {
+    "different_names_exit": "0/0",
+    "different_names_compare": {
+     "hosts_a": 18,
+     "hosts_b": 18,
+     "services_a": 26,
+     "services_b": 26,
+     "duplicates": [],
+     "differences": [],
+     "equal": true
+    },
+    "diff_a_b": {
+     "changes": 0,
+     "sample": []
+    },
+    "same_name_exit": "0/1",
+    "same_name_loser_stderr": "asi scan: inventory: run already exists: \"c-same\"\n",
+    "same_name_compare": {
+     "hosts_a": 18,
+     "hosts_b": 18,
+     "services_a": 26,
+     "services_b": 26,
+     "duplicates": [],
+     "differences": [],
+     "equal": true
+    },
+    "same_name_again_after_completion_exit": "1"
+   },
+   "evidence": "eval/results/reliability/run2/concurrent-runs/",
+   "product_commit": "182dc8af0a05eb7514c8155728f7bd89c807edc0"
+  },
+  {
+   "scenario": "bad-input",
+   "status": "PASS",
+   "reason": "18 cases, each a one-line error and non-zero exit",
+   "property": "every invalid input gives a one-line error on stderr, a non-zero exit and no panic; a /8 is refused or bounded",
+   "measured": {
+    "cases": 18,
+    "failed": [],
+    "ok": [
+     "targets-garbage",
+     "targets-empty",
+     "targets-comments-only",
+     "targets-missing-file",
+     "targets-slash8",
+     "ports-0",
+     "ports-70000",
+     "ports-empty",
+     "ports-word",
+     "diff-unknown",
+     "export-unknown",
+     "resume-unknown",
+     "show-unknown",
+     "key-16-bytes",
+     "key-not-base64",
+     "key-empty",
+     "db-wrong-password",
+     "db-wrong-password-scan"
+    ]
+   },
+   "evidence": "eval/results/reliability/run2/bad-input/",
+   "product_commit": "182dc8af0a05eb7514c8155728f7bd89c807edc0"
+  },
+  {
+   "scenario": "repeat-stability",
+   "status": "PASS",
+   "reason": "9 empty diffs, linear growth, no leftover nmap",
+   "property": "10 scans of an unchanged target set: 9 diffs with zero changes, row counts and database size grow at most linearly, no nmap process left after any run",
+   "measured": {
+    "scans_failed": 0,
+    "seconds": [
+     33.6,
+     33.6,
+     33.6,
+     33.6,
+     33.6,
+     33.8,
+     33.6,
+     33.7,
+     33.5,
+     33.7
+    ],
+    "total_rows": [
+     332,
+     541,
+     751,
+     960,
+     1170,
+     1380,
+     1589,
+     1799,
+     2008,
+     2218
+    ],
+    "row_delta_per_run": [
+     209,
+     210,
+     209,
+     210,
+     210,
+     209,
+     210,
+     209,
+     210
+    ],
+    "db_bytes": [
+     9664179,
+     9737907,
+     9828019,
+     10049203,
+     10163891,
+     10262195,
+     10344115,
+     10475187,
+     10540723,
+     10598067
+    ],
+    "db_bytes_per_run": [
+     73728,
+     90112,
+     221184,
+     114688,
+     98304,
+     81920,
+     131072,
+     65536,
+     57344
+    ],
+    "diffs_with_changes": 0,
+    "runs_with_nmap_left": 0,
+    "linear": true
+   },
+   "evidence": "eval/results/reliability/run2/repeat-stability/",
+   "product_commit": "182dc8af0a05eb7514c8155728f7bd89c807edc0"
+  },
+  {
+   "scenario": "key-rotation-and-wrong-key",
+   "status": "PASS",
+   "reason": "fails closed: asi export: ASI_MASTER_KEY cannot read stored data: findings.evidence holds values under key id 14412c60f5ca4a7c, which is neither ASI_MASTE",
+   "property": "asi export with a different valid ASI_MASTER_KEY fails closed: non-zero exit, a clear one-line error, no output file with data, no garbage or partial plaintext",
+   "measured": {
+    "export_good_exit": "0",
+    "export_wrong_key_exit": "1",
+    "stderr": "asi export: ASI_MASTER_KEY cannot read stored data: findings.evidence holds values under key id 14412c60f5ca4a7c, which is neither ASI_MASTER_KEY nor in ASI_MASTER_KEY_PREVIOUS; start with the key that wrote the data, or add it to ASI_MASTER_KEY_PREVIOUS\n",
+    "stderr_lines": 1,
+    "output_file_written": "no",
+    "plaintext_of_encrypted_fields_in_output": "no",
+    "control_bytes_in_output": 0,
+    "csv_wrong_key_exit": "1",
+    "diff_wrong_key_exit": "1",
+    "rescan_with_new_key_exit": "1",
+    "export_after_rescan_with_new_key_exit": "1",
+    "key_rotation_command": "none in the CLI of this snapshot"
+   },
+   "evidence": "eval/results/reliability/run2/key-rotation-and-wrong-key/",
+   "product_commit": "182dc8af0a05eb7514c8155728f7bd89c807edc0"
+  },
+  {
+   "scenario": "port-flap",
+   "status": "PASS",
+   "reason": "service_missing then service_returned for :80, no host-level change",
+   "property": "a port that closes while the host stays up, then reopens: service_missing, then service_returned, and no host-level change",
+   "measured": {
+    "diff-p0-p1": [
+     {
+      "type": "service_missing",
+      "address": "172.29.0.51",
+      "port": 80
+     }
+    ],
+    "diff-p1-p2": [
+     {
+      "type": "service_returned",
+      "address": "172.29.0.51",
+      "port": 80
+     }
+    ],
+    "p1_record": [
+     {
+      "status": "active",
+      "services": [
+       {
+        "port": 80,
+        "state": "open",
+        "status": "unstable",
+        "missed_runs": 1
+       },
+       {
+        "port": 8080,
+        "state": "open",
+        "status": "active",
+        "missed_runs": 0
+       }
+      ]
+     }
+    ],
+    "ok": true
+   },
+   "evidence": "eval/results/reliability/run2/port-flap/",
+   "product_commit": "182dc8af0a05eb7514c8155728f7bd89c807edc0"
+  },
+  {
+   "scenario": "sigterm-pause",
+   "status": "PASS",
+   "reason": "paused after 45.3s, no nmap left, resumed run equals the uninterrupted one",
+   "property": "SIGTERM during a scan: non-zero exit with a one-line message, the run is shown as paused, no nmap process is left, scan resume completes it and the export equals the uninterrupted run",
+   "measured": {
+    "sigterm_after_seconds": 45,
+    "scan_returned_after_seconds": 45.3,
+    "scan_exit": "1",
+    "scan_stderr": "asi scan: run \"st\" paused: context canceled\n",
+    "status_after_sigterm": "paused",
+    "groups_before": "1/3",
+    "nmap_left": 0,
+    "resume_exit": "0",
+    "compare": {
+     "hosts_a": 54,
+     "hosts_b": 54,
+     "services_a": 70,
+     "services_b": 70,
+     "duplicates": [],
+     "differences": [],
+     "equal": true
+    }
+   },
+   "evidence": "eval/results/reliability/run2/sigterm-pause/",
+   "product_commit": "182dc8af0a05eb7514c8155728f7bd89c807edc0"
+  },
+  {
+   "scenario": "recheck-mode",
+   "status": "PASS",
+   "reason": "only 172.29.0.149 reported missing; no SYN to unknown services, no neighbour lookups for other addresses",
+   "property": "recheck after a full scan with one host stopped in between: only that host is reported missing, and no (address, port) without a known service is contacted (SYN counters on the responder, neighbour table of the scanner)",
+   "measured": {
+    "known_services": 26,
+    "syn_counters": 108,
+    "known_services_contacted": 24,
+    "known_services_not_contacted": [],
+    "unknown_pairs_contacted": [],
+    "icmp_echo": 0,
+    "neighbour_entries": 17,
+    "stray_neighbour_lookups": [],
+    "changes_stopped_host": [
+     {
+      "type": "host_missing",
+      "address": "172.29.0.149"
+     }
+    ],
+    "changes_other_hosts": 0,
+    "why": ""
+   },
+   "evidence": "eval/results/reliability/run2/recheck-mode/",
+   "product_commit": "182dc8af0a05eb7514c8155728f7bd89c807edc0"
+  }
+ ]
+}

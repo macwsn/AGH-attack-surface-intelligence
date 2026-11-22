@@ -1,0 +1,24 @@
+HTTP/1.1 200 OK
+Date: Sat, 21 Nov 2026 12:00:00 GMT
+Server: Nexus/3.21.1-01 (OSS)
+X-Content-Type-Options: nosniff
+Content-Type: text/html
+X-Frame-Options: DENY
+X-XSS-Protection: 1; mode=block
+Content-Length: 1100
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Nexus Repository Manager</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <meta name="description" content="Nexus Repository Manager"/>
+  <link rel="icon" type="image/png" href="http://fixture.test/static/rapture/resources/safari-favicon-32x32.png?3.21.1-01" sizes="32x32">
+  <link rel="stylesheet" type="text/css" href="http://fixture.test/static/rapture/resources/loading-prod.css?_v=3.21.1-01">
+</head>
+<body class="x-border-box">
+<div id="loading-mask"></div>
+<div id="loading"><div id="loading-background"><img id="loading-logo" src="http://fixture.test/static/rapture/resources/images/loading-logo.png?_v=3.21.1-01"/></div></div>
+<script type="text/javascript" src="http://fixture.test/static/rapture/baseapp-prod.js?_v=3.21.1-01"></script>
+</body>
+</html>

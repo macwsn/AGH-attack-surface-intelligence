@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<nmaprun scanner="nmap" args="nmap -Pn -sT -sV --version-light --versiondb /var/lib/asi/nmap-service-probes -p 21,5432 -n -oX - 192.0.2.50" start="1763726410" startstr="Fri Nov 21 12:00:10 2026" version="7.95" xmloutputversion="1.05">
+<scaninfo type="connect" protocol="tcp" numservices="2" services="21,5432"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1763726410" endtime="1763726420"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="192.0.2.50" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="ftp" product="vsftpd" version="2.0.8 or later" ostype="Unix" method="probed" conf="10"><cpe>cpe:/a:vsftpd:vsftpd</cpe></service></port>
+<port protocol="tcp" portid="5432"><state state="open" reason="syn-ack" reason_ttl="0"/><service name="postgresql" product="PostgreSQL DB" version="9.6.0 or later" method="probed" conf="10"><cpe>cpe:/a:postgresql:postgresql</cpe></service></port>
+</ports>
+<times srtt="380" rttvar="120" to="100000"/>
+</host>
+<runstats><finished time="1763726420" timestr="Fri Nov 21 12:00:20 2026" summary="Nmap done at Fri Nov 21 12:00:20 2026; 1 IP address (1 host up) scanned in 10.10 seconds" elapsed="10.10" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

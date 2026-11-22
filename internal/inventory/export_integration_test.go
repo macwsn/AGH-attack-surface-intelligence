@@ -246,3 +246,76 @@ func TestDiffOfRecordedRuns(t *testing.T) {
 		t.Errorf("fields = %+v", c.Fields)
 	}
 }
+
+// REQ-INVENTORY-011
+func TestExportInterestScore(t *testing.T) {
+	inv := openExportInventory(t)
+	panel := web("Admin", nil)
+	panel.Findings = []inventory.Finding{{SignatureID: "admin-panel-login", Kind: "admin-panel", Name: "Login", Confidence: 80}}
+	panel.Version, panel.Technologies = "1.18.0", nil
+	plain := web("Plain", nil)
+	plain.Version, plain.Technologies = "1.27.5", nil
+	group := inventory.GroupResult{Addresses: []string{"10.0.0.5", "10.0.0.6"}, Hosts: []inventory.HostResult{
+		{Address: "10.0.0.5", Services: []inventory.ServiceResult{panel}},
+		{Address: "10.0.0.6", Services: []inventory.ServiceResult{plain}},
+	}}
+	r1 := createRun(t, inv, "i1")
+	record(t, inv, r1, group)
+	r2 := createRun(t, inv, "i2")
+	record(t, inv, r2, group)
+
+	e1, e2 := export(t, inv, "i1"), export(t, inv, "i2")
+	for _, c := range []struct {
+		e    inventory.Export
+		addr string
+		want int
+	}{
+		{e1, "10.0.0.5", 30 + 20 + 15},
+		{e1, "10.0.0.6", 20},
+		{e2, "10.0.0.5", 30 + 10 + 15},
+		{e2, "10.0.0.6", 10},
+	} {
+		h := host(t, c.e, c.addr)
+		run, err := inv.RunByName(context.Background(), c.e.Run)
+		if err != nil {
+			t.Fatal(err)
+		}
+		score, _ := inventory.Score(h, run.StartedAt, nil)
+		if h.InterestScore != c.want || score != c.want {
+			t.Errorf("run %s host %s: interest_score %d (Score %d), want %d", c.e.Run, c.addr, h.InterestScore, score, c.want)
+		}
+	}
+	if d := diff.Compute(e1, e2, diff.Options{}); len(d.Changes) != 0 {
+		t.Errorf("diff reports interest score changes: %+v", d.Changes)
+	}
+
+	weights, err := inventory.ParseInterestWeights("admin-panel=60,recent=0,outdated=0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	inv.Interest = weights
+	if got := host(t, export(t, inv, "i2"), "10.0.0.5").InterestScore; got != 60 {
+		t.Errorf("custom weights: interest_score %d, want 60", got)
+	}
+	var doc map[string]any
+	b, _ := json.Marshal(host(t, export(t, inv, "i2"), "10.0.0.5"))
+	if err := json.Unmarshal(b, &doc); err != nil || doc["interest_score"] != float64(60) {
+		t.Errorf("exported JSON interest_score = %v (%v)", doc["interest_score"], err)
+	}
+}
+
+func TestExportCarriesVolatileHeadersOfConfigurationAndRunSettings(t *testing.T) {
+	ctx := context.Background()
+	inv := openExportInventory(t)
+	inv.VolatileHeaders = []string{"x-trace-id"}
+	if _, err := inv.CreateRun(ctx, inventory.RunSpec{Name: "vh", Settings: inventory.RunSettings{Targets: []string{"192.0.2.1"}, VolatileHeaders: []string{"x-backend-node"}}}); err != nil {
+		t.Fatal(err)
+	}
+	e, err := inv.Export(ctx, "vh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := strings.Join(e.VolatileHeaders, ","), "x-trace-id,x-backend-node"; got != want {
+		t.Errorf("export volatile headers = %q, want %q", got, want)
+	}
+}

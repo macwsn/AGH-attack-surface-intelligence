@@ -12,7 +12,7 @@ The system is `internal/web/static/app.css`. Every component is rendered in `/st
 1. Pages compose existing classes. No new colours, font sizes, spacing values, shadows or border radii in templates
    or in new CSS. No `style=` attributes and no `<style>` blocks (the Content-Security-Policy blocks them anyway).
 2. A missing component is added to `app.css` and to the styleguide in the same change, built from the existing tokens,
-   and named in the PR body.
+   and named in the change description.
 3. Colour is a signal with one meaning everywhere:
 
    | Token | Meaning |

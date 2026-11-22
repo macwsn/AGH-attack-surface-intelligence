@@ -1,0 +1,23 @@
+- id: agh-rabbitmq-management
+  name: RabbitMQ management UI
+  kind: admin-panel
+  confidence: 90
+  match:
+    all:
+      - { type: title_regex, value: '^RabbitMQ Management$' }
+- id: agh-gitea-cookie
+  name: Gitea session cookie
+  kind: interesting-cookie
+  confidence: 85
+  match:
+    all:
+      - { type: cookie, name: '^i_like_gitea$' }
+- id: agh-gitea
+  name: Gitea
+  kind: technology
+  category: devops
+  confidence: 90
+  match:
+    any:
+      - { type: title_regex, value: 'Gitea: Git with a cup of tea' }
+      - { type: cookie, name: '^i_like_gitea$' }

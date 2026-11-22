@@ -1,0 +1,24 @@
+{{define "content"}}{{with .Data}}
+<div class="page-head"><div><h1>Audit log</h1>
+<p class="lede">{{.Total}} {{if .Filtered}}matching entries{{else}}entries{{end}} of every sign-in and every change to users, roles, hosts, scans, signatures and imports, newest first; filter by actor or action to find one.</p></div></div>
+
+<form class="filters" method="get" action="/audit">
+<label>Actor <input type="text" name="actor" value="{{.Filter.Actor}}" placeholder="k.nowak"></label>
+<label>Action <select name="action"><option value="">Any</option>{{range .Actions}}<option value="{{.}}"{{if eq . $.Data.Filter.Action}} selected{{end}}>{{.}}</option>{{end}}</select></label>
+<label class="grow">Target <input type="text" name="target" value="{{.Filter.Target}}" placeholder="10.0.0.1"></label>
+<label>From <input type="text" name="from" value="{{.Filter.From}}" placeholder="2026-11-21"></label>
+<label>To <input type="text" name="to" value="{{.Filter.To}}" placeholder="2026-11-21 18:00"></label>
+<button type="submit">Apply</button>{{if .Filtered}}<a class="btn" href="/audit">Clear</a>{{end}}
+</form>
+{{if .Rows}}
+<div class="result-line"><span>Showing {{.First}}-{{.Last}} of {{.Total}}</span><span class="pager">{{if .PrevURL}}<a class="btn small" href="{{.PrevURL}}" rel="prev">Previous</a>{{else}}<a class="btn small" aria-disabled="true">Previous</a>{{end}}<span class="num">{{.Page}} / {{.Pages}}</span>{{if .NextURL}}<a class="btn small" href="{{.NextURL}}" rel="next">Next</a>{{else}}<a class="btn small" aria-disabled="true">Next</a>{{end}}</span></div>
+<div class="table-wrap">
+<table class="data">
+<thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th><th>Address</th></tr></thead>
+<tbody>
+{{range .Rows}}<tr><td class="nowrap num">{{.When}}</td><td>{{.Actor}}</td><td><code>{{.Action}}</code></td><td class="wrap addr">{{.Target}}</td><td class="addr">{{.Address}}</td></tr>
+{{end}}</tbody>
+</table>
+</div>
+{{else}}<div class="empty"><p>{{if .Filtered}}No entries match these filters.{{else}}No entries yet.{{end}}</p>{{if .PrevURL}}<p><a class="btn" href="{{.PrevURL}}">Previous page</a></p>{{end}}</div>{{end}}
+{{end}}{{end}}

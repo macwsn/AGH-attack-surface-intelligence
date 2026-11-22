@@ -1,0 +1,8 @@
+ASI includes third-party software:
+
+github.com/projectdiscovery/wappalyzergo v0.3.10
+  Copyright (c) 2021 ProjectDiscovery, Inc.
+  MIT License (https://github.com/projectdiscovery/wappalyzergo/blob/main/LICENSE.md)
+  Used by internal/detect as an embedded, offline technology-fingerprint dataset (source "wappalyzer").
+  The embedded fingerprints are compiled by that project from https://github.com/enthec/webappanalyzer
+  (GPL-3.0) and https://github.com/HTTPArchive/wappalyzer; see those repositories for the data's terms.

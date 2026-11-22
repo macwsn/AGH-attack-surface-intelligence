@@ -1,0 +1,20 @@
+HTTP/1.1 200 OK
+Server: nginx
+Content-Type: text/html; charset=UTF-8
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 1; mode=block
+X-Frame-Options: SAMEORIGIN
+Set-Cookie: zbx_session=eyJzZXNzaW9uaWQiOiIifQ%3D%3D; path=/; HttpOnly
+
+<!DOCTYPE html>
+<html lang="en">
+<head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/><title>Zabbix</title></head>
+<body>
+<div class="signin-container"><div class="signin-logo"></div>
+<form method="post" action="index.php"><ul>
+<li><label for="name">Username</label><input type="text" id="name" name="name" value="" maxlength="255"></li>
+<li><label for="password">Password</label><input type="password" id="password" name="password" value="" maxlength="255"></li>
+</ul></form></div>
+<div class="signin-links">&copy; 2001&ndash;2026, <a class="grey link-alt" target="_blank" rel="noopener noreferrer" href="https://www.zabbix.com/">Zabbix SIA</a></div>
+</body>
+</html>
